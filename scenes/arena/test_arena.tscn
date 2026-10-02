@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://0op67lhxi146"]
+
+[ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_btlyn"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_kti05"]
+sky_material = SubResource("ProceduralSkyMaterial_btlyn")
+
+[sub_resource type="Environment" id="Environment_wt5dk"]
+background_mode = 2
+sky = SubResource("Sky_kti05")
+glow_enabled = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_v2xx4"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lh4ft"]
+albedo_color = Color(0, 1, 1, 1)
+
+[node name="TestArena" type="Node3D" unique_id=1990398739]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1589050391]
+environment = SubResource("Environment_wt5dk")
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=1387525308]
+transform = Transform3D(-0.5, 0, 0, 0, -0.5, 0, 0, 0, -0.5, 0, 0, 0)
+use_collision = true
+size = Vector3(40, 1, 40)
+material = SubResource("StandardMaterial3D_v2xx4")
+
+[node name="LowPlatform" type="CSGBox3D" parent="." unique_id=1827749746]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2146626, 0.650012, 6.090267)
+use_collision = true
+size = Vector3(3, 0.8, 3)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="TightPlatform" type="CSGBox3D" parent="." unique_id=1631720897]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.220346, 0.77510023, -0.0049111843)
+use_collision = true
+size = Vector3(3, 1.1, 3)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="HighPlatform" type="CSGBox3D" parent="." unique_id=423556137]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.220346, 0.77510023, -6.095915)
+use_collision = true
+size = Vector3(3, 2, 3)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="Pillar" type="CSGBox3D" parent="." unique_id=1939604600]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.7885623, 2.1798978, -5.58543)
+use_collision = true
+size = Vector3(1, 4, 1)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="Wall" type="CSGBox3D" parent="." unique_id=412228597]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.9702706, 1.8072429, 10.052495)
+use_collision = true
+size = Vector3(8, 3, 0.5)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="Wall2" type="CSGBox3D" parent="." unique_id=1908162604]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 10.2152195, 1.8072429, 5.850957)
+use_collision = true
+size = Vector3(8, 3, 0.5)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=989296371]
+transform = Transform3D(0.81729025, -0.4414149, 0.3703911, 0, 0.64278764, 0.76604444, -0.57622623, -0.62608063, 0.5253441, 0, 10.818325, 12.643993)
+shadow_enabled = true
+
+[node name="Player" parent="." unique_id=1991767212 instance=ExtResource("1_btlyn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
