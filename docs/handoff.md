@@ -113,6 +113,20 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - **KBM first, controller from the start in the Input Map.** Code only ever checks **action names**, never raw keys.
 - Movement via `Input.get_vector(...)`.
 - Differences needing extra handling: camera (mouse delta vs. stick with deadzone/sensitivity), lock-on target switching (mouse flick vs. right stick). UI button prompts are skipped for the prototype.
+- **Current Input Map** (all actions already created in Project Settings):
+
+| Action | KBM | Controller |
+|---|---|---|
+| `move_forward/back/left/right` | W / S / A / D | Left stick |
+| `look_left/right/up/down` | (mouse read directly) | Right stick |
+| `jump` | Space | Bottom Action (A / Cross) |
+| `dodge` | Left Shift | Right Action (B / Circle) |
+| `attack` | Left Mouse Button | **Right Shoulder (R1 / RB)** |
+| `guard` | Right Mouse Button | **Left Shoulder (L1 / LB)** |
+| `heal` | Q | Top Action (Y / Triangle) |
+| `lock_on` | Middle Mouse Button | Right Stick click |
+
+  X / Square is unbound (free for a later use). Only move, look, and jump are wired up so far.
 
 ---
 
@@ -198,6 +212,14 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 | Enemy health bars | 2 |
 | Posture amounts, regen rates, low-HP slowdown | TBD during tuning |
 | Guard cone | 90° front |
+| Run speed / walk speed | 6.5 / 2.5 (step 1, still tunable) |
+| Acceleration / deceleration | 50 / 60 |
+| Turn speed | 18 |
+| Jump velocity / gravity multiplier | 7.0 / 2.0 |
+| Coyote time / jump buffer | 0.1s / 0.15s |
+| Camera: follow height / smoothing | 1.5 / 20 |
+| Camera: mouse sens / stick sens | 0.0025 / 3.0 |
+| Camera: pitch range / spring length | -60° to 30° / 4.0 m |
 
 ---
 
@@ -241,7 +263,7 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 
 ## 10. Progress checklist (update each session)
 
-- [ ] 1. Movement, camera, jump, Input Map (KBM and controller)
+- [x] 1. Movement, camera, jump, Input Map (KBM and controller) **(done and tested by the user)**
 - [ ] 2. State machine, ActionData, dodge, dash-hold
 - [ ] 3. Attack, combo, combo loop
 - [ ] 4. Hitboxes, damage, hitstop
@@ -253,7 +275,28 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Nothing built yet. Design phase complete. Godot 4.7.2 standard is being downloaded or installed.
+**Current state:** Step 1 is complete and tested (camera, movement, and jump all work). **Next: Step 2** (state machine, `ActionData`, dodge with dash-hold and i-frames).
+
+### Step 1: what exists
+
+**Files**
+- `scripts/player/player.gd`: attached to the Player root. Camera-relative movement with acceleration/deceleration, quick turn toward the movement direction, gravity with multiplier, jump with coyote time and jump buffer. Has a `walk_only` flag that guard will use later to force walking. All tuning values are `@export`s. **Deliberately simple; Step 2 restructures it into a state machine.**
+- `scripts/player/camera_rig.gd`: attached to CameraRig. `top_level = true` so it doesn't inherit the player's rotation; follows the player with smoothing at `follow_height`; mouse look (captured; Esc releases, click recaptures) plus right-stick look; pitch clamped; the SpringArm excludes the player's body.
+- `scenes/player/player.tscn`, `scenes/arena/test_arena.tscn` (set as the main scene)
+
+**Player scene tree**
+```
+Player (CharacterBody3D, root, player.gd)
+  CollisionShape3D (CapsuleShape3D r=0.4 h=1.8, position y=0.9)
+  Visual (Node3D)
+    Body (MeshInstance3D, CapsuleMesh)
+    Nose (MeshInstance3D, BoxMesh, marks the front)
+  CameraRig (Node3D, camera_rig.gd)
+    SpringArm3D (length 4.0, SphereShape3D r=0.2)
+      Camera3D
+```
+
+**Test arena:** Floor plus color-coded test blocks (low, tight, and high platforms, a pillar, walls), a DirectionalLight3D, a WorldEnvironment, and the Player instance. Block heights are sized to the current jump numbers, so they need resizing if the jump is retuned.
 
 ---
 
@@ -264,6 +307,8 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 - Signals for events between components; autoload only when truly global.
 - Input checked by **action name** only.
 - Timings in **seconds**, never frames.
+- **Never scale a `CollisionShape3D` node.** Set sizes on the shape resource itself (radius, height, size).
+- The player scene root is the `CharacterBody3D` itself (no wrapper node).
 - Suggested folder structure:
   ```
   res://
@@ -283,10 +328,12 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 ## 12. How Claude should work with me
 
 - I'm on the **free web chat**, so **keep replies concise** to save usage. No long preambles.
+- **Only send changed functions or snippets**, not whole scripts, unless I ask.
 - When something needs scene setup, **list the nodes to create explicitly** (node type, name, parent, key properties).
 - Tell me **where each script is attached** and what to name it.
 - I can't be assumed to know Godot well; briefly explain the *why* of new concepts, but keep it short.
 - **Don't assume decisions for me.** If something isn't in this doc, ask. Mark guesses as placeholders.
 - I can't be tested by Claude: Claude can't run Godot, so I'll report results and errors. I'll give my Godot version (4.7.2) and paste error text.
 - One build-order step at a time. Confirm it works before moving on.
-- Please read the work-agreements.md
+- To share the project, run `python pack_for_claude.py` (in the project root; use `--only <paths>` to pack just the relevant folders) and upload the zip it creates in `snapshots/`. It includes the docs and skips binary assets (listing their names).
+- The controller layout is Xbox/PlayStation style (see the Input Map table in 3.8).
