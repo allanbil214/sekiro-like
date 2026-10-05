@@ -26,8 +26,10 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export_group("Movement")
 @export var move_speed: float = 0.0
 @export var move_window: Vector2 = Vector2.ZERO
-## Speed fades linearly to 0 across move_window.
+## Speed fades linearly across move_window (down to move_end_factor).
 @export var move_fade: bool = true
+## Speed at the end of move_window as a fraction of move_speed (needs Move Fade). 0 = fades to a stop.
+@export var move_end_factor: float = 0.0
 
 @export_group("Combat")
 @export var damage: float = 0.0

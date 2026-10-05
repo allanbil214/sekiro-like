@@ -31,10 +31,10 @@ func physics_update(delta: float) -> void:
 	player.invulnerable = action.has_iframes(action_time)
 	if not player.is_on_floor():
 		player.apply_gravity(delta)
-	_apply_action_movement(delta)
 	_on_action_update(delta)
 	if machine.current != self:
 		return
+	_apply_action_movement(delta)
 	if action_time >= action.duration:
 		_on_action_finished()
 
@@ -44,7 +44,8 @@ func _apply_action_movement(delta: float) -> void:
 	if _move_dir != Vector3.ZERO and ActionData.in_window(window, action_time):
 		var factor := 1.0
 		if action.move_fade:
-			factor = 1.0 - (action_time - window.x) / maxf(window.y - window.x, 0.001)
+			var progress := clampf((action_time - window.x) / maxf(window.y - window.x, 0.001), 0.0, 1.0)
+			factor = lerpf(1.0, action.move_end_factor, progress)
 		player.set_horizontal_velocity(_move_dir * action.move_speed * _move_speed_multiplier * factor)
 	else:
 		player.decelerate(delta)
