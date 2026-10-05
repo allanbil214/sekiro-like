@@ -146,7 +146,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - **Dodge and jump cancel crouch** (you stand up into the action). Under a low ceiling those presses are ignored (and discarded, not buffered).
 - **Deceleration:** entering crouch faster than crouch speed slows you down at `crouch_decel` instead of snapping to crouch speed.
 - **Mesh animation (placeholder polish):** the body mesh and nose ease between heights over `crouch_transition_time`. The **collision capsule changes instantly**.
-- **Crouch slide:** pressing `crouch` **while dashing** (Dash state, with movement input) starts a slide. It is an `ActionState` driven by `actions/slide.tres`, moves in the input direction at a speed above the dash, has **i-frames like the dodge**, and ends in Crouch. After its locked window, jump and dodge cancel it (they need headroom). Sliding off an edge goes to Air and stands up. Pressing crouch while merely running or standing is a normal crouch, not a slide.
+- **Crouch slide:** pressing `crouch` **while dashing** (Dash state, with movement input) starts a slide. It is an `ActionState` driven by `actions/slide.tres`, moves in the input direction at a speed above the dash, has **i-frames like the dodge**, shows the debug arms held **straight forward** for the whole slide (flair, replaced by real animation later), and ends in Crouch. After its locked window, jump and dodge cancel it (they need headroom). Sliding off an edge goes to Air and stands up. Pressing crouch while merely running or standing is a normal crouch, not a slide.
 - **Slide attack: deferred.** Sekiro has none. **Ask the user again at Step 3 whether they want one** (see O7).
 - **Combat:** duck under enemy attacks, then counter with a **crouch attack**. There is **no `attack_height` variable**: ducking works because the hurtbox shrinks and an attack whose hitbox doesn't overlap it whiffs. Placement of each attack's hitbox (high, mid, low) decides what can be ducked.
 - Stealth use (sneak up for a stealth deathblow) is Phase 2.
@@ -279,6 +279,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Slide: duration / locked until | 0.6s / 0.35s |
 | Slide: i-frames | 0.05s to 0.28s (same as dodge) |
 | Slide: speed / window / end factor | 18 m/s (tuned by the user, feels good) / 0 to 0.45s / 0.3 |
+| Slide arms pose | 90 degrees (straight forward), `slide_angle_deg` on `ReachArms` |
 | Hurtbox profiles | stand 1.8/0, crouch 1.1/0, air 1.1/0.7 (height/offset) |
 | Wall jumps per airtime | 2 |
 | Wall jump boost | 1.2x (up = jump_velocity x boost, push = run_speed x boost) |
@@ -432,7 +433,7 @@ State node names must match exactly (`Crouch`, `Slide`).
 - `scripts/player/player.gd` additions: exports `wall_jump_boost` (1.2), `wall_range` (0.6), `max_wall_jumps` (2), `wall_input_threshold` (user-tuned, see placeholders), `air_jump_ground_margin` (0.3); state `reach_ready`, `wall_jumps_used`, `wall_normal`; `reset_air_actions()` (called on landing), `play_reach_arms()`, `is_near_ground()` (ray down), `find_wall()` (8 horizontal rays at chest height, ignores non-vertical surfaces, returns the nearest `{normal, distance}`), `try_air_jump()` (consumes the buffered jump press; returns true if a wall jump should start, otherwise may play the reach).
 - `scripts/player/states/air_state.gd`: after the coyote jump check, a jump press with no coyote calls `try_air_jump()` and transitions to `WallJump` when it returns true; landing calls `reset_air_actions()`.
 - `scripts/player/states/wall_jump_state.gd`: `WallJumpState` (extends `ActionState`). Picks the direction from the input versus `wall_normal`, sets `velocity.y`, multiplies the action's horizontal move speed by `wall_jump_boost`, counts the jump, restores the reach. After the locked window another wall jump (or reach) can chain. Finishes into Air; landing resets and goes to Locomotion.
-- `scripts/player/reach_arms.gd`: `ReachArms` (Node3D, debug-grade). Builds two box arms in code; `play()` raises them for about 0.3s.
+- `scripts/player/reach_arms.gd`: `ReachArms` (Node3D, debug-grade). Builds two box arms in code; `play()` raises them (up and forward, `raised_angle_deg` 140) for about 0.3s. `hold_forward(shoulder_y)` swings them straight forward (`slide_angle_deg`, 90) and holds until `release()`; the slide uses this (via `Player.play_slide_arms()` / `stop_slide_arms()`, called from `SlideState` on enter and exit, with the shoulder at crouched height).
 - `actions/wall_jump.tres`: `ActionData`, kind `WALL_JUMP`. **Never overwrite; changes come as "change X to Y".**
 - `scripts/ui/debug_overlay.gd` additions: lines `Reach`, `Wall jumps n/max`, `vel.y`, and a translucent wall-range ring at chest height (`show_wall_range` export).
 

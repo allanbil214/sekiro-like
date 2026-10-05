@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ActionData" format=3]
+
+[ext_resource type="Script" path="res://resources/action_data.gd" id="1_actiondata"]
+
+[resource]
+script = ExtResource("1_actiondata")
+kind = 6
+animation = &"ledge_climb"
+duration = 0.6
+locked_until = 0.6

@@ -40,6 +40,9 @@ func _on_action_update(_delta: float) -> void:
 		player.reset_air_actions()
 		machine.transition_to(&"Locomotion")
 		return
+	if player.try_ledge_grab():
+		machine.transition_to(&"LedgeClimb")
+		return
 	if action.can_cancel(action_time) and player.try_air_jump():
 		machine.transition_to(&"WallJump")
 

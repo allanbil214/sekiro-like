@@ -39,6 +39,19 @@ extends CharacterBody3D
 ## Air jump presses this close to the floor (m) are left buffered for the landing jump.
 @export var air_jump_ground_margin: float = 0.3
 
+@export_group("Ledge")
+## Hand zone: a ledge top counts if it is between these heights above the feet (m).
+@export var ledge_zone_min: float = 1.4
+@export var ledge_zone_max: float = 2.1
+## How directly the input must point at the wall to grab a ledge (dot product, 0.5 = within 60 degrees).
+@export var ledge_input_threshold: float = 0.5
+## No ledge grab while rising faster than this (m/s). 99 = no limit (grab while rising too).
+@export var ledge_max_rise_speed: float = 99.0
+## Only grab a ledge while the jump button is held (stops accidental re-grabs after a drop).
+@export var ledge_requires_jump_held: bool = true
+## Gap (m) between the capsule and the wall edge at the landing spot on top.
+@export var ledge_standoff: float = 0.1
+
 @export_group("Input")
 @export var input_buffer_time: float = 0.15
 
@@ -54,6 +67,12 @@ var reach_ready: bool = true
 var wall_jumps_used: int = 0
 ## Set by try_air_jump() when it returns true: the surface normal of the wall to jump from.
 var wall_normal: Vector3 = Vector3.ZERO
+## Set by try_ledge_grab() when it returns true (read by the LedgeClimb state).
+var ledge_stand_pos: Vector3 = Vector3.ZERO
+var ledge_wall_normal: Vector3 = Vector3.ZERO
+## Debug: where the last ledge was found, and when (msec).
+var last_ledge_point: Vector3 = Vector3.ZERO
+var last_ledge_ms: int = -100000
 
 var _headroom_shape: CapsuleShape3D
 var _nose_drop: float = 0.4
@@ -177,9 +196,14 @@ func set_crouched(crouched: bool) -> void:
 
 ## True if there is room above to stand up (checked with a standing-sized capsule).
 func can_stand() -> bool:
+	return _fits_standing_at(global_position)
+
+
+## True if a standing capsule fits with its feet at the given point.
+func _fits_standing_at(feet: Vector3) -> bool:
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = _headroom_shape
-	params.transform = Transform3D(Basis.IDENTITY, global_position + Vector3.UP * (0.07 + _headroom_shape.height * 0.5))
+	params.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (0.07 + _headroom_shape.height * 0.5))
 	params.collision_mask = collision_mask
 	params.exclude = [get_rid()]
 	return get_world_3d().direct_space_state.intersect_shape(params, 1).is_empty()
@@ -196,6 +220,16 @@ func play_reach_arms() -> void:
 
 
 ## Slide pose: arms held straight forward at crouched shoulder height until stop_slide_arms().
+func play_climb_arms() -> void:
+	if _reach_arms != null:
+		_reach_arms.hold_up()
+
+
+func release_arms() -> void:
+	if _reach_arms != null:
+		_reach_arms.release()
+
+
 func play_slide_arms() -> void:
 	if _reach_arms != null:
 		_reach_arms.hold_forward(crouch_height - _nose_drop)
@@ -236,7 +270,11 @@ func find_wall() -> Dictionary:
 		var distance := origin.distance_to(hit["position"])
 		if distance < best_distance:
 			best_distance = distance
-			best = {"normal": Vector3(normal.x, 0.0, normal.z).normalized(), "distance": distance}
+			best = {
+				"normal": Vector3(normal.x, 0.0, normal.z).normalized(),
+				"distance": distance,
+				"position": hit["position"],
+			}
 	return best
 
 
@@ -256,3 +294,82 @@ func try_air_jump() -> bool:
 		reach_ready = false
 		play_reach_arms()
 	return false
+
+
+## Looks for a ledge to grab: airborne, near the top of a jump or falling, input toward a
+## wall, a flat ledge top in the hand zone that is deep enough, and room to stand on it.
+## Returns {"stand_position", "normal", "edge"} or {}.
+func find_ledge() -> Dictionary:
+	if is_on_floor() or velocity.y > ledge_max_rise_speed:
+		return {}
+	if ledge_requires_jump_held and not Input.is_action_pressed("jump"):
+		return {}
+	var want := get_move_input()
+	want.y = 0.0
+	if want.length_squared() < 0.01:
+		return {}
+	var wall := find_wall()
+	if wall.is_empty():
+		return {}
+	var normal: Vector3 = wall["normal"]
+	if want.normalized().dot(-normal) < ledge_input_threshold:
+		return {}
+	var hit_pos: Vector3 = wall["position"]
+	var to_face := Vector3(hit_pos.x - global_position.x, 0.0, hit_pos.z - global_position.z)
+	var face_distance := to_face.dot(-normal)
+	var feet_y := global_position.y
+	var space := get_world_3d().direct_space_state
+	var radius := (_collision_shape.shape as CapsuleShape3D).radius
+	var base := Vector3(global_position.x, 0.0, global_position.z)
+
+	# 1. Ray down just inside the wall face to find the ledge top.
+	var probe := base - normal * (face_distance + 0.15)
+	var top_query := PhysicsRayQueryParameters3D.create(
+			Vector3(probe.x, feet_y + ledge_zone_max + 0.2, probe.z),
+			Vector3(probe.x, feet_y + ledge_zone_min - 0.05, probe.z),
+			collision_mask, [get_rid()])
+	var top := space.intersect_ray(top_query)
+	if top.is_empty():
+		return {}
+	var top_normal: Vector3 = top["normal"]
+	var top_pos: Vector3 = top["position"]
+	if top_normal.y < 0.9 or top_pos.y < feet_y + ledge_zone_min or top_pos.y > feet_y + ledge_zone_max:
+		return {}
+
+	# 2. The top must be deep enough to stand on: check the landing spot.
+	var stand_xz := base - normal * (face_distance + radius + ledge_standoff)
+	var stand_query := PhysicsRayQueryParameters3D.create(
+			Vector3(stand_xz.x, top_pos.y + 0.5, stand_xz.z),
+			Vector3(stand_xz.x, top_pos.y - 0.3, stand_xz.z),
+			collision_mask, [get_rid()])
+	var ground := space.intersect_ray(stand_query)
+	if ground.is_empty():
+		return {}
+	var ground_normal: Vector3 = ground["normal"]
+	var ground_pos: Vector3 = ground["position"]
+	if ground_normal.y < 0.9 or absf(ground_pos.y - top_pos.y) > 0.1:
+		return {}
+	var stand_pos := Vector3(stand_xz.x, ground_pos.y, stand_xz.z)
+
+	# 3. There must be room for the standing capsule up there.
+	if not _fits_standing_at(stand_pos + Vector3.UP * 0.02):
+		return {}
+	return {"stand_position": stand_pos, "normal": normal, "edge": top_pos}
+
+
+## If a ledge can be grabbed, stores it for the LedgeClimb state and returns true
+## (the caller transitions to LedgeClimb).
+func try_ledge_grab() -> bool:
+	var ledge := find_ledge()
+	if ledge.is_empty():
+		return false
+	ledge_stand_pos = ledge["stand_position"]
+	ledge_wall_normal = ledge["normal"]
+	last_ledge_point = ledge["edge"]
+	last_ledge_ms = Time.get_ticks_msec()
+	return true
+
+
+## Turn the body collision on or off (used during the scripted ledge climb).
+func set_body_collision_enabled(enabled: bool) -> void:
+	_collision_shape.set_deferred("disabled", not enabled)

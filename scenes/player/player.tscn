@@ -15,6 +15,8 @@
 [ext_resource type="Resource" uid="uid://dhkj22t4umr05" path="res://actions/slide.tres" id="11_gx1jg"]
 [ext_resource type="Script" uid="uid://cs572tvmllo5x" path="res://scripts/player/states/wall_jump_state.gd" id="12_ugbui"]
 [ext_resource type="Resource" path="res://actions/wall_jump.tres" id="13_fcs02"]
+[ext_resource type="Script" uid="uid://defbvba4mj6y2" path="res://scripts/player/states/ledge_climb_state.gd" id="15_kvlxm"]
+[ext_resource type="Resource" path="res://actions/ledge_climb.tres" id="16_uf5tr"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -87,6 +89,10 @@ action = ExtResource("11_gx1jg")
 [node name="WallJump" type="Node" parent="StateMachine" unique_id=1573786045]
 script = ExtResource("12_ugbui")
 action = ExtResource("13_fcs02")
+
+[node name="LedgeClimb" type="Node" parent="StateMachine" unique_id=479839874]
+script = ExtResource("15_kvlxm")
+action = ExtResource("16_uf5tr")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")

@@ -7,11 +7,14 @@ extends CanvasLayer
 @export var tint_color: Color = Color(0.3, 0.7, 1.0)
 ## Show a ring at chest height marking how far a wall counts as "in range" for wall jumps.
 @export var show_wall_range: bool = true
+## Show a marker at the ledge edge found by the last ledge check.
+@export var show_ledge_marker: bool = true
 
 var _player: Player
 var _label: Label
 var _body: MeshInstance3D
 var _tint_material: StandardMaterial3D
+var _ledge_marker: MeshInstance3D
 
 
 func _ready() -> void:
@@ -24,6 +27,8 @@ func _ready() -> void:
 	_tint_material.albedo_color = tint_color
 	if show_wall_range:
 		_create_wall_range_ring.call_deferred()
+	if show_ledge_marker:
+		_create_ledge_marker.call_deferred()
 
 
 func _process(_delta: float) -> void:
@@ -33,6 +38,11 @@ func _process(_delta: float) -> void:
 		"ready" if _player.reach_ready else "used",
 		_player.wall_jumps_used, _player.max_wall_jumps, _player.velocity.y,
 	]
+	var ledge_recent := Time.get_ticks_msec() - _player.last_ledge_ms < 600
+	text += "\nLedge: %s" % ("found" if ledge_recent else "-")
+	if _ledge_marker != null:
+		_ledge_marker.visible = ledge_recent
+		_ledge_marker.global_position = _player.last_ledge_point
 	var action_state := machine.current as ActionState
 	if action_state != null:
 		text += "\nAction time: %.2f / %.2f" % [action_state.action_time, action_state.action.duration]
@@ -62,3 +72,19 @@ func _create_wall_range_ring() -> void:
 	ring.material_override = material
 	ring.position = Vector3(0.0, _player.stand_height * 0.5, 0.0)
 	_player.add_child(ring)
+
+
+func _create_ledge_marker() -> void:
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.08
+	mesh.height = 0.16
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(1.0, 0.2, 0.8)
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_ledge_marker = MeshInstance3D.new()
+	_ledge_marker.name = "LedgeMarker"
+	_ledge_marker.mesh = mesh
+	_ledge_marker.material_override = material
+	_ledge_marker.top_level = true
+	_ledge_marker.visible = false
+	_player.add_child(_ledge_marker)

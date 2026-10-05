@@ -6,6 +6,9 @@ extends State
 func physics_update(delta: float) -> void:
 	player.coyote_timer = maxf(player.coyote_timer - delta, 0.0)
 	player.apply_gravity(delta)
+	if player.try_ledge_grab():
+		machine.transition_to(&"LedgeClimb")
+		return
 	if player.coyote_timer > 0.0 and player.input_buffer.consume(&"jump"):
 		player.start_jump()
 	elif player.coyote_timer <= 0.0 and player.try_air_jump():

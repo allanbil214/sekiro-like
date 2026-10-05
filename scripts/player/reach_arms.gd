@@ -12,6 +12,8 @@ extends Node3D
 @export var raised_angle_deg: float = 140.0
 ## Pose angle while sliding: 90 = arms straight forward.
 @export var slide_angle_deg: float = 90.0
+## Pose angle while climbing a ledge: 180 = arms straight up.
+@export var climb_angle_deg: float = 180.0
 @export var color: Color = Color(1.0, 0.6, 0.15)
 
 var _pivots: Array[Node3D] = []
@@ -53,9 +55,18 @@ func play() -> void:
 
 ## Swing the arms forward (slide_angle_deg) and keep them there until release().
 func hold_forward(shoulder_y: float) -> void:
+	_hold(slide_angle_deg, shoulder_y)
+
+
+## Swing the arms straight up (climb_angle_deg) and keep them there until release().
+func hold_up() -> void:
+	_hold(climb_angle_deg, shoulder_height)
+
+
+func _hold(angle_deg: float, shoulder_y: float) -> void:
 	if _tween != null:
 		_tween.kill()
-	_angle_deg = slide_angle_deg
+	_angle_deg = angle_deg
 	_set_shoulder_height(shoulder_y)
 	visible = true
 	_tween = create_tween()
