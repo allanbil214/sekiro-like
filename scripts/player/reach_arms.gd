@@ -10,10 +10,14 @@ extends Node3D
 @export var hold_time: float = 0.15
 @export var lower_time: float = 0.12
 @export var raised_angle_deg: float = 140.0
+## Pose angle while sliding: 90 = arms straight forward.
+@export var slide_angle_deg: float = 90.0
 @export var color: Color = Color(1.0, 0.6, 0.15)
 
 var _pivots: Array[Node3D] = []
 var _tween: Tween
+var _angle_deg: float = 140.0
+var _amount: float = 0.0
 
 
 func _ready() -> void:
@@ -37,6 +41,8 @@ func _ready() -> void:
 func play() -> void:
 	if _tween != null:
 		_tween.kill()
+	_angle_deg = raised_angle_deg
+	_set_shoulder_height(shoulder_height)
 	visible = true
 	_tween = create_tween()
 	_tween.tween_method(_set_pose, 0.0, 1.0, raise_time)
@@ -45,6 +51,34 @@ func play() -> void:
 	_tween.tween_callback(func() -> void: visible = false)
 
 
-func _set_pose(amount: float) -> void:
+## Swing the arms forward (slide_angle_deg) and keep them there until release().
+func hold_forward(shoulder_y: float) -> void:
+	if _tween != null:
+		_tween.kill()
+	_angle_deg = slide_angle_deg
+	_set_shoulder_height(shoulder_y)
+	visible = true
+	_tween = create_tween()
+	_tween.tween_method(_set_pose, _amount, 1.0, raise_time)
+
+
+## Lower the arms and hide them.
+func release() -> void:
+	if not visible:
+		return
+	if _tween != null:
+		_tween.kill()
+	_tween = create_tween()
+	_tween.tween_method(_set_pose, _amount, 0.0, lower_time)
+	_tween.tween_callback(func() -> void: visible = false)
+
+
+func _set_shoulder_height(y: float) -> void:
 	for pivot in _pivots:
-		pivot.rotation.x = deg_to_rad(raised_angle_deg) * amount
+		pivot.position.y = y
+
+
+func _set_pose(amount: float) -> void:
+	_amount = amount
+	for pivot in _pivots:
+		pivot.rotation.x = deg_to_rad(_angle_deg) * amount

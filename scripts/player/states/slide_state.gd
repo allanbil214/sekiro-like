@@ -7,12 +7,14 @@ extends ActionState
 
 func exit(next: StringName) -> void:
 	super.exit(next)
+	player.stop_slide_arms()
 	if next != &"Crouch":
 		player.set_crouched(false)
 
 
 func _on_action_enter(_previous: StringName) -> void:
 	player.set_crouched(true)
+	player.play_slide_arms()
 	var dir := player.get_move_input()
 	if dir.length_squared() <= 0.01:
 		dir = player.get_facing_direction()

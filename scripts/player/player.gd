@@ -195,6 +195,17 @@ func play_reach_arms() -> void:
 		_reach_arms.play()
 
 
+## Slide pose: arms held straight forward at crouched shoulder height until stop_slide_arms().
+func play_slide_arms() -> void:
+	if _reach_arms != null:
+		_reach_arms.hold_forward(crouch_height - _nose_drop)
+
+
+func stop_slide_arms() -> void:
+	if _reach_arms != null:
+		_reach_arms.release()
+
+
 ## True if the floor is within air_jump_ground_margin below the feet.
 func is_near_ground() -> bool:
 	var from := global_position + Vector3.UP * 0.05
