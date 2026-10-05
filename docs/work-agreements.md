@@ -37,7 +37,6 @@ Claude picks the lightest format that is safe:
 | Situation | Format |
 |---|---|
 | Script of about **150 lines or less** | The **complete file** in the reply |
-| Larger script | **Only the changed functions**, with exact placement (e.g. "replace `_physics_process`", "add below `_ready`") |
 | A step touching **3+ files** | A **zip** of complete files |
 | Tiny change (a value, a line) | A one-line instruction |
 

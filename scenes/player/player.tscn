@@ -2,6 +2,13 @@
 
 [ext_resource type="Script" uid="uid://dihu6p5qetbd5" path="res://scripts/player/player.gd" id="1_dovo2"]
 [ext_resource type="Script" uid="uid://cihgadc8vxu18" path="res://scripts/player/camera_rig.gd" id="2_gmlin"]
+[ext_resource type="Script" uid="uid://bmsjl77m5j8qw" path="res://scripts/player/states/state_machine.gd" id="3_5gtgg"]
+[ext_resource type="Script" uid="uid://bk7e1ftndsj83" path="res://scripts/player/states/locomotion_state.gd" id="4_h17s1"]
+[ext_resource type="Script" uid="uid://n7b80fl5racg" path="res://scripts/player/states/air_state.gd" id="5_je7p5"]
+[ext_resource type="Script" uid="uid://dbyobsb5bm262" path="res://scripts/player/states/dodge_state.gd" id="6_fm80t"]
+[ext_resource type="Resource" path="res://actions/dodge.tres" id="7_gx1jg"]
+[ext_resource type="Script" uid="uid://cc8d2yi3m60l5" path="res://scripts/player/states/dash_state.gd" id="8_ugbui"]
+[ext_resource type="Script" uid="uid://cnqtx575vtp13" path="res://scripts/ui/debug_overlay.gd" id="9_fcs02"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -42,3 +49,24 @@ shape = SubResource("SphereShape3D_wynvb")
 spring_length = 4.0
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig/SpringArm3D" unique_id=1164152523]
+
+[node name="StateMachine" type="Node" parent="." unique_id=1232450398 node_paths=PackedStringArray("initial_state")]
+script = ExtResource("3_5gtgg")
+initial_state = NodePath("Locomotion")
+metadata/_custom_type_script = "uid://bmsjl77m5j8qw"
+
+[node name="Locomotion" type="Node" parent="StateMachine" unique_id=1963598198]
+script = ExtResource("4_h17s1")
+
+[node name="Air" type="Node" parent="StateMachine" unique_id=35076688]
+script = ExtResource("5_je7p5")
+
+[node name="Dodge" type="Node" parent="StateMachine" unique_id=1458400888]
+script = ExtResource("6_fm80t")
+action = ExtResource("7_gx1jg")
+
+[node name="Dash" type="Node" parent="StateMachine" unique_id=702889451]
+script = ExtResource("8_ugbui")
+
+[node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
+script = ExtResource("9_fcs02")

@@ -1,6 +1,8 @@
 # Handoff: Sekiro-Like Combat Prototype (Godot 4)
 
 > Paste this whole file at the start of a new chat. Update the **Progress checklist** (section 10) at the end of each session and re-paste it next time.
+>
+> **Reminder:** deferred ideas live in the **Phase 2 backlog** (section 13). Don't forget them.
 
 ---
 
@@ -8,7 +10,7 @@
 
 - **Engine:** Godot 4.7.2 stable, standard (non-.NET) build, **GDScript** (typed)
 - **Genre:** 3D third-person, Sekiro-style posture combat
-- **Scope (prototype):** 1 player, 1 enemy, 1 arena, 1 weapon (katana-style samurai), no inventory. The goal is to validate the **core combat loop** only.
+- **Scope (prototype):** 1 player, 1 enemy, 1 arena, 1 weapon (katana-style samurai), no inventory. The goal is to validate the **core movement + combat loop**. Traversal moves (crouch, wall jump, ledges) are in Phase 1 by the user's choice; everything deferred is in section 13 (Phase 2).
 - **Platform:** Windows, **KBM first**, controller bindings added to the Input Map from day one.
 - **Feel target:** Sekiro-snappy.
 - **Art:** No animations or models yet. Use capsules and a box "sword". The user plans to learn Blender later.
@@ -32,7 +34,9 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - Shrinking deflect window when spammed
 - Heal (limited charges), resurrection
 - Action "locks" and "cancel windows" tunable as data
-- No crouch (samurai, not shinobi)
+- Crouch (toggle by default): duck under attacks, crouch attack
+- Mid-air reach and wall jump (no extra height), ledge grab, hang, shimmy (one straight line), climb up
+- Generic `interact` button (ledges in Phase 1; doors, chests, NPCs in Phase 2)
 
 **Enemy**
 - Same combat rules as player (shared `Combatant` component)
@@ -43,7 +47,8 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 **Systems**
 - Posture (both sides), posture break, deathblow
 - Hitboxes/hurtboxes, damage data, hit reactions
-- Clash mechanic (new, see 4.5)
+- Hurtbox profiles per state (stand, crouch, air)
+- Clash mechanic (new, see 3.3)
 - Input buffering
 - Third-person camera with collision, lock-on camera
 - Hitstop, camera shake, spark/sound hooks
@@ -113,7 +118,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - **KBM first, controller from the start in the Input Map.** Code only ever checks **action names**, never raw keys.
 - Movement via `Input.get_vector(...)`.
 - Differences needing extra handling: camera (mouse delta vs. stick with deadzone/sensitivity), lock-on target switching (mouse flick vs. right stick). UI button prompts are skipped for the prototype.
-- **Current Input Map** (all actions already created in Project Settings):
+- **Input Map** (everything except `crouch` and `interact` is already created in Project Settings; add those two in Step 2b):
 
 | Action | KBM | Controller |
 |---|---|---|
@@ -125,8 +130,38 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 | `guard` | Right Mouse Button | **Left Shoulder (L1 / LB)** |
 | `heal` | Q | Top Action (Y / Triangle) |
 | `lock_on` | Middle Mouse Button | Right Stick click |
+| `crouch` (new) | Left Ctrl | Left Stick click |
+| `interact` (new) | E | Left Action (X / Square) |
 
-  X / Square is unbound (free for a later use). Only move, look, and jump are wired up so far.
+  Only move, look, and jump are wired up so far.
+
+### 3.9 Crouch
+- **Toggle by default**, with a setting to switch to hold. Bound to Left Ctrl / left-stick click.
+- Slower speed, shorter body capsule (set on the shape resource), and a shrunk hurtbox.
+- Can't crouch in the air. You stay crouched if there's a low ceiling overhead.
+- **Dodge and jump cancel crouch** (you stand up into the action).
+- **Combat:** duck under enemy attacks, then counter with a **crouch attack**. There is **no `attack_height` variable**: ducking works because the hurtbox shrinks and an attack whose hitbox doesn't overlap it whiffs. Placement of each attack's hitbox (high, mid, low) decides what can be ducked.
+- Stealth use (sneak up for a stealth deathblow) is Phase 2.
+
+### 3.10 Mid-air reach, wall jump, and ledges
+- **Pressing jump in mid-air gives no extra height.** The character reaches for a surface:
+  - Wall in range: **wall jump** (kicks away from the wall and upward), which restores the reach. Capped per airtime (placeholder **2**).
+  - Nothing in range: plays the reach and nothing else happens.
+- **Ledges** (the `interact` button):
+  - Reaching a ledge **without** pressing/holding `interact` makes the character **auto-climb** up (Nightreign style).
+  - Pressing/holding `interact` at the ledge makes the character **hang** instead.
+  - **Releasing `interact` does nothing**: you stay hanging until you act.
+  - While hanging: forward = climb up, crouch = drop, jump = leap away, left/right = **shimmy along one straight line** (stops at corners).
+  - The climb-up is an action with locked windows in `ActionData` (kind `LEDGE_CLIMB`).
+- All air actions (jump attack, jump guard/deflect) stay available after a wall jump. A hanging player can be hit, and a hit knocks them off.
+- **Arena rule:** the combat arena stays reachable by the single melee enemy; traversal gets its own test area. Parkour must not become a free escape from the enemy.
+- Corner shimmy and other ledge enhancements are Phase 2.
+
+### 3.11 Hurtbox profiles
+- The player's **hurtbox** (`Area3D` that takes hits) is separate from the **body collision capsule**.
+- **Crouch** shrinks from the top down toward the feet (bottom stays planted). **Jump/airborne** shrinks from the bottom up toward the head (top stays in place), as if the legs tuck.
+- Only the hurtbox changes in the air; the body capsule stays full-size while airborne (shrinking it mid-air would make landing and wall contact unstable). Crouch shrinks both.
+- This lets a low sweep pass under a jumping player (the jump-over counter) and a high attack pass over a crouching one.
 
 ---
 
@@ -156,7 +191,7 @@ Each action (attack 1, dodge, guard, heal, etc.) is a `.tres` file edited in the
 ```gdscript
 class_name ActionData extends Resource
 
-enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, PERILOUS_THRUST, PERILOUS_SWEEP, GRAB, OTHER }
+enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_THRUST, PERILOUS_SWEEP, GRAB, OTHER }
 
 @export var kind: Kind = Kind.ATTACK
 @export var animation: StringName
@@ -192,6 +227,17 @@ class_name EnemyAIData extends Resource
 ### 5.3 `Combatant` component (shared by player and enemy)
 Holds: HP (and health bars), posture, guard state, deflect window and spam-shrink tracking, hit reaction handling, posture regen rules. Both the player and the enemy use the same component so the rules match.
 
+### 5.4 `HurtboxProfile` (sketch; one per state)
+
+```gdscript
+class_name HurtboxProfile extends Resource
+
+@export var height: float = 1.8
+@export var bottom_offset: float = 0.0   # distance from the feet to the bottom of the hurtbox
+```
+
+Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborne 1.1 tall, offset 0.7 (top stays at 1.8).
+
 ---
 
 ## 6. Placeholder numbers (all tunable; NOT final decisions)
@@ -220,6 +266,10 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 | Camera: follow height / smoothing | 1.5 / 20 |
 | Camera: mouse sens / stick sens | 0.0025 / 3.0 |
 | Camera: pitch range / spring length | -60° to 30° / 4.0 m |
+| Crouch: speed / body capsule height | TBD / 1.1 m |
+| Hurtbox profiles | stand 1.8/0, crouch 1.1/0, air 1.1/0.7 (height/offset) |
+| Wall jumps per airtime | 2 |
+| Ledge reach distances, climb-up duration, shimmy speed | TBD during tuning |
 
 ---
 
@@ -232,6 +282,8 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 - Resolve order: first connect wins, unless both hitboxes go active within the clash window (then clash).
 - Animation: timer-driven; `AnimationPlayer` follows later.
 - Debug overlay from early on (current state, active windows, hitbox visibility).
+- Traversal as states in the same state machine: Crouch, AirReach/WallJump, LedgeHang, LedgeClimb (climb-up reads `ActionData`).
+- Player hurtbox (`Area3D`) separate from the body capsule; both resized per state (see 3.11).
 
 ---
 
@@ -239,15 +291,20 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 
 1. Third-person movement and camera (snappy), plus jump. Set up the Input Map for KBM and controller.
 2. State machine and `ActionData`; dodge with dash-hold and i-frames.
-3. Attack, combo, and combo loop, using buffering and cancel windows.
-4. Hitboxes, damage, hitstop on a dummy enemy.
+   - **2b.** Crouch (toggle/hold setting, shrunk capsule and hurtbox); add `crouch` and `interact` to the Input Map.
+   - **2c.** Mid-air reach and wall jump.
+   - **2d.** Ledges: auto-climb, hang (hold `interact`), one-line shimmy, climb, drop, leap.
+3. Attack, combo, and combo loop, using buffering and cancel windows; crouch attack.
+4. Hitboxes, damage, hitstop on a dummy enemy; player hurtbox profiles (stand/crouch/air) and duck-under whiffs.
 5. Guard, deflect, shrinking window, jump versions.
 6. Posture, posture break, deathblow (+ player stagger rules).
-7. Enemy AI: attacks, guard/deflect, riposte, recovery pose, perilous attacks and grab, danger symbols.
+7. Enemy AI: attacks, guard/deflect, riposte, recovery pose, perilous attacks and grab, danger symbols; place enemy hitboxes high/mid/low so ducking matters.
 8. Clash mechanic.
 9. Lock-on.
 10. Heal and resurrection (prompt, final death, scene reset).
 11. Polish: sound, sparks, camera shake.
+
+*Note: traversal (2b-2d) comes before combat by the user's choice, which delays the combat loop. Move it later if scope becomes a problem.*
 
 ---
 
@@ -258,6 +315,7 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 - **O3:** Which deflect-spam shrink curve (linear or stepped)?
 - **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
 - **O5:** Enemy grab damage amount and exact grab range/wind-up.
+- **O6:** Ledge details: grab reach, hang height, climb-up duration, shimmy speed.
 
 ---
 
@@ -265,6 +323,9 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 
 - [x] 1. Movement, camera, jump, Input Map (KBM and controller) **(done and tested by the user)**
 - [ ] 2. State machine, ActionData, dodge, dash-hold
+- [ ] 2b. Crouch (+ `crouch` / `interact` input actions)
+- [ ] 2c. Mid-air reach, wall jump
+- [ ] 2d. Ledges (auto-climb, hang, one-line shimmy)
 - [ ] 3. Attack, combo, combo loop
 - [ ] 4. Hitboxes, damage, hitstop
 - [ ] 5. Guard, deflect, shrinking window, jump versions
@@ -275,7 +336,7 @@ Holds: HP (and health bars), posture, guard state, deflect window and spam-shrin
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Step 1 is complete and tested (camera, movement, and jump all work). **Next: Step 2** (state machine, `ActionData`, dodge with dash-hold and i-frames).
+**Current state:** Step 1 is complete and tested (camera, movement, and jump all work). **Next: Step 2** (state machine, `ActionData`, dodge with dash-hold and i-frames), then 2b-2d.
 
 ### Step 1: what exists
 
@@ -337,3 +398,14 @@ Player (CharacterBody3D, root, player.gd)
 - One build-order step at a time. Confirm it works before moving on.
 - To share the project, run `python pack_for_claude.py` (in the project root; use `--only <paths>` to pack just the relevant folders) and upload the zip it creates in `snapshots/`. It includes the docs and skips binary assets (listing their names).
 - The controller layout is Xbox/PlayStation style (see the Input Map table in 3.8).
+- Feature creep is a known risk: flag it gently, and keep Phase 2 items deferred until Phase 1 works.
+
+---
+
+## 13. Phase 2 backlog (deferred on purpose)
+
+- [ ] Corner shimmy and other ledge enhancements
+- [ ] Enemy awareness system (sight cone, noise; states unaware, suspicious, alert, combat)
+- [ ] Stealth deathblow from crouch (behind an unaware enemy, within ~2 m, removes one health bar)
+- [ ] Enemy variety (jumpers/chasers, ranged rock throwers) as data flags in `EnemyAIData`
+- [ ] Generic interact system (doors, chests, NPCs; nearest-in-front priority, on-screen prompt)
