@@ -35,6 +35,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - Heal (limited charges), resurrection
 - Action "locks" and "cancel windows" tunable as data
 - Crouch (toggle by default): duck under attacks, crouch attack
+- Crouch slide (press `crouch` while dashing; has i-frames)
 - Mid-air reach and wall jump (no extra height), ledge grab, hang, shimmy (one straight line), climb up
 - Generic `interact` button (ledges in Phase 1; doors, chests, NPCs in Phase 2)
 
@@ -121,7 +122,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - **KBM first, controller from the start in the Input Map.** Code only ever checks **action names**, never raw keys.
 - Movement via `Input.get_vector(...)`.
 - Differences needing extra handling: camera (mouse delta vs. stick with deadzone/sensitivity), lock-on target switching (mouse flick vs. right stick). UI button prompts are skipped for the prototype.
-- **Input Map** (everything except `crouch` and `interact` is already created in Project Settings; add those two in Step 2b):
+- **Input Map** (all actions below now exist in Project Settings, including `crouch` and `interact` added in Step 2b):
 
 | Action | KBM | Controller |
 |---|---|---|
@@ -133,23 +134,34 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 | `guard` | Right Mouse Button | **Left Shoulder (L1 / LB)** |
 | `heal` | Q | Top Action (Y / Triangle) |
 | `lock_on` | Middle Mouse Button | Right Stick click |
-| `crouch` (new) | Left Ctrl | Left Stick click |
-| `interact` (new) | E | Left Action (X / Square) |
+| `crouch` | Left Ctrl | Left Stick click |
+| `interact` | E | Left Action (X / Square) |
 
-  Move, look, jump, and dodge are wired up so far.
+  Move, look, jump, dodge, and crouch are wired up so far. `interact` exists in the Input Map but does nothing until Step 2d.
 
 ### 3.9 Crouch
 - **Toggle by default**, with a setting to switch to hold. Bound to Left Ctrl / left-stick click.
-- Slower speed, shorter body capsule (set on the shape resource), and a shrunk hurtbox.
+- Slower speed, shorter body capsule (set on the shape resource), and a shrunk hurtbox (the hurtbox part arrives in Step 4; only the body capsule shrinks in 2b).
 - Can't crouch in the air. You stay crouched if there's a low ceiling overhead.
-- **Dodge and jump cancel crouch** (you stand up into the action).
+- **Dodge and jump cancel crouch** (you stand up into the action). Under a low ceiling those presses are ignored (and discarded, not buffered).
+- **Deceleration:** entering crouch faster than crouch speed slows you down at `crouch_decel` instead of snapping to crouch speed.
+- **Mesh animation (placeholder polish):** the body mesh and nose ease between heights over `crouch_transition_time`. The **collision capsule changes instantly**.
+- **Crouch slide:** pressing `crouch` **while dashing** (Dash state, with movement input) starts a slide. It is an `ActionState` driven by `actions/slide.tres`, moves in the input direction at a speed above the dash, has **i-frames like the dodge**, and ends in Crouch. After its locked window, jump and dodge cancel it (they need headroom). Sliding off an edge goes to Air and stands up. Pressing crouch while merely running or standing is a normal crouch, not a slide.
+- **Slide attack: deferred.** Sekiro has none. **Ask the user again at Step 3 whether they want one** (see O7).
 - **Combat:** duck under enemy attacks, then counter with a **crouch attack**. There is **no `attack_height` variable**: ducking works because the hurtbox shrinks and an attack whose hitbox doesn't overlap it whiffs. Placement of each attack's hitbox (high, mid, low) decides what can be ducked.
 - Stealth use (sneak up for a stealth deathblow) is Phase 2.
 
 ### 3.10 Mid-air reach, wall jump, and ledges
 - **Pressing jump in mid-air gives no extra height.** The character reaches for a surface:
-  - Wall in range: **wall jump** (kicks away from the wall and upward), which restores the reach. Capped per airtime (placeholder **2**).
-  - Nothing in range: plays the reach and nothing else happens.
+  - Wall in range (within `wall_range` of the capsule edge, near-vertical surfaces only): **wall jump**, which restores the reach. Capped per airtime (placeholder **2**). The direction comes from the **camera-relative movement input versus the wall normal** (not the player's facing):
+    - Input **toward** the wall (within the `wall_input_threshold` cone): straight **up**, facing the wall.
+    - Input **away** from the wall (same cone): **backward**, off the wall.
+    - Input **sideways** (everything else, including diagonals): **along the wall** in that direction.
+    - **No input:** off the wall (away).
+  - **Boost:** up speed = `jump_velocity * wall_jump_boost`; push speed = `run_speed * wall_jump_boost` (boost 1.2, so about 8.4 up, which peaks higher than a normal jump).
+  - Nothing in range (or the wall-jump cap is reached): plays the **reach** (once per airtime; a wall jump restores it) and nothing else happens. The reach shows as debug arms until real animation exists.
+  - **Near-ground rule:** an air jump press within `air_jump_ground_margin` (0.3 m) of the floor is ignored, so it stays buffered for the landing jump.
+  - **Tuning note:** a narrower "toward" cone makes diagonals count as sideways, but needs the camera to be roughly square to the wall.
 - **Ledges** (the `interact` button):
   - Reaching a ledge **without** pressing/holding `interact` makes the character **auto-climb** up (Nightreign style).
   - Pressing/holding `interact` at the ledge makes the character **hang** instead.
@@ -262,9 +274,17 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Camera: follow height / smoothing | 1.5 / 20 |
 | Camera: mouse sens / stick sens | 0.0025 / 3.0 |
 | Camera: pitch range / spring length | -60° to 30° / 4.0 m |
-| Crouch: speed / body capsule height | TBD / 1.1 m |
+| Crouch: speed / body capsule height | 2.0 m/s / 1.1 m |
+| Crouch: deceleration into crouch / mesh transition | 12 m/s^2 / 0.12s |
+| Slide: duration / locked until | 0.6s / 0.35s |
+| Slide: i-frames | 0.05s to 0.28s (same as dodge) |
+| Slide: speed / window / end factor | 18 m/s (tuned by the user, feels good) / 0 to 0.45s / 0.3 |
 | Hurtbox profiles | stand 1.8/0, crouch 1.1/0, air 1.1/0.7 (height/offset) |
 | Wall jumps per airtime | 2 |
+| Wall jump boost | 1.2x (up = jump_velocity x boost, push = run_speed x boost) |
+| Wall range / input threshold | 0.6 m / 0.75 (user-tuned; higher = narrower "toward" cone; 0.5 was the first value) |
+| Air jump ground margin | 0.3 m |
+| Wall jump action | duration 0.25s, locked until 0.12s, move 6.5 over 0 to 0.25s, end factor 0.6 |
 | Ledge reach distances, climb-up duration, shimmy speed | TBD during tuning |
 | Dodge: duration / locked until | 0.45s / 0.30s |
 | Dodge: i-frames | 0.05s to 0.28s |
@@ -283,7 +303,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - Resolve order: first connect wins, unless both hitboxes go active within the clash window (then clash).
 - Animation: timer-driven; `AnimationPlayer` follows later.
 - Debug overlay from early on (current state, active windows, hitbox visibility).
-- Traversal as states in the same state machine: Crouch, AirReach/WallJump, LedgeHang, LedgeClimb (climb-up reads `ActionData`).
+- Traversal as states in the same state machine: Crouch, Slide, WallJump (the mid-air reach lives in the Air state), LedgeHang, LedgeClimb (climb-up reads `ActionData`).
 - Player hurtbox (`Area3D`) separate from the body capsule; both resized per state (see 3.11).
 
 ---
@@ -292,10 +312,10 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 
 1. Third-person movement and camera (snappy), plus jump. Set up the Input Map for KBM and controller.
 2. **2a.** State machine and `ActionData`; dodge with dash-hold and i-frames. **(done)**
-   - **2b.** Crouch (toggle/hold setting, shrunk capsule and hurtbox); add `crouch` and `interact` to the Input Map.
-   - **2c.** Mid-air reach and wall jump.
+   - **2b.** Crouch (toggle/hold setting, shrunk capsule and hurtbox), crouch slide, animated crouch; add `crouch` and `interact` to the Input Map. **(done)**
+   - **2c.** Mid-air reach and wall jump. **(done)**
    - **2d.** Ledges: auto-climb, hang (hold `interact`), one-line shimmy, climb, drop, leap.
-3. Attack, combo, and combo loop, using buffering and cancel windows; crouch attack.
+3. Attack, combo, and combo loop, using buffering and cancel windows; crouch attack. **Re-ask the user whether they want a slide attack (O7).**
 4. Hitboxes, damage, hitstop on a dummy enemy; player hurtbox profiles (stand/crouch/air) and duck-under whiffs.
 5. Guard, deflect, shrinking window, jump versions.
 6. Posture, posture break, deathblow (+ player stagger rules).
@@ -317,6 +337,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
 - **O5:** Enemy grab damage amount and exact grab range/wind-up.
 - **O6:** Ledge details: grab reach, hang height, climb-up duration, shimmy speed.
+- **O7:** Slide attack (attack out of the crouch slide)? Not in Sekiro; the user said to re-ask at Step 3.
 
 ---
 
@@ -324,8 +345,8 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 
 - [x] 1. Movement, camera, jump, Input Map (KBM and controller) **(done and tested by the user)**
 - [x] 2a. State machine, ActionData, dodge, dash-hold **(done and tested by the user)**
-- [ ] 2b. Crouch (+ `crouch` / `interact` input actions)
-- [ ] 2c. Mid-air reach, wall jump
+- [x] 2b. Crouch, crouch slide, animated crouch (+ `crouch` / `interact` input actions) **(done and tested by the user)**
+- [x] 2c. Mid-air reach, wall jump **(done and tested by the user)**
 - [ ] 2d. Ledges (auto-climb, hang, one-line shimmy)
 - [ ] 3. Attack, combo, combo loop
 - [ ] 4. Hitboxes, damage, hitstop
@@ -337,7 +358,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Steps 1 and 2a are complete and tested. **Next: Step 2b** (crouch, plus the `crouch` and `interact` input actions), then 2c and 2d.
+**Current state:** Steps 1, 2a, 2b, and 2c are complete and tested. **Next: Step 2d** (ledges: auto-climb, hang, one-line shimmy, climb, drop, leap).
 
 ### Step 1: what exists
 
@@ -386,6 +407,48 @@ Player
 State node names must match exactly (`Locomotion`, `Air`, `Dodge`, `Dash`), since transitions use them.
 
 **Not used yet:** `buffer_window` and `active_hit` in `ActionData` (Steps 3 and 4).
+
+### Step 2b: what exists
+
+**Files**
+- `scripts/player/player.gd` additions: exports `crouch_speed` (2.0), `crouch_decel` (12.0), `crouch_transition_time` (0.12), `stand_height` (1.8), `crouch_height` (1.1), `crouch_is_hold` (false = toggle); `is_crouched`; `set_crouched(bool)` (collision capsule instant; mesh and Nose tween); `can_stand()` (headroom check with a physics shape query in code, so there is **no HeadCheck node**); `apply_horizontal_movement(delta, speed, overspeed_decel = -1.0)` gained an optional third argument that slows you at that rate when you have input and are faster than `speed`.
+- `scripts/player/states/crouch_state.gd`: `CrouchState`. Toggle or hold exit (needs headroom), jump and dodge need headroom (otherwise discarded), falling off the floor goes to Air, moves at `crouch_speed` with `crouch_decel`.
+- `scripts/player/states/slide_state.gd`: `SlideState` (extends `ActionState`). Enters crouched, direction = movement input else facing, ends in Crouch, cancel to jump/dodge after the locked window (needs headroom), stands up on any exit other than to Crouch.
+- `actions/slide.tres`: `ActionData`, kind `OTHER`, duration 0.6, locked until 0.35, i-frames 0.05 to 0.28, move 18 (tuned by the user) over 0 to 0.45 fading to 0.3x. **Never overwrite; changes come as "change X to Y".**
+- `locomotion_state.gd`: `crouch` just pressed goes to Crouch. `dash_state.gd`: `crouch` just pressed with input goes to Slide.
+
+**Player scene additions**
+```
+StateMachine
+  (Step 2a states unchanged)
+  Crouch (crouch_state.gd)
+  Slide (slide_state.gd, Action = actions/slide.tres)
+```
+State node names must match exactly (`Crouch`, `Slide`).
+
+### Step 2c: what exists
+
+**Files**
+- `scripts/player/player.gd` additions: exports `wall_jump_boost` (1.2), `wall_range` (0.6), `max_wall_jumps` (2), `wall_input_threshold` (user-tuned, see placeholders), `air_jump_ground_margin` (0.3); state `reach_ready`, `wall_jumps_used`, `wall_normal`; `reset_air_actions()` (called on landing), `play_reach_arms()`, `is_near_ground()` (ray down), `find_wall()` (8 horizontal rays at chest height, ignores non-vertical surfaces, returns the nearest `{normal, distance}`), `try_air_jump()` (consumes the buffered jump press; returns true if a wall jump should start, otherwise may play the reach).
+- `scripts/player/states/air_state.gd`: after the coyote jump check, a jump press with no coyote calls `try_air_jump()` and transitions to `WallJump` when it returns true; landing calls `reset_air_actions()`.
+- `scripts/player/states/wall_jump_state.gd`: `WallJumpState` (extends `ActionState`). Picks the direction from the input versus `wall_normal`, sets `velocity.y`, multiplies the action's horizontal move speed by `wall_jump_boost`, counts the jump, restores the reach. After the locked window another wall jump (or reach) can chain. Finishes into Air; landing resets and goes to Locomotion.
+- `scripts/player/reach_arms.gd`: `ReachArms` (Node3D, debug-grade). Builds two box arms in code; `play()` raises them for about 0.3s.
+- `actions/wall_jump.tres`: `ActionData`, kind `WALL_JUMP`. **Never overwrite; changes come as "change X to Y".**
+- `scripts/ui/debug_overlay.gd` additions: lines `Reach`, `Wall jumps n/max`, `vel.y`, and a translucent wall-range ring at chest height (`show_wall_range` export).
+
+**Player scene additions**
+```
+Visual
+  ReachArms (Node3D, reach_arms.gd)
+StateMachine
+  (earlier states unchanged)
+  WallJump (wall_jump_state.gd, Action = actions/wall_jump.tres)
+```
+State node names must match exactly (`WallJump`).
+
+**Not done in 2c:** real reach animation, wall slide/cling, wall run, slanted walls, sound.
+
+**Not done in 2b:** the shrunk hurtbox (Step 4, `HurtboxProfile`), the crouch attack (Step 3), the slide attack (O7, asked again at Step 3).
 
 ---
 

@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://46qh5fq01mth"]
 
 [ext_resource type="Script" uid="uid://dihu6p5qetbd5" path="res://scripts/player/player.gd" id="1_dovo2"]
+[ext_resource type="Script" uid="uid://cvw8ckubyb8mt" path="res://scripts/player/reach_arms.gd" id="2_fcs02"]
 [ext_resource type="Script" uid="uid://cihgadc8vxu18" path="res://scripts/player/camera_rig.gd" id="2_gmlin"]
 [ext_resource type="Script" uid="uid://bmsjl77m5j8qw" path="res://scripts/player/states/state_machine.gd" id="3_5gtgg"]
 [ext_resource type="Script" uid="uid://bk7e1ftndsj83" path="res://scripts/player/states/locomotion_state.gd" id="4_h17s1"]
@@ -11,7 +12,9 @@
 [ext_resource type="Script" uid="uid://cnqtx575vtp13" path="res://scripts/ui/debug_overlay.gd" id="9_fcs02"]
 [ext_resource type="Script" uid="uid://684ms4r3mfy4" path="res://scripts/player/states/crouch_state.gd" id="9_h17s1"]
 [ext_resource type="Script" uid="uid://c5yglhlwll4uh" path="res://scripts/player/states/slide_state.gd" id="10_fm80t"]
-[ext_resource type="Resource" path="res://actions/slide.tres" id="11_gx1jg"]
+[ext_resource type="Resource" uid="uid://dhkj22t4umr05" path="res://actions/slide.tres" id="11_gx1jg"]
+[ext_resource type="Script" uid="uid://cs572tvmllo5x" path="res://scripts/player/states/wall_jump_state.gd" id="12_ugbui"]
+[ext_resource type="Resource" path="res://actions/wall_jump.tres" id="13_fcs02"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -43,6 +46,9 @@ mesh = SubResource("CapsuleMesh_wynvb")
 [node name="Nose" type="MeshInstance3D" parent="Visual" unique_id=1985221740]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.5)
 mesh = SubResource("BoxMesh_wynvb")
+
+[node name="ReachArms" type="Node3D" parent="Visual" unique_id=1173044197]
+script = ExtResource("2_fcs02")
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=76740487]
 script = ExtResource("2_gmlin")
@@ -77,6 +83,10 @@ script = ExtResource("9_h17s1")
 [node name="Slide" type="Node" parent="StateMachine" unique_id=496639155]
 script = ExtResource("10_fm80t")
 action = ExtResource("11_gx1jg")
+
+[node name="WallJump" type="Node" parent="StateMachine" unique_id=1573786045]
+script = ExtResource("12_ugbui")
+action = ExtResource("13_fcs02")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")

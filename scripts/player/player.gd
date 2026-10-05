@@ -28,6 +28,17 @@ extends CharacterBody3D
 ## Off = press to toggle crouch. On = crouch only while the button is held.
 @export var crouch_is_hold: bool = false
 
+@export_group("Reach and wall jump")
+## Wall jump speed multiplier: up = jump_velocity * boost, sideways/back = run_speed * boost.
+@export var wall_jump_boost: float = 1.2
+## A wall counts if it is within this distance (m) of the capsule edge, at chest height.
+@export var wall_range: float = 0.6
+@export var max_wall_jumps: int = 2
+## How directly the input must point toward/away from the wall (dot product, 0.5 = within 60 degrees).
+@export var wall_input_threshold: float = 0.75
+## Air jump presses this close to the floor (m) are left buffered for the landing jump.
+@export var air_jump_ground_margin: float = 0.3
+
 @export_group("Input")
 @export var input_buffer_time: float = 0.15
 
@@ -38,10 +49,16 @@ var invulnerable: bool = false
 var coyote_timer: float = 0.0
 var input_buffer: InputBuffer
 var is_crouched: bool = false
+## Mid-air reach is once per airtime; a wall jump restores it. Landing resets both.
+var reach_ready: bool = true
+var wall_jumps_used: int = 0
+## Set by try_air_jump() when it returns true: the surface normal of the wall to jump from.
+var wall_normal: Vector3 = Vector3.ZERO
 
 var _headroom_shape: CapsuleShape3D
 var _nose_drop: float = 0.4
 var _visual_tween: Tween
+var _reach_arms: ReachArms
 
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: Node3D = $CameraRig
@@ -54,6 +71,7 @@ var _visual_tween: Tween
 func _ready() -> void:
 	input_buffer = InputBuffer.new(input_buffer_time)
 	_nose_drop = stand_height - _nose.position.y
+	_reach_arms = get_node_or_null("Visual/ReachArms") as ReachArms
 	_headroom_shape = CapsuleShape3D.new()
 	_headroom_shape.radius = 0.38
 	_headroom_shape.height = stand_height - 0.07
@@ -165,3 +183,65 @@ func can_stand() -> bool:
 	params.collision_mask = collision_mask
 	params.exclude = [get_rid()]
 	return get_world_3d().direct_space_state.intersect_shape(params, 1).is_empty()
+
+
+func reset_air_actions() -> void:
+	reach_ready = true
+	wall_jumps_used = 0
+
+
+func play_reach_arms() -> void:
+	if _reach_arms != null:
+		_reach_arms.play()
+
+
+## True if the floor is within air_jump_ground_margin below the feet.
+func is_near_ground() -> bool:
+	var from := global_position + Vector3.UP * 0.05
+	var to := global_position + Vector3.DOWN * air_jump_ground_margin
+	var query := PhysicsRayQueryParameters3D.create(from, to, collision_mask, [get_rid()])
+	return not get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+
+## Nearest wall within wall_range of the capsule edge, from 8 horizontal rays at chest
+## height. Returns {"normal": Vector3, "distance": float}, or {} if there is none.
+func find_wall() -> Dictionary:
+	var space := get_world_3d().direct_space_state
+	var capsule := _collision_shape.shape as CapsuleShape3D
+	var origin := global_position + Vector3.UP * (stand_height * 0.5)
+	var reach := capsule.radius + wall_range
+	var best: Dictionary = {}
+	var best_distance := INF
+	for i in 8:
+		var angle := TAU * float(i) / 8.0
+		var dir := Vector3(sin(angle), 0.0, cos(angle))
+		var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * reach, collision_mask, [get_rid()])
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			continue
+		var normal: Vector3 = hit["normal"]
+		if absf(normal.y) > 0.3:
+			continue
+		var distance := origin.distance_to(hit["position"])
+		if distance < best_distance:
+			best_distance = distance
+			best = {"normal": Vector3(normal.x, 0.0, normal.z).normalized(), "distance": distance}
+	return best
+
+
+## Handles a jump press made in mid-air (after the coyote jump had its chance).
+## Returns true if a wall jump should start (wall_normal is set; the caller transitions
+## to WallJump). Otherwise it may play the reach, and returns false.
+func try_air_jump() -> bool:
+	if not input_buffer.has_pressed(&"jump") or is_near_ground():
+		return false
+	input_buffer.consume(&"jump")
+	if wall_jumps_used < max_wall_jumps:
+		var wall := find_wall()
+		if not wall.is_empty():
+			wall_normal = wall["normal"]
+			return true
+	if reach_ready:
+		reach_ready = false
+		play_reach_arms()
+	return false
