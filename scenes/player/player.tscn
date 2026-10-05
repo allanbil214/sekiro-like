@@ -6,9 +6,12 @@
 [ext_resource type="Script" uid="uid://bk7e1ftndsj83" path="res://scripts/player/states/locomotion_state.gd" id="4_h17s1"]
 [ext_resource type="Script" uid="uid://n7b80fl5racg" path="res://scripts/player/states/air_state.gd" id="5_je7p5"]
 [ext_resource type="Script" uid="uid://dbyobsb5bm262" path="res://scripts/player/states/dodge_state.gd" id="6_fm80t"]
-[ext_resource type="Resource" path="res://actions/dodge.tres" id="7_gx1jg"]
+[ext_resource type="Resource" uid="uid://cqfr8qmc44s6a" path="res://actions/dodge.tres" id="7_gx1jg"]
 [ext_resource type="Script" uid="uid://cc8d2yi3m60l5" path="res://scripts/player/states/dash_state.gd" id="8_ugbui"]
 [ext_resource type="Script" uid="uid://cnqtx575vtp13" path="res://scripts/ui/debug_overlay.gd" id="9_fcs02"]
+[ext_resource type="Script" uid="uid://684ms4r3mfy4" path="res://scripts/player/states/crouch_state.gd" id="9_h17s1"]
+[ext_resource type="Script" uid="uid://c5yglhlwll4uh" path="res://scripts/player/states/slide_state.gd" id="10_fm80t"]
+[ext_resource type="Resource" path="res://actions/slide.tres" id="11_gx1jg"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -67,6 +70,13 @@ action = ExtResource("7_gx1jg")
 
 [node name="Dash" type="Node" parent="StateMachine" unique_id=702889451]
 script = ExtResource("8_ugbui")
+
+[node name="Crouch" type="Node" parent="StateMachine" unique_id=639997182]
+script = ExtResource("9_h17s1")
+
+[node name="Slide" type="Node" parent="StateMachine" unique_id=496639155]
+script = ExtResource("10_fm80t")
+action = ExtResource("11_gx1jg")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")

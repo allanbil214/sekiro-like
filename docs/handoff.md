@@ -112,7 +112,10 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 ### 3.7 Dodge
 - Small i-frames, **no stamina system at all**.
 - Hold the dodge button after dodging to dash.
-- Dodge can't be used during locked parts of other actions (see action windows).
+- Dodge can't be used during locked parts of other actions (see action windows). **Ground only** (no air dodge).
+- **Direction:** follows the movement input (relative to the camera). With no input it is a **backstep** (no turning, 0.7x speed).
+- **Dash:** if the dodge button is still held when the dodge unlocks (0.30s) and there is movement input, the dodge flows into a dash. The dodge's burst fades to a floor speed (`move_end_factor`, 0.3), not to zero, so there is no full stop. The dash ends on button release, no movement input, leaving the ground, or jumping. A quick tap ends with a short slide.
+- After the locked window, jump, a new dodge, and movement are all allowed (presses just before are buffered, 0.15s).
 
 ### 3.8 Controls
 - **KBM first, controller from the start in the Input Map.** Code only ever checks **action names**, never raw keys.
@@ -133,7 +136,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 | `crouch` (new) | Left Ctrl | Left Stick click |
 | `interact` (new) | E | Left Action (X / Square) |
 
-  Only move, look, and jump are wired up so far.
+  Move, look, jump, and dodge are wired up so far.
 
 ### 3.9 Crouch
 - **Toggle by default**, with a setting to switch to hold. Bound to Left Ctrl / left-stick click.
@@ -182,32 +185,25 @@ Each action (attack 1, dodge, guard, heal, etc.) is a `.tres` file edited in the
 - The same system powers **enemy attacks**.
 - Hitstop: ~2-4 frames' worth of time on contact (placeholder; define in seconds).
 
+### 4.3 The action clock (how this compares to FromSoft)
+- FromSoft: the **animation is the clock**, and timing windows (TAE, edited in DS Anim Studio) sit on its timeline. State logic lives in the behavior graph and script side.
+- Ours: **`ActionState` keeps an `action_time`** that advances by `delta * speed_scale`, and every window in `ActionData` is read against it. Later, the `AnimationPlayer` is seeked to `action_time` with the same speed scale, so adding real animations changes data, not code.
+- **Adding a new action = a new `ActionData` `.tres` plus a state extending `ActionState`** (override the `_on_action_*` hooks). Attacks in Step 3 reuse this.
+- There is no visual timeline editor; windows are tuned as numbers in the Inspector.
+
 ---
 
 ## 5. Data designs
 
-### 5.1 `ActionData` (starting sketch; extend as needed)
+### 5.1 `ActionData` (implemented in Step 2a: `resources/action_data.gd`)
 
-```gdscript
-class_name ActionData extends Resource
+All times are seconds from the start of the action; windows are `Vector2(start, end)`.
 
-enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_THRUST, PERILOUS_SWEEP, GRAB, OTHER }
-
-@export var kind: Kind = Kind.ATTACK
-@export var animation: StringName
-@export var duration: float = 0.8
-@export var locked_until: float = 0.5
-@export var cancel_window: Vector2 = Vector2(0.5, 0.8)
-@export var buffer_window: Vector2 = Vector2(0.4, 0.8)
-@export var active_hit: Vector2 = Vector2(0.25, 0.4)
-@export var iframes: Vector2 = Vector2.ZERO
-@export var damage: float = 10.0
-@export var posture_damage: float = 15.0
-@export var guardable: bool = true
-@export var deflectable: bool = true
-@export var pauses_posture_regen: bool = true
-@export var combo_next: ActionData   # loop back to the first for the combo loop
-```
+- **Identity:** `kind` (enum: ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_THRUST, PERILOUS_SWEEP, GRAB, OTHER), `animation`, `duration`, `speed_scale` (action clock speed)
+- **Windows:** `locked_until`, `cancel_window` ((0,0) = from `locked_until` to the end), `buffer_window` (**not used yet**, for attack chaining in Step 3), `active_hit` (used from Step 4), `iframes`
+- **Movement:** `move_speed`, `move_window`, `move_fade`, `move_end_factor` (speed at the window's end as a fraction of `move_speed`; 0 = fade to a stop)
+- **Combat:** `damage`, `posture_damage`, `guardable`, `deflectable`, `pauses_posture_regen`, `combo_next` (loop back to the first for the combo loop)
+- **Helpers:** `in_window()`, `is_locked()`, `can_cancel()`, `has_iframes()`, `is_hit_active()`
 
 ### 5.2 `EnemyAIData` (sketch)
 
@@ -270,13 +266,18 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Hurtbox profiles | stand 1.8/0, crouch 1.1/0, air 1.1/0.7 (height/offset) |
 | Wall jumps per airtime | 2 |
 | Ledge reach distances, climb-up duration, shimmy speed | TBD during tuning |
+| Dodge: duration / locked until | 0.45s / 0.30s |
+| Dodge: i-frames | 0.05s to 0.28s |
+| Dodge: speed / window / end factor | 11 m/s / 0 to 0.30s / 0.3 (current, feels good to the user) |
+| Backstep speed multiplier | 0.7 |
+| Dash speed | 9.0 m/s |
 
 ---
 
 ## 7. Architecture notes
 
 - Scenes composed from nodes; shared `Combatant` component on both player and enemy.
-- State machine for player and enemy (states read `ActionData`).
+- State machine for player and enemy (states read `ActionData`). **Implemented for the player in Step 2a**; the Player drives it from `_physics_process` so the update order is deterministic.
 - Hitboxes and hurtboxes as `Area3D`; damage info passed as data.
 - Player body: `CharacterBody3D`. Third-person camera with collision (SpringArm3D). Lock-on camera mode.
 - Resolve order: first connect wins, unless both hitboxes go active within the clash window (then clash).
@@ -290,7 +291,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 ## 8. Build order
 
 1. Third-person movement and camera (snappy), plus jump. Set up the Input Map for KBM and controller.
-2. State machine and `ActionData`; dodge with dash-hold and i-frames.
+2. **2a.** State machine and `ActionData`; dodge with dash-hold and i-frames. **(done)**
    - **2b.** Crouch (toggle/hold setting, shrunk capsule and hurtbox); add `crouch` and `interact` to the Input Map.
    - **2c.** Mid-air reach and wall jump.
    - **2d.** Ledges: auto-climb, hang (hold `interact`), one-line shimmy, climb, drop, leap.
@@ -322,7 +323,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 ## 10. Progress checklist (update each session)
 
 - [x] 1. Movement, camera, jump, Input Map (KBM and controller) **(done and tested by the user)**
-- [ ] 2. State machine, ActionData, dodge, dash-hold
+- [x] 2a. State machine, ActionData, dodge, dash-hold **(done and tested by the user)**
 - [ ] 2b. Crouch (+ `crouch` / `interact` input actions)
 - [ ] 2c. Mid-air reach, wall jump
 - [ ] 2d. Ledges (auto-climb, hang, one-line shimmy)
@@ -336,12 +337,12 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Step 1 is complete and tested (camera, movement, and jump all work). **Next: Step 2** (state machine, `ActionData`, dodge with dash-hold and i-frames), then 2b-2d.
+**Current state:** Steps 1 and 2a are complete and tested. **Next: Step 2b** (crouch, plus the `crouch` and `interact` input actions), then 2c and 2d.
 
 ### Step 1: what exists
 
 **Files**
-- `scripts/player/player.gd`: attached to the Player root. Camera-relative movement with acceleration/deceleration, quick turn toward the movement direction, gravity with multiplier, jump with coyote time and jump buffer. Has a `walk_only` flag that guard will use later to force walking. All tuning values are `@export`s. **Deliberately simple; Step 2 restructures it into a state machine.**
+- `scripts/player/player.gd`: attached to the Player root. Restructured in Step 2a (see below).
 - `scripts/player/camera_rig.gd`: attached to CameraRig. `top_level = true` so it doesn't inherit the player's rotation; follows the player with smoothing at `follow_height`; mouse look (captured; Esc releases, click recaptures) plus right-stick look; pitch clamped; the SpringArm excludes the player's body.
 - `scenes/player/player.tscn`, `scenes/arena/test_arena.tscn` (set as the main scene)
 
@@ -359,6 +360,33 @@ Player (CharacterBody3D, root, player.gd)
 
 **Test arena:** Floor plus color-coded test blocks (low, tight, and high platforms, a pillar, walls), a DirectionalLight3D, a WorldEnvironment, and the Player instance. Block heights are sized to the current jump numbers, so they need resizing if the jump is retuned.
 
+### Step 2a: what exists
+
+**Files**
+- `scripts/player/player.gd`: `class_name Player`. Shared data and helpers (`get_move_input`, `get_move_speed`, `get_facing_direction`, `apply_gravity`, `start_jump`, `apply_horizontal_movement`, `decelerate`, `set_horizontal_velocity`, `face_input`, `face_direction`, `snap_facing`), the `invulnerable` flag, and `coyote_timer`. It owns the `InputBuffer` and each physics frame does: buffer tick, state update, `move_and_slide()`. Keeps `walk_only` for guard.
+- `scripts/player/input_buffer.gd`: `InputBuffer` (RefCounted). Tracks `jump` and `dodge` presses for 0.15s; `consume(action)` uses a press up.
+- `scripts/player/states/`:
+  - `state.gd` (base class), `state_machine.gd` (`setup`, `start`, `physics_update`, `transition_to(&"Name")`; states are its child nodes, found by node name)
+  - `action_state.gd`: generic state that runs any `ActionData` on the action clock (iframes, movement burst, cancel/lock windows, hooks `_on_action_enter/_update/_finished/_exit`)
+  - `locomotion_state.gd`, `air_state.gd` (gravity, air control, coyote jump, landing), `dodge_state.gd` (extends `ActionState`), `dash_state.gd`
+- `resources/action_data.gd`, `actions/dodge.tres`
+- `scripts/ui/debug_overlay.gd`: label showing state, invulnerable, and action time; blue body tint during i-frames (`tint_on_iframes`, debug only).
+
+**Player scene additions**
+```
+Player
+  (Step 1 nodes unchanged)
+  StateMachine (state_machine.gd, Initial State = Locomotion)
+    Locomotion (locomotion_state.gd)
+    Air (air_state.gd)
+    Dodge (dodge_state.gd, Action = actions/dodge.tres)
+    Dash (dash_state.gd)
+  DebugOverlay (CanvasLayer, debug_overlay.gd)
+```
+State node names must match exactly (`Locomotion`, `Air`, `Dodge`, `Dash`), since transitions use them.
+
+**Not used yet:** `buffer_window` and `active_hit` in `ActionData` (Steps 3 and 4).
+
 ---
 
 ## 11. Conventions
@@ -370,6 +398,7 @@ Player (CharacterBody3D, root, player.gd)
 - Timings in **seconds**, never frames.
 - **Never scale a `CollisionShape3D` node.** Set sizes on the shape resource itself (radius, height, size).
 - The player scene root is the `CharacterBody3D` itself (no wrapper node).
+- States never call `move_and_slide()`; the Player does it once per frame. After `machine.transition_to(...)`, `return` immediately.
 - Suggested folder structure:
   ```
   res://

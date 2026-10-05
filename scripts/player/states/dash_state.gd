@@ -1,7 +1,7 @@
 class_name DashState
 extends State
 ## Fast run while the dodge button stays held. Ends on release, no movement input,
-## leaving the ground, or jumping.
+## leaving the ground, or jumping. Pressing crouch starts a slide.
 
 
 func physics_update(delta: float) -> void:
@@ -14,6 +14,9 @@ func physics_update(delta: float) -> void:
 		machine.transition_to(&"Air")
 		return
 	var has_input := player.get_move_input().length_squared() > 0.01
+	if has_input and Input.is_action_just_pressed("crouch"):
+		machine.transition_to(&"Slide")
+		return
 	if not Input.is_action_pressed("dodge") or not has_input:
 		machine.transition_to(&"Locomotion")
 		return

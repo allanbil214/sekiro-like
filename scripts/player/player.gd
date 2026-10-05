@@ -15,6 +15,19 @@ extends CharacterBody3D
 @export var gravity_multiplier: float = 2.0
 @export var coyote_time: float = 0.1
 
+@export_group("Crouch")
+## Placeholder speed while crouched (m/s).
+@export var crouch_speed: float = 2.0
+## How fast you slow down to crouch_speed when entering crouch faster than that (m/s^2).
+@export var crouch_decel: float = 12.0
+## Seconds the mesh takes to ease between standing and crouched height (collision is instant).
+@export var crouch_transition_time: float = 0.12
+## Capsule height while standing and crouched. Crouch shrinks from the top; feet stay planted.
+@export var stand_height: float = 1.8
+@export var crouch_height: float = 1.1
+## Off = press to toggle crouch. On = crouch only while the button is held.
+@export var crouch_is_hold: bool = false
+
 @export_group("Input")
 @export var input_buffer_time: float = 0.15
 
@@ -24,14 +37,26 @@ var walk_only: bool = false
 var invulnerable: bool = false
 var coyote_timer: float = 0.0
 var input_buffer: InputBuffer
+var is_crouched: bool = false
+
+var _headroom_shape: CapsuleShape3D
+var _nose_drop: float = 0.4
+var _visual_tween: Tween
 
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: Node3D = $CameraRig
 @onready var state_machine: StateMachine = $StateMachine
+@onready var _collision_shape: CollisionShape3D = $CollisionShape3D
+@onready var _body_mesh: MeshInstance3D = $Visual/Body
+@onready var _nose: MeshInstance3D = $Visual/Nose
 
 
 func _ready() -> void:
 	input_buffer = InputBuffer.new(input_buffer_time)
+	_nose_drop = stand_height - _nose.position.y
+	_headroom_shape = CapsuleShape3D.new()
+	_headroom_shape.radius = 0.38
+	_headroom_shape.height = stand_height - 0.07
 	state_machine.setup(self)
 	state_machine.start()
 
@@ -66,11 +91,14 @@ func start_jump() -> void:
 	coyote_timer = 0.0
 
 
-func apply_horizontal_movement(delta: float, speed: float) -> void:
+## If overspeed_decel > 0 and there is input while faster than speed, slow down at that rate.
+func apply_horizontal_movement(delta: float, speed: float, overspeed_decel: float = -1.0) -> void:
 	var move_dir := get_move_input()
 	var target_vel := move_dir * speed
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var rate := acceleration if move_dir.length_squared() > 0.0 else deceleration
+	if overspeed_decel > 0.0 and move_dir.length_squared() > 0.0 and horizontal.length() > speed:
+		rate = overspeed_decel
 	horizontal = horizontal.move_toward(target_vel, rate * delta)
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
@@ -103,3 +131,37 @@ func face_direction(dir: Vector3, delta: float) -> void:
 ## Turn instantly (used when an action starts).
 func snap_facing(dir: Vector3) -> void:
 	visual.rotation.y = atan2(-dir.x, -dir.z)
+
+
+## Resize the body. The collision capsule changes instantly (sizes are set on the shape
+## resource, never by scaling the node); the mesh and nose ease over crouch_transition_time.
+## The bottom stays at the feet.
+func set_crouched(crouched: bool) -> void:
+	is_crouched = crouched
+	var height := crouch_height if crouched else stand_height
+	var shape := _collision_shape.shape as CapsuleShape3D
+	shape.height = height
+	_collision_shape.position.y = height * 0.5
+	var mesh := _body_mesh.mesh as CapsuleMesh
+	var nose_y := height - _nose_drop
+	if _visual_tween != null:
+		_visual_tween.kill()
+	if crouch_transition_time <= 0.0:
+		mesh.height = height
+		_body_mesh.position.y = height * 0.5
+		_nose.position.y = nose_y
+		return
+	_visual_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_visual_tween.tween_property(mesh, "height", height, crouch_transition_time)
+	_visual_tween.tween_property(_body_mesh, "position:y", height * 0.5, crouch_transition_time)
+	_visual_tween.tween_property(_nose, "position:y", nose_y, crouch_transition_time)
+
+
+## True if there is room above to stand up (checked with a standing-sized capsule).
+func can_stand() -> bool:
+	var params := PhysicsShapeQueryParameters3D.new()
+	params.shape = _headroom_shape
+	params.transform = Transform3D(Basis.IDENTITY, global_position + Vector3.UP * (0.07 + _headroom_shape.height * 0.5))
+	params.collision_mask = collision_mask
+	params.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(params, 1).is_empty()

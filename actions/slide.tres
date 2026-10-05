@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ActionData" format=3]
+
+[ext_resource type="Script" path="res://resources/action_data.gd" id="1_actiondata"]
+
+[resource]
+script = ExtResource("1_actiondata")
+kind = 10
+animation = &"slide"
+duration = 0.6
+locked_until = 0.35
+iframes = Vector2(0.05, 0.28)
+move_speed = 18.0
+move_window = Vector2(0, 0.45)
+move_end_factor = 0.3

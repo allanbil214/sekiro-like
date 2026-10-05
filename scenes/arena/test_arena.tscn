@@ -72,3 +72,9 @@ shadow_enabled = true
 
 [node name="Player" parent="." unique_id=1991767212 instance=ExtResource("1_btlyn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
+
+[node name="Gap" type="CSGBox3D" parent="." unique_id=187459232]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5731297, 1.7642176, -3.6003382)
+use_collision = true
+size = Vector3(3, 0.32492676, 3)
+material = SubResource("StandardMaterial3D_lh4ft")
