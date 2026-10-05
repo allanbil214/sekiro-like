@@ -46,6 +46,9 @@ func _process(_delta: float) -> void:
 	var action_state := machine.current as ActionState
 	if action_state != null:
 		text += "\nAction time: %.2f / %.2f" % [action_state.action_time, action_state.action.duration]
+	var attack_state := machine.current as AttackState
+	if attack_state != null:
+		text += "\n" + attack_state.get_debug_text()
 	_label.text = text
 	if _body != null:
 		if tint_on_iframes and _player.invulnerable:

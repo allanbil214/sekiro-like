@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WeaponData" format=3 uid="uid://cndijq62ntfbn"]
+
+[ext_resource type="Script" uid="uid://dybqcsqdnsrui" path="res://resources/weapon_data.gd" id="1_weapon"]
+[ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="2_actiondata"]
+[ext_resource type="Resource" path="res://actions/attack_1.tres" id="3_attack1"]
+[ext_resource type="Resource" path="res://actions/attack_2.tres" id="4_attack2"]
+[ext_resource type="Resource" path="res://actions/attack_3.tres" id="5_attack3"]
+[ext_resource type="Resource" path="res://actions/attack_4.tres" id="6_attack4"]
+[ext_resource type="Resource" path="res://actions/attack_5.tres" id="7_attack5"]
+
+[resource]
+script = ExtResource("1_weapon")
+combo = Array[ExtResource("2_actiondata")]([ExtResource("3_attack1"), ExtResource("4_attack2"), ExtResource("5_attack3"), ExtResource("6_attack4"), ExtResource("7_attack5")])
+rest_pose = Vector3(4, 0.9, 0.3)

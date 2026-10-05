@@ -68,6 +68,10 @@ extends CharacterBody3D
 @export_group("Input")
 @export var input_buffer_time: float = 0.15
 
+@export_group("Combat")
+## The equipped weapon: its combo, blade size, and rest pose.
+@export var weapon: WeaponData
+
 ## Guard will set this later to force walking.
 var walk_only: bool = false
 ## Set by actions during their i-frame window (read by the damage system in Step 4).
@@ -98,6 +102,8 @@ var _headroom_shape: CapsuleShape3D
 var _nose_drop: float = 0.4
 var _visual_tween: Tween
 var _reach_arms: ReachArms
+## The placeholder sword (found in _ready). Null if the scene has no SwordVisual.
+var sword_visual: SwordVisual
 
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: Node3D = $CameraRig
@@ -111,6 +117,9 @@ func _ready() -> void:
 	input_buffer = InputBuffer.new(input_buffer_time)
 	_nose_drop = stand_height - _nose.position.y
 	_reach_arms = get_node_or_null("Visual/ReachArms") as ReachArms
+	sword_visual = get_node_or_null("Visual/SwordVisual") as SwordVisual
+	if sword_visual != null and weapon != null:
+		sword_visual.setup(weapon)
 	_headroom_shape = CapsuleShape3D.new()
 	_headroom_shape.radius = 0.38
 	_headroom_shape.height = stand_height - 0.07
@@ -258,6 +267,23 @@ func play_slide_arms() -> void:
 func stop_slide_arms() -> void:
 	if _reach_arms != null:
 		_reach_arms.release()
+
+
+## True if the equipped weapon has at least one combo attack.
+func has_combo() -> bool:
+	return weapon != null and not weapon.combo.is_empty()
+
+
+## True if there is floor a short way ahead in dir (within max_drop below the feet).
+## Attacks use it to stop a lunge before an edge.
+func has_ground_ahead(dir: Vector3, distance: float, max_drop: float = 0.5) -> bool:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	if flat.length_squared() < 0.0001:
+		return true
+	var from := global_position + flat.normalized() * distance + Vector3.UP * 0.3
+	var to := from + Vector3.DOWN * (0.3 + max_drop)
+	var query := PhysicsRayQueryParameters3D.create(from, to, collision_mask, [get_rid()])
+	return not get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 
 ## True if the floor is within air_jump_ground_margin below the feet.

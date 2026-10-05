@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ActionData" format=3]
+
+[ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
+
+[resource]
+script = ExtResource("1_actiondata")
+kind = 0
+animation = &"attack_1"
+duration = 0.7
+locked_until = 0.26
+cancel_window = Vector2(0.3, 0.7)
+buffer_window = Vector2(0.1, 0.7)
+active_hit = Vector2(0.14, 0.26)
+move_speed = 3
+move_window = Vector2(0.05, 0.25)
+swing_windup = Vector3(1, 0.9, -0.3)
+swing_end = Vector3(7, 0.9, 0.9)
+swing_follow = Vector3(7.5, 0.8, -0.3)

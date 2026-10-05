@@ -16,7 +16,7 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export var locked_until: float = 0.5
 ## When the action may be interrupted. (0, 0) means from locked_until to the end.
 @export var cancel_window: Vector2 = Vector2.ZERO
-## Not used yet (attack chaining, Step 3).
+## Span in which an attack press is accepted for chaining (Step 3). (0, 0) = the whole action.
 @export var buffer_window: Vector2 = Vector2.ZERO
 ## Hitbox active window (used from Step 4).
 @export var active_hit: Vector2 = Vector2.ZERO
@@ -30,6 +30,17 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export var move_fade: bool = true
 ## Speed at the end of move_window as a fraction of move_speed (needs Move Fade). 0 = fades to a stop.
 @export var move_end_factor: float = 0.0
+
+@export_group("Swing visual")
+## Placeholder sword poses, each (clock hour, radius in m, forward in m). Hour 12 = up, 3 = right,
+## 6 = down, 9 = left, seen from behind the player. Forward is in front of the player (negative = behind).
+## They only drive the placeholder sword; real animation will replace them.
+## Wind-up pose = where the slash starts.
+@export var swing_windup: Vector3 = Vector3.ZERO
+## Where the slash ends.
+@export var swing_end: Vector3 = Vector3.ZERO
+## Relaxed follow-through pose, played only if the combo is not continued.
+@export var swing_follow: Vector3 = Vector3.ZERO
 
 @export_group("Combat")
 @export var damage: float = 0.0

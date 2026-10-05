@@ -3,6 +3,8 @@
 > Paste this whole file at the start of a new chat. Update the **Progress checklist** (section 10) at the end of each session and re-paste it next time.
 >
 > **Reminder:** deferred ideas live in the **Phase 2 backlog** (section 13). Don't forget them.
+>
+> **Docs to paste in a new chat:** this handoff, `docs/work-agreements.md`, and the spec for the current step (**Step 3: `docs/step3-combat-spec.md`**), plus a fresh snapshot (see section 12). Start a new chat per phase.
 
 ---
 
@@ -28,8 +30,8 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - Smooth, snappy movement; jump
 - Dodge (small i-frames, no stamina); dash if dodge button is held after dodge
 - Lock-on (with target switching)
-- Attack, attack combo, combo loop (last attack chains back to the first)
-- Jump attack
+- Attack, attack combo (5 attacks), combo loop (last attack chains back to the first), hold-attack charged zigzag thrust
+- Attack variants by context: dash, crouch, slide, and jump attacks (tap and hold each, including a helm-splitter dive), all designed in `docs/step3-combat-spec.md`
 - Guard, deflect, jump guard, jump deflect
 - Shrinking deflect window when spammed
 - Heal (limited charges), resurrection
@@ -147,7 +149,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - **Deceleration:** entering crouch faster than crouch speed slows you down at `crouch_decel` instead of snapping to crouch speed.
 - **Mesh animation (placeholder polish):** the body mesh and nose ease between heights over `crouch_transition_time`. The **collision capsule changes instantly**.
 - **Crouch slide:** pressing `crouch` **while dashing** (Dash state, with movement input) starts a slide. It is an `ActionState` driven by `actions/slide.tres`, moves in the input direction at a speed above the dash, has **i-frames like the dodge**, shows the debug arms held **straight forward** for the whole slide (flair, replaced by real animation later), and ends in Crouch. After its locked window, jump and dodge cancel it (they need headroom). Sliding off an edge goes to Air and stands up. Pressing crouch while merely running or standing is a normal crouch, not a slide.
-- **Slide attack: deferred.** Sekiro has none. **Ask the user again at Step 3 whether they want one** (see O7).
+- **Slide attack: yes** (decided at the Step 3 design: tap and hold variants like the crouch attack). Details in `docs/step3-combat-spec.md`.
 - **Combat:** duck under enemy attacks, then counter with a **crouch attack**. There is **no `attack_height` variable**: ducking works because the hurtbox shrinks and an attack whose hitbox doesn't overlap it whiffs. Placement of each attack's hitbox (high, mid, low) decides what can be ducked.
 - Stealth use (sneak up for a stealth deathblow) is Phase 2.
 
@@ -215,9 +217,10 @@ Each action (attack 1, dodge, guard, heal, etc.) is a `.tres` file edited in the
 All times are seconds from the start of the action; windows are `Vector2(start, end)`.
 
 - **Identity:** `kind` (enum: ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_THRUST, PERILOUS_SWEEP, GRAB, OTHER), `animation`, `duration`, `speed_scale` (action clock speed)
-- **Windows:** `locked_until`, `cancel_window` ((0,0) = from `locked_until` to the end), `buffer_window` (**not used yet**, for attack chaining in Step 3), `active_hit` (used from Step 4), `iframes`
+- **Windows:** `locked_until`, `cancel_window` ((0,0) = from `locked_until` to the end), `buffer_window` (attack chaining: where an attack press is accepted, (0,0) = the whole action; used from 3a-1), `active_hit` (the swing's wind-up / active / recovery split, used from 3a-1; the hitbox itself comes in Step 4), `iframes`
+- **Swing visual (3a-1):** `swing_windup`, `swing_end`, `swing_follow` (clock poses, see the terminology in section 11; they only drive the placeholder sword)
 - **Movement:** `move_speed`, `move_window`, `move_fade`, `move_end_factor` (speed at the window's end as a fraction of `move_speed`; 0 = fade to a stop)
-- **Combat:** `damage`, `posture_damage`, `guardable`, `deflectable`, `pauses_posture_regen`, `combo_next` (loop back to the first for the combo loop)
+- **Combat:** `damage`, `posture_damage`, `guardable`, `deflectable`, `pauses_posture_regen`, `combo_next` (unused: `WeaponData.combo` holds the combo order and the loop)
 - **Helpers:** `in_window()`, `is_locked()`, `can_cancel()`, `has_iframes()`, `is_hit_active()`
 
 ### 5.2 `EnemyAIData` (sketch)
@@ -302,6 +305,14 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Dodge: speed / window / end factor | 11 m/s / 0 to 0.30s / 0.3 (current, feels good to the user) |
 | Backstep speed multiplier | 0.7 |
 | Dash speed | 9.0 m/s |
+| Attack timings and lunge speeds | see the Step 3 spec (section 4); the tuned values live in `actions/attack_1..5.tres` |
+| Attack lunge: no-input strength / ledge stop distance | 0.5x / 0.4 m (`AttackState` exports) |
+| Sword: pose scale / arm reach | 1.5 / 0.6 m |
+| Sword: shoulder offset / shoulder height / clock center height | 0.35 m / 1.4 m / 1.2 m |
+| Sword: slash arc / wind-up arc (forward bow of the tip path) | 0.5 m / 0.25 m |
+| Sword: wrist angle start / end / follow overshoot / follow relax | 50 deg / -10 deg / 15 deg / 0.5 |
+| Blade length / width | 1.1 m / 0.14 m (the shipped `katana.tres` had 0.08; widened so the edge reads) |
+| Sword rest | clock pose (4, 0.9, 0.3), blade direction (0.15, -0.5, -0.85), edge up (tune in `katana.tres` and `SwordVisual`) |
 
 ---
 
@@ -316,6 +327,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - Debug overlay from early on (current state, active windows, hitbox visibility).
 - Traversal as states in the same state machine: Crouch, Slide, WallJump (the mid-air reach lives in the Air state), LedgeHang (a plain state, no data), LedgeClimb (scripted, reads `ActionData`).
 - Player hurtbox (`Area3D`) separate from the body capsule; both resized per state (see 3.11).
+- Combat states: `Attack` (ground combo, extends `ActionState`) reads `Player.weapon` (`WeaponData`); the sword is a separate placeholder visual (`SwordVisual`) driven by the attack's action clock.
 
 ---
 
@@ -326,7 +338,10 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
    - **2b.** Crouch (toggle/hold setting, shrunk capsule and hurtbox), crouch slide, animated crouch; add `crouch` and `interact` to the Input Map. **(done)**
    - **2c.** Mid-air reach and wall jump. **(done)**
    - **2d.** Ledges: auto-climb, hang (hold `interact`), one-line shimmy, climb, drop, leap. **(done: 2d-1 detect and auto-climb, 2d-2 hang, shimmy, drop, leap)**
-3. Attack, combo, and combo loop, using buffering and cancel windows; crouch attack. **Re-ask the user whether they want a slide attack (O7).**
+3. Attacks. **Full design in `docs/step3-combat-spec.md`** (5-attack combo with loop, TAE-style chain/cancel rules, charged zigzag thrust, lunge momentum, a `WeaponData` resource, and dash/crouch/slide/jump variants). Built in phases:
+   - **3a-1.** Ground 5-attack combo, loop, chain/cancel, flourish, lunge, sword visual, `WeaponData`. **(done)**
+   - **3a-2.** Hold detection, charged zigzag thrust, chaining in and out of the thrust.
+   - **3b.** Dash, crouch, slide, and jump attack variants (tap and hold).
 4. Hitboxes, damage, hitstop on a dummy enemy; player hurtbox profiles (stand/crouch/air) and duck-under whiffs.
 5. Guard, deflect, shrinking window, jump versions.
 6. Posture, posture break, deathblow (+ player stagger rules).
@@ -348,7 +363,8 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
 - **O5:** Enemy grab damage amount and exact grab range/wind-up.
 - ~~**O6:** Ledge details~~ **Resolved in Step 2d**: values are in the placeholders table (all tunable exports).
-- **O7:** Slide attack (attack out of the crouch slide)? Not in Sekiro; the user said to re-ask at Step 3.
+- ~~**O7:** Slide attack~~ **Resolved: yes**, with tap and hold variants (see the Step 3 spec).
+- **O8:** Which combo step follows a crouch, slide, or dash attack tap? (Default proposal: the variant counts as step 1, so the next tap is attack 2.) Also the jump attack details (air attacks per airtime, helm splitter fall speed). Ask at 3b.
 
 ---
 
@@ -359,7 +375,9 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [x] 2b. Crouch, crouch slide, animated crouch (+ `crouch` / `interact` input actions) **(done and tested by the user)**
 - [x] 2c. Mid-air reach, wall jump **(done and tested by the user)**
 - [x] 2d. Ledges (auto-climb, hang, one-line shimmy, climb, drop, leap) **(done and tested by the user)**
-- [ ] 3. Attack, combo, combo loop
+- [x] 3a-1. Ground 5-attack combo, loop, chain/cancel, arm-swing sword visual, `WeaponData` (see the Step 3 spec) **(built; the user saw the combo and the arm-swing sword working and approved the look; cancels, the lunge, and the ledge stop were not formally tested yet)**
+- [ ] 3a-2. Hold, charged zigzag thrust
+- [ ] 3b. Dash, crouch, slide, and jump attack variants
 - [ ] 4. Hitboxes, damage, hitstop
 - [ ] 5. Guard, deflect, shrinking window, jump versions
 - [ ] 6. Posture, deathblow, player stagger
@@ -369,7 +387,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Steps 1, 2a, 2b, 2c, and 2d are complete and tested (all of Phase 1 traversal). **Next: Step 3** (attack, combo, combo loop, crouch attack). **Remember to re-ask the user about a slide attack (O7) at Step 3.**
+**Current state:** Steps 1 to 2d (all traversal) are complete and tested, and **Step 3a-1 is built** (ground combo and the arm-swing sword; see "Step 3a-1: what exists" below). **Next: Step 3a-2** (hold, charged zigzag thrust). The design is in `docs/step3-combat-spec.md` (sections 5 and 7). Start a **new chat** for 3a-2 and paste the handoff, the work agreement, the Step 3 spec, and a fresh snapshot (`python pack_for_claude.py`). Before building, give a quick sanity test of the 3a-1 combat details (cancels, lunge, ledge stop) and report anything off.
 
 ### Step 1: what exists
 
@@ -417,7 +435,7 @@ Player
 ```
 State node names must match exactly (`Locomotion`, `Air`, `Dodge`, `Dash`), since transitions use them.
 
-**Not used yet:** `buffer_window` and `active_hit` in `ActionData` (Steps 3 and 4).
+**Not used in 2a:** `buffer_window` and `active_hit` in `ActionData` (3a-1 now uses both for attacks; hitboxes are Step 4).
 
 ### Step 2b: what exists
 
@@ -482,7 +500,48 @@ State node names must match exactly (`LedgeClimb`, `LedgeHang`).
 
 **Not done in 2c:** real reach animation, wall slide/cling, wall run, slanted walls, sound.
 
-**Not done in 2b:** the shrunk hurtbox (Step 4, `HurtboxProfile`), the crouch attack (Step 3), the slide attack (O7, asked again at Step 3).
+**Not done in 2b:** the shrunk hurtbox (Step 4, `HurtboxProfile`), the crouch and slide attacks (Step 3b, see the spec).
+
+### Step 3a-1: what exists
+
+**Files**
+- `resources/weapon_data.gd`: `WeaponData`: `display_name`, `combo: Array[ActionData]`, `blade_length`, `blade_thickness` (used as the blade's **width**), `rest_pose` (a clock pose). `weapons/katana.tres` is the first weapon. **Never overwrite; changes come as "change X to Y".**
+- `resources/action_data.gd`: added `swing_windup`, `swing_end`, `swing_follow` (clock poses); `buffer_window` is now used.
+- `actions/attack_1.tres` to `attack_5.tres`: `ActionData`, kind `ATTACK`, first-guess timings from the spec (section 4), `locked_until` = `active_hit.y`, damage 0. **Never overwrite; changes come as "change X to Y".**
+- `scripts/player/states/attack_state.gd`: `AttackState` (extends `ActionState`), see below.
+- `scripts/player/sword_visual.gd`: `SwordVisual`, the arm-swing placeholder sword, see below.
+- `scripts/player/player.gd` additions: `weapon` export (Combat group), `sword_visual` (found in `_ready`, `setup(weapon)` called there), `has_combo()`, `has_ground_ahead(dir, distance, max_drop)` (short ray down ahead of the feet).
+- `scripts/player/input_buffer.gd`: also tracks `attack`. `locomotion_state.gd`: a buffered attack press (with `has_combo()`) goes to `Attack`. `scripts/ui/debug_overlay.gd`: a `Combo: n/5 (wind-up | ACTIVE | recovery)` line plus `Buffer / Chain / Queued` flags.
+
+**`AttackState` rules (as built)**
+- Entering from any state except `Attack` picks attack 1; entering from `Attack` (a chain) picks the next index, wrapping to 1 after attack 5. Exiting to anything except `Attack` resets the counter and sends the sword back to rest.
+- **Chain:** a press is accepted inside `buffer_window` (the input buffer also remembers a press up to 0.15s before the window opens) and marks the attack `_queued`. The chain happens at `cancel_window.x` (or `locked_until` if the cancel window is unset), never while the active window is open.
+- **Cancels:** dodge, jump, and crouch cancel at any time except while the hit window is active (wind-up and recovery both cancel), and only on the floor. `ActionData.can_cancel()` is not used for these.
+- **Steering and lunge:** before `active_hit.x` the body turns toward the movement input (`face_input`). The lunge direction is the movement input at the attack start (no input: facing, at `no_input_lunge_factor` = 0.5). While steering is allowed, a held input keeps updating the lunge direction; releasing keeps the last direction and strength. Both lock when the active window starts. `_can_steer()` is a hook that returns true; **Step 9 (lock-on) makes it return false while locked on**.
+- **Ledge stop:** if there is no floor within `ledge_check_distance` (0.4 m) ahead in the lunge direction, the lunge is dropped for that frame, so an attack never carries you off a ledge. Leaving the floor any other way just continues the action with gravity, and it ends in Air via Locomotion.
+- The action finishes into `Locomotion`. No hitboxes or damage yet.
+
+**`SwordVisual`: the arm swing (placeholder)**
+- A **clock pose** (hour, radius, forward) is converted to an **aim point** (radius and forward multiplied by `pose_scale`). The poses say where the **tip** should pass.
+- An arm (a gray box, `show_arm`) points from the right shoulder to the aim point; the hand sits `arm_reach` along it; the blade extends from the hand and bends at the **wrist angle** (positive = the tip trails behind the travel direction, cocked; negative = leading). The wrist goes from `wrist_start_angle` (50) to `wrist_end_angle` (-10) across the slash.
+- The aim point travels along a path bowed forward in the middle (**slash arc**, `slash_arc_forward` 0.5; `windup_arc_forward` 0.25 for the wind-up and follow-through), so a slash sweeps through the space in front of the player.
+- The cutting edge (a bright yellow strip on the blade) **leads along the direction of travel** (the path's tangent). `flip_edge` flips it if it is on the wrong side.
+- Segments over `action_time`: previous pose to wind-up (blends from the captured current pose, so chains are smooth), wind-up to end (the active window, fast ease; the blade turns red), end to follow-through (a small wrist overshoot, then it relaxes toward the rest direction by `follow_relax`). With no chain the sword returns to rest over `rest_return_time`.
+- The first version put the **grip** at the pose point; the sword then hung beside the body and swung up and down. The fix was to make the poses aim the arm and keep the tip path in front of the player. Keep this in mind when tuning: the real tip only roughly follows the aim point (the blade bends at the wrist).
+
+**Hooks for later:** `_can_steer()` (Step 9); `active_hit` becomes the hitbox window and `damage` / `posture_damage` get real values in Step 4; guard joins the cancel list in Step 5; 3a-2 adds the thrust to `WeaponData`; 3b adds the variants.
+
+**Not done in 3a-1:** hold and thrust (3a-2), dash, crouch, slide, and jump attack variants (3b), hitboxes and damage (Step 4), the lock-on steering lock (Step 9), a real sword mesh and animation.
+
+**Player scene additions**
+```
+Visual
+  SwordVisual (Node3D, sword_visual.gd)
+StateMachine
+  (earlier states unchanged)
+  Attack (attack_state.gd)
+```
+Set **Weapon** on the `Player` root to `weapons/katana.tres`. State node names must match exactly (`Attack`).
 
 ---
 
@@ -510,18 +569,30 @@ State node names must match exactly (`LedgeClimb`, `LedgeHang`).
     resources/      # Resource class scripts
   ```
 
+### Terminology (shared shorthand)
+
+- **Clock pose:** a `Vector3` (hour, radius in m, forward in m). The hour is read **from behind the player**: 12 = up, 3 = right, 6 = down, 9 = left (12:45 is 22.5 degrees past 12). Forward is in front of the player (negative = behind). Poses are authored as `swing_windup`, `swing_end`, `swing_follow` in `ActionData` and `rest_pose` in `WeaponData`.
+- **Arm swing:** the placeholder sword motion in `SwordVisual`: the arm points from the shoulder to the aim point, the hand sits at arm's reach, the blade bends at the wrist, the tip follows a forward-bowed arc, and the cutting edge leads.
+- **Aim point:** the 3D point a clock pose converts to (scaled by `pose_scale`); where the arm points.
+- **Wrist angle:** the angle between the blade and the arm; positive = trailing (cocked), negative = leading.
+- **Slash arc:** the forward bow of the tip's path during a slash.
+- **Edge-leading:** the cutting edge (the yellow strip) faces the direction of travel.
+- **Chain, flourish, lunge, TAE-style:** defined in `docs/step3-combat-spec.md`.
+
 ---
 
 ## 12. How Claude should work with me
 
 - I'm on the **free web chat**, so **keep replies concise** to save usage. No long preambles.
-- **Only send changed functions or snippets**, not whole scripts, unless I ask.
+- **Delivery:** follow `docs/work-agreements.md` (a zip of complete files for 3+ files). For a **single file**, edit the file for real and **present it** (no zip, no pasted code block in the reply). Don't send loose snippets unless I ask.
 - When something needs scene setup, **list the nodes to create explicitly** (node type, name, parent, key properties).
 - Tell me **where each script is attached** and what to name it.
 - I can't be assumed to know Godot well; briefly explain the *why* of new concepts, but keep it short.
 - **Don't assume decisions for me.** If something isn't in this doc, ask. Mark guesses as placeholders.
 - I can't be tested by Claude: Claude can't run Godot, so I'll report results and errors. I'll give my Godot version (4.7.2) and paste error text.
 - One build-order step at a time. Confirm it works before moving on.
+- **Docs per chat:** handoff + work agreement + the current step's spec (Step 3: `docs/step3-combat-spec.md`) + a fresh snapshot. Start a new chat per phase so sessions stay small.
+- **SOLID-minded new code:** new combat code reads data resources and keeps jobs separate (weapon data, a separate `Combatant`, attack data from resources). The cleanup refactor of the traversal code is **deferred until all of Phase 1 is done and tested by the user** (see the backlog).
 - To share the project, run `python pack_for_claude.py` (in the project root; use `--only <paths>` to pack just the relevant folders) and upload the zip it creates in `snapshots/`. It includes the docs and skips binary assets (listing their names).
 - The controller layout is Xbox/PlayStation style (see the Input Map table in 3.8).
 - Feature creep is a known risk: flag it gently, and keep Phase 2 items deferred until Phase 1 works.
@@ -535,3 +606,6 @@ State node names must match exactly (`LedgeClimb`, `LedgeHang`).
 - [ ] Stealth deathblow from crouch (behind an unaware enemy, within ~2 m, removes one health bar)
 - [ ] Enemy variety (jumpers/chasers, ranged rock throwers) as data flags in `EnemyAIData`
 - [ ] Generic interact system (doors, chests, NPCs; nearest-in-front priority, on-screen prompt)
+
+- [ ] **Cleanup refactor (after ALL of Phase 1 is done and tested by the user):** move wall and ledge sensing out of `player.gd`, replace hard-coded state name strings with constants, give the states a shared base (not typed to `Player`) so the enemy can reuse `ActionState` and the `Combatant` rules
+- [ ] Real animation integration (Blender, glTF, `AnimationPlayer` following the action clock); notes in section 8 of `docs/step3-combat-spec.md`

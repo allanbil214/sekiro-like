@@ -1,6 +1,6 @@
 class_name LocomotionState
 extends State
-## Normal ground movement. Starts jumps, dodges, and crouch.
+## Normal ground movement. Starts jumps, dodges, attacks, and crouch.
 
 
 func physics_update(delta: float) -> void:
@@ -14,6 +14,9 @@ func physics_update(delta: float) -> void:
 		return
 	if player.input_buffer.consume(&"dodge"):
 		machine.transition_to(&"Dodge")
+		return
+	if player.has_combo() and player.input_buffer.consume(&"attack"):
+		machine.transition_to(&"Attack")
 		return
 	if Input.is_action_just_pressed("crouch"):
 		machine.transition_to(&"Crouch")
