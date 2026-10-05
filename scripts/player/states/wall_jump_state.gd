@@ -8,6 +8,9 @@ extends ActionState
 
 
 func _on_action_enter(_previous: StringName) -> void:
+	# A leap from a ledge hang always goes away from the wall and does not use up a wall jump.
+	var forced_away := player.wall_jump_forced_away
+	player.wall_jump_forced_away = false
 	var normal := player.wall_normal
 	var input := player.get_move_input()
 	input.y = 0.0
@@ -25,12 +28,16 @@ func _on_action_enter(_previous: StringName) -> void:
 		else:
 			dir = (want - normal * want.dot(normal)).normalized()
 			facing = dir
+	if forced_away:
+		dir = normal
+		facing = normal
 	_move_dir = dir
 	_move_speed_multiplier = player.wall_jump_boost
 	player.snap_facing(facing)
 	player.velocity.y = player.jump_velocity * player.wall_jump_boost
 	player.coyote_timer = 0.0
-	player.wall_jumps_used += 1
+	if not forced_away:
+		player.wall_jumps_used += 1
 	player.reach_ready = true
 	player.play_reach_arms()
 
@@ -41,7 +48,7 @@ func _on_action_update(_delta: float) -> void:
 		machine.transition_to(&"Locomotion")
 		return
 	if player.try_ledge_grab():
-		machine.transition_to(&"LedgeClimb")
+		machine.transition_to(player.ledge_grab_state())
 		return
 	if action.can_cancel(action_time) and player.try_air_jump():
 		machine.transition_to(&"WallJump")

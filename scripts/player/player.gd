@@ -51,6 +51,19 @@ extends CharacterBody3D
 @export var ledge_requires_jump_held: bool = true
 ## Gap (m) between the capsule and the wall edge at the landing spot on top.
 @export var ledge_standoff: float = 0.1
+## Hang: the capsule center hangs this far (m) below the ledge top, and this far (m) off the wall.
+@export var hang_center_depth: float = 1.2
+@export var hang_gap: float = 0.05
+## Both hands must be on the ledge: two hand points this far (m) either side of the center.
+@export var hang_hand_spacing: float = 0.3
+## At a grab near a ledge end, the hang spot may shift up to this far (m) along the wall
+## so both hands are on the ledge. If that is not enough, it auto-climbs instead.
+@export var hang_adjust_max: float = 0.6
+## Seconds to snap into the hanging spot after a grab.
+@export var hang_snap_time: float = 0.1
+@export var shimmy_speed: float = 1.5
+## After a drop or leap, no ledge grab for this long (s).
+@export var ledge_regrab_cooldown: float = 0.3
 
 @export_group("Input")
 @export var input_buffer_time: float = 0.15
@@ -71,8 +84,15 @@ var wall_normal: Vector3 = Vector3.ZERO
 var ledge_stand_pos: Vector3 = Vector3.ZERO
 var ledge_wall_normal: Vector3 = Vector3.ZERO
 ## Debug: where the last ledge was found, and when (msec).
+var ledge_hang_pos: Vector3 = Vector3.ZERO
+var ledge_hang_fits: bool = false
+var ledge_top_y: float = 0.0
 var last_ledge_point: Vector3 = Vector3.ZERO
 var last_ledge_ms: int = -100000
+## No ledge grab until this time (msec); set by a drop or leap.
+var ledge_block_until_ms: int = 0
+## Set by the ledge hang state: the next WallJump goes away from the wall and is not counted.
+var wall_jump_forced_away: bool = false
 
 var _headroom_shape: CapsuleShape3D
 var _nose_drop: float = 0.4
@@ -302,7 +322,10 @@ func try_air_jump() -> bool:
 func find_ledge() -> Dictionary:
 	if is_on_floor() or velocity.y > ledge_max_rise_speed:
 		return {}
-	if ledge_requires_jump_held and not Input.is_action_pressed("jump"):
+	if Time.get_ticks_msec() < ledge_block_until_ms:
+		return {}
+	if ledge_requires_jump_held and not (Input.is_action_pressed("jump")
+			or Input.is_action_pressed("interact") or input_buffer.has_pressed(&"interact")):
 		return {}
 	var want := get_move_input()
 	want.y = 0.0
@@ -354,7 +377,19 @@ func find_ledge() -> Dictionary:
 	# 3. There must be room for the standing capsule up there.
 	if not _fits_standing_at(stand_pos + Vector3.UP * 0.02):
 		return {}
-	return {"stand_position": stand_pos, "normal": normal, "edge": top_pos}
+	var hang_xz := base - normal * (face_distance - (radius + hang_gap))
+	var hang_pos := Vector3(hang_xz.x, top_pos.y - hang_center_depth - stand_height * 0.5, hang_xz.z)
+	var hang_spot := _find_hang_spot(hang_pos, normal, top_pos.y)
+	if not hang_spot.is_empty():
+		hang_pos = hang_spot["position"]
+	return {
+		"stand_position": stand_pos,
+		"normal": normal,
+		"edge": top_pos,
+		"top_y": top_pos.y,
+		"hang_position": hang_pos,
+		"hang_fits": not hang_spot.is_empty(),
+	}
 
 
 ## If a ledge can be grabbed, stores it for the LedgeClimb state and returns true
@@ -366,6 +401,9 @@ func try_ledge_grab() -> bool:
 	ledge_stand_pos = ledge["stand_position"]
 	ledge_wall_normal = ledge["normal"]
 	last_ledge_point = ledge["edge"]
+	ledge_top_y = ledge["top_y"]
+	ledge_hang_pos = ledge["hang_position"]
+	ledge_hang_fits = ledge["hang_fits"]
 	last_ledge_ms = Time.get_ticks_msec()
 	return true
 
@@ -373,3 +411,100 @@ func try_ledge_grab() -> bool:
 ## Turn the body collision on or off (used during the scripted ledge climb).
 func set_body_collision_enabled(enabled: bool) -> void:
 	_collision_shape.set_deferred("disabled", not enabled)
+
+
+## Which state a found ledge leads to: hang if interact is held (or was just pressed) and
+## the hanging body fits there, otherwise the auto-climb.
+func ledge_grab_state() -> StringName:
+	var wants_hang := Input.is_action_pressed("interact") or input_buffer.has_pressed(&"interact")
+	if wants_hang and ledge_hang_fits:
+		input_buffer.consume(&"interact")
+		return &"LedgeHang"
+	return &"LedgeClimb"
+
+
+## While hanging: finds the ledge top along the wall at the given feet position (near the
+## last known ledge height). Returns {"top_y", "stand_position", "fits"} or {} if there is
+## no ledge top there. "fits" says whether a standing body fits on top (needed to climb).
+func probe_hang_ledge(pos: Vector3, normal: Vector3) -> Dictionary:
+	var space := get_world_3d().direct_space_state
+	var radius := (_collision_shape.shape as CapsuleShape3D).radius
+	var face_distance := radius + hang_gap
+	var base := Vector3(pos.x, 0.0, pos.z)
+	var probe := base - normal * (face_distance + 0.15)
+	var top_query := PhysicsRayQueryParameters3D.create(
+			Vector3(probe.x, ledge_top_y + 0.3, probe.z),
+			Vector3(probe.x, ledge_top_y - 0.3, probe.z),
+			collision_mask, [get_rid()])
+	var top := space.intersect_ray(top_query)
+	if top.is_empty():
+		return {}
+	var top_normal: Vector3 = top["normal"]
+	if top_normal.y < 0.9:
+		return {}
+	var top_pos: Vector3 = top["position"]
+	if not _hands_on_ledge(pos, normal, ledge_top_y):
+		return {}
+	var stand_xz := base - normal * (face_distance + radius + ledge_standoff)
+	var ground_query := PhysicsRayQueryParameters3D.create(
+			Vector3(stand_xz.x, top_pos.y + 0.5, stand_xz.z),
+			Vector3(stand_xz.x, top_pos.y - 0.3, stand_xz.z),
+			collision_mask, [get_rid()])
+	var ground := space.intersect_ray(ground_query)
+	if ground.is_empty():
+		return {"top_y": top_pos.y, "fits": false}
+	var ground_normal: Vector3 = ground["normal"]
+	var ground_pos: Vector3 = ground["position"]
+	if ground_normal.y < 0.9 or absf(ground_pos.y - top_pos.y) > 0.1:
+		return {"top_y": top_pos.y, "fits": false}
+	var stand_pos := Vector3(stand_xz.x, ground_pos.y, stand_xz.z)
+	return {
+		"top_y": top_pos.y,
+		"stand_position": stand_pos,
+		"fits": _fits_standing_at(stand_pos + Vector3.UP * 0.02),
+	}
+
+
+## True if the body fits with its feet at the given point (used while shimmying).
+func can_hang_at(feet: Vector3) -> bool:
+	return _fits_standing_at(feet + Vector3.UP * 0.02)
+
+
+## True if both hand points (either side of pos along the wall) find a flat ledge top
+## near top_y just inside the wall face.
+func _hands_on_ledge(pos: Vector3, normal: Vector3, top_y: float) -> bool:
+	var space := get_world_3d().direct_space_state
+	var radius := (_collision_shape.shape as CapsuleShape3D).radius
+	var face_distance := radius + hang_gap
+	var tangent := normal.cross(Vector3.UP).normalized()
+	for side: float in [-1.0, 1.0]:
+		var hand := Vector3(pos.x, 0.0, pos.z) + tangent * side * hang_hand_spacing
+		var probe := hand - normal * (face_distance + 0.15)
+		var query := PhysicsRayQueryParameters3D.create(
+				Vector3(probe.x, top_y + 0.3, probe.z),
+				Vector3(probe.x, top_y - 0.3, probe.z),
+				collision_mask, [get_rid()])
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			return false
+		var hit_normal: Vector3 = hit["normal"]
+		if hit_normal.y < 0.9:
+			return false
+	return true
+
+
+## Finds the hang position closest to the wanted one (shifting sideways along the wall, up
+## to hang_adjust_max) where both hands are on the ledge and the body fits.
+## Returns {"position": Vector3} or {} if there is none.
+func _find_hang_spot(wanted: Vector3, normal: Vector3, top_y: float) -> Dictionary:
+	var tangent := normal.cross(Vector3.UP).normalized()
+	var step := 0.05
+	var count := int(ceil(hang_adjust_max / step))
+	for i in range(count + 1):
+		for side: float in [1.0, -1.0]:
+			if i == 0 and side < 0.0:
+				continue
+			var candidate := wanted + tangent * side * step * float(i)
+			if _hands_on_ledge(candidate, normal, top_y) and _fits_standing_at(candidate + Vector3.UP * 0.02):
+				return {"position": candidate}
+	return {}

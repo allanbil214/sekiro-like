@@ -137,7 +137,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 | `crouch` | Left Ctrl | Left Stick click |
 | `interact` | E | Left Action (X / Square) |
 
-  Move, look, jump, dodge, and crouch are wired up so far. `interact` exists in the Input Map but does nothing until Step 2d.
+  Move, look, jump, dodge, crouch, and interact (ledge hang and climb) are wired up so far.
 
 ### 3.9 Crouch
 - **Toggle by default**, with a setting to switch to hold. Bound to Left Ctrl / left-stick click.
@@ -163,11 +163,14 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
   - **Near-ground rule:** an air jump press within `air_jump_ground_margin` (0.3 m) of the floor is ignored, so it stays buffered for the landing jump.
   - **Tuning note:** a narrower "toward" cone makes diagonals count as sideways, but needs the camera to be roughly square to the wall.
 - **Ledges** (the `interact` button):
-  - Reaching a ledge **without** pressing/holding `interact` makes the character **auto-climb** up (Nightreign style).
-  - Pressing/holding `interact` at the ledge makes the character **hang** instead.
-  - **Releasing `interact` does nothing**: you stay hanging until you act.
-  - While hanging: forward = climb up, crouch = drop, jump = leap away, left/right = **shimmy along one straight line** (stops at corners).
-  - The climb-up is an action with locked windows in `ActionData` (kind `LEDGE_CLIMB`).
+  - **Grab condition:** airborne, movement input toward a wall (`ledge_input_threshold` cone), a flat ledge top in the **hand zone** (1.4 to 2.1 m above the feet, so one normal jump reaches ledges up to about 3.3 m), enough depth and headroom on top to stand, and either `jump` held (auto-climb) or `interact` held / pressed within 0.15s (hang). There is no rise-speed limit (`ledge_max_rise_speed` = 99), so a jump beside a ledge grabs it while rising. The `jump`-held requirement (`ledge_requires_jump_held`) stops accidental grabs after dropping or walking off an edge.
+  - Reaching a ledge **without** holding `interact` makes the character **auto-climb** up (Nightreign style). The climb is scripted (`LedgeClimb`, `ActionData` kind `LEDGE_CLIMB`, 0.6s): up along the wall, then forward onto the top, with body collision off and the landing spot checked first.
+  - Holding/pressing `interact` at the ledge makes the character **hang** instead (`LedgeHang`), unless the hanging body would not fit (low ledges, floor too close), in which case it auto-climbs.
+  - **Releasing `interact` does nothing**: you stay hanging until you act. Hanging resets reach and wall jumps.
+  - **Hang spot:** capsule center 1.2 m below the ledge top, 0.05 m off the wall, snapped in over 0.1s. **Both hands must be on the ledge** (two hand points 0.3 m either side); at a grab near a ledge end the spot shifts sideways (up to 0.6 m) to satisfy this, otherwise it auto-climbs.
+  - **While hanging:** a **fresh `interact` press** = climb up (holding toward the wall does nothing; needs room on top), crouch = drop, jump = leap away from the wall (uses the wall-jump action and boost, restores reach, does not use a wall-jump count), left/right = **shimmy along one straight line** at 1.5 m/s (stops when either hand would leave the ledge, and at inside corners).
+  - After a drop or leap, **no ledge grab for 0.3s**.
+  - A hit knocks the player off the ledge: `LedgeHangState.knock_off()` exists as the hook; it is called from the damage system in Step 4.
 - All air actions (jump attack, jump guard/deflect) stay available after a wall jump. A hanging player can be hit, and a hit knocks them off.
 - **Arena rule:** the combat arena stays reachable by the single melee enemy; traversal gets its own test area. Parkour must not become a free escape from the enemy.
 - Corner shimmy and other ledge enhancements are Phase 2.
@@ -286,7 +289,14 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Wall range / input threshold | 0.6 m / 0.75 (user-tuned; higher = narrower "toward" cone; 0.5 was the first value) |
 | Air jump ground margin | 0.3 m |
 | Wall jump action | duration 0.25s, locked until 0.12s, move 6.5 over 0 to 0.25s, end factor 0.6 |
-| Ledge reach distances, climb-up duration, shimmy speed | TBD during tuning |
+| Ledge hand zone / input cone | 1.4 to 2.1 m above the feet / 0.5 (60 degrees) |
+| Ledge grab rise-speed limit / jump held | 99 (off) / required for the auto-climb |
+| Ledge landing standoff | 0.1 m |
+| Ledge climb | 0.6s (rise 60%, then forward) |
+| Hang: center depth / wall gap / snap time | 1.2 m / 0.05 m / 0.1s |
+| Hang: hand spacing / max sideways adjust | 0.3 m / 0.6 m |
+| Shimmy speed | 1.5 m/s |
+| Ledge regrab cooldown (after drop or leap) | 0.3s |
 | Dodge: duration / locked until | 0.45s / 0.30s |
 | Dodge: i-frames | 0.05s to 0.28s |
 | Dodge: speed / window / end factor | 11 m/s / 0 to 0.30s / 0.3 (current, feels good to the user) |
@@ -304,7 +314,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - Resolve order: first connect wins, unless both hitboxes go active within the clash window (then clash).
 - Animation: timer-driven; `AnimationPlayer` follows later.
 - Debug overlay from early on (current state, active windows, hitbox visibility).
-- Traversal as states in the same state machine: Crouch, Slide, WallJump (the mid-air reach lives in the Air state), LedgeHang, LedgeClimb (climb-up reads `ActionData`).
+- Traversal as states in the same state machine: Crouch, Slide, WallJump (the mid-air reach lives in the Air state), LedgeHang (a plain state, no data), LedgeClimb (scripted, reads `ActionData`).
 - Player hurtbox (`Area3D`) separate from the body capsule; both resized per state (see 3.11).
 
 ---
@@ -315,7 +325,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 2. **2a.** State machine and `ActionData`; dodge with dash-hold and i-frames. **(done)**
    - **2b.** Crouch (toggle/hold setting, shrunk capsule and hurtbox), crouch slide, animated crouch; add `crouch` and `interact` to the Input Map. **(done)**
    - **2c.** Mid-air reach and wall jump. **(done)**
-   - **2d.** Ledges: auto-climb, hang (hold `interact`), one-line shimmy, climb, drop, leap.
+   - **2d.** Ledges: auto-climb, hang (hold `interact`), one-line shimmy, climb, drop, leap. **(done: 2d-1 detect and auto-climb, 2d-2 hang, shimmy, drop, leap)**
 3. Attack, combo, and combo loop, using buffering and cancel windows; crouch attack. **Re-ask the user whether they want a slide attack (O7).**
 4. Hitboxes, damage, hitstop on a dummy enemy; player hurtbox profiles (stand/crouch/air) and duck-under whiffs.
 5. Guard, deflect, shrinking window, jump versions.
@@ -337,7 +347,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - **O3:** Which deflect-spam shrink curve (linear or stepped)?
 - **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
 - **O5:** Enemy grab damage amount and exact grab range/wind-up.
-- **O6:** Ledge details: grab reach, hang height, climb-up duration, shimmy speed.
+- ~~**O6:** Ledge details~~ **Resolved in Step 2d**: values are in the placeholders table (all tunable exports).
 - **O7:** Slide attack (attack out of the crouch slide)? Not in Sekiro; the user said to re-ask at Step 3.
 
 ---
@@ -348,7 +358,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [x] 2a. State machine, ActionData, dodge, dash-hold **(done and tested by the user)**
 - [x] 2b. Crouch, crouch slide, animated crouch (+ `crouch` / `interact` input actions) **(done and tested by the user)**
 - [x] 2c. Mid-air reach, wall jump **(done and tested by the user)**
-- [ ] 2d. Ledges (auto-climb, hang, one-line shimmy)
+- [x] 2d. Ledges (auto-climb, hang, one-line shimmy, climb, drop, leap) **(done and tested by the user)**
 - [ ] 3. Attack, combo, combo loop
 - [ ] 4. Hitboxes, damage, hitstop
 - [ ] 5. Guard, deflect, shrinking window, jump versions
@@ -359,7 +369,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Steps 1, 2a, 2b, and 2c are complete and tested. **Next: Step 2d** (ledges: auto-climb, hang, one-line shimmy, climb, drop, leap).
+**Current state:** Steps 1, 2a, 2b, 2c, and 2d are complete and tested (all of Phase 1 traversal). **Next: Step 3** (attack, combo, combo loop, crouch attack). **Remember to re-ask the user about a slide attack (O7) at Step 3.**
 
 ### Step 1: what exists
 
@@ -447,6 +457,29 @@ StateMachine
 ```
 State node names must match exactly (`WallJump`).
 
+### Step 2d: what exists
+
+**Files**
+- `scripts/player/player.gd` additions (Ledge export group): `ledge_zone_min/max` (1.4/2.1), `ledge_input_threshold` (0.5), `ledge_max_rise_speed` (99), `ledge_requires_jump_held` (true), `ledge_standoff` (0.1), `hang_center_depth` (1.2), `hang_gap` (0.05), `hang_hand_spacing` (0.3), `hang_adjust_max` (0.6), `hang_snap_time` (0.1), `shimmy_speed` (1.5), `ledge_regrab_cooldown` (0.3). Functions: `find_ledge()` (needs airborne, input toward the wall, wall from `find_wall()`, ray down for the ledge top, ray at the landing spot, standing-capsule fit, plus the hang spot), `try_ledge_grab()`, `ledge_grab_state()` (LedgeHang if interact held/buffered and the hang spot fits, else LedgeClimb), `probe_hang_ledge()` (while hanging: ledge top, both hands, stand spot and fit), `can_hang_at()`, `_hands_on_ledge()`, `_find_hang_spot()`, `_fits_standing_at()` (shared with `can_stand()`), `set_body_collision_enabled()`, `play_climb_arms()` / `release_arms()`. State: `ledge_stand_pos`, `ledge_wall_normal`, `ledge_hang_pos`, `ledge_hang_fits`, `ledge_top_y`, `ledge_block_until_ms`, `wall_jump_forced_away`. `find_wall()` also returns the hit position.
+- `scripts/player/states/ledge_climb_state.gd`: `LedgeClimbState` (extends `ActionState`). Moves the position directly (rise, then forward) with collision off; resets air actions and goes to Locomotion at the end; `rise_fraction` export (0.6).
+- `scripts/player/states/ledge_hang_state.gd`: `LedgeHangState` (extends `State`). Snaps into the hang spot, then: crouch = drop, jump = leap (sets `wall_jump_forced_away` and goes to WallJump), fresh interact = climb (re-probes the ledge and room), otherwise shimmy. `knock_off()` hook for Step 4.
+- `actions/ledge_climb.tres`: `ActionData`, kind `LEDGE_CLIMB`, duration 0.6, locked until 0.6. **Never overwrite; changes come as "change X to Y".**
+- `scripts/player/states/air_state.gd` and `wall_jump_state.gd`: call `try_ledge_grab()` first (before air jumps) and transition to `ledge_grab_state()`. `wall_jump_state.gd` honors `wall_jump_forced_away` (always away, not counted).
+- `scripts/player/input_buffer.gd`: now also tracks `interact`.
+- `scripts/player/reach_arms.gd`: added `hold_up()` (arms straight up, `climb_angle_deg` 180), used by hang and climb.
+- `scripts/ui/debug_overlay.gd`: `Ledge: found` line and a magenta marker at the last found ledge edge (`show_ledge_marker`).
+
+**Player scene additions**
+```
+StateMachine
+  (earlier states unchanged)
+  LedgeClimb (ledge_climb_state.gd, Action = actions/ledge_climb.tres)
+  LedgeHang (ledge_hang_state.gd)
+```
+State node names must match exactly (`LedgeClimb`, `LedgeHang`).
+
+**Not done in 2d:** corners (Phase 2), real hang/shimmy/climb animation, hang on moving geometry, the hit-knock-off logic (Step 4 calls `knock_off()`).
+
 **Not done in 2c:** real reach animation, wall slide/cling, wall run, slanted walls, sound.
 
 **Not done in 2b:** the shrunk hurtbox (Step 4, `HurtboxProfile`), the crouch attack (Step 3), the slide attack (O7, asked again at Step 3).
@@ -455,7 +488,7 @@ State node names must match exactly (`WallJump`).
 
 ## 11. Conventions
 
-- Typed GDScript throughout (`var x: float`, typed function signatures).
+- Typed GDScript throughout (`var x: float`, typed function signatures). Type loop variables when they feed a `:=` line (`for side: float in [-1.0, 1.0]`), or inference fails.
 - `@export` and custom `Resource` classes for tunable data.
 - Signals for events between components; autoload only when truly global.
 - Input checked by **action name** only.

@@ -3,7 +3,7 @@ extends RefCounted
 ## Remembers recent button presses so an action pressed slightly early still counts.
 
 var buffer_time: float
-var tracked: Array[StringName] = [&"jump", &"dodge"]
+var tracked: Array[StringName] = [&"jump", &"dodge", &"interact"]
 
 var _time: float = 0.0
 var _pressed_at: Dictionary = {}
