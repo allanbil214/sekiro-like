@@ -43,6 +43,10 @@ extends Node3D
 @export var rest_blade_direction: Vector3 = Vector3(0.15, -0.5, -0.85)
 ## Which way the cutting edge faces at rest.
 @export var rest_edge_direction: Vector3 = Vector3(0.0, 1.0, 0.0)
+@export_group("Body twist")
+## How far (degrees) the torso twists for a pose at 3:00 or 9:00. Other poses twist in
+## proportion to how far left or right they are (1:00 = half). 0 turns the twist off.
+@export var max_twist_degrees: float = 30.0
 @export_group("Look and timing")
 @export var idle_color: Color = Color(0.8, 0.8, 0.85)
 @export var active_color: Color = Color(1.0, 0.15, 0.1)
@@ -70,6 +74,11 @@ var _from_edge: Vector3 = Vector3.UP
 var _rest_tip: Vector3 = Vector3.ZERO
 var _rest_blade: Vector3 = Vector3.DOWN
 var _rest_edge: Vector3 = Vector3.UP
+var _twist: float = 0.0
+var _from_twist: float = 0.0
+var _nose: Node3D
+var _nose_base: Vector3 = Vector3.ZERO
+var _nose_twisted: bool = false
 var _returning: bool = false
 var _return_time: float = 0.0
 
@@ -125,6 +134,12 @@ func setup(weapon: WeaponData) -> void:
 	_blade_dir = _rest_blade
 	_edge_dir = _rest_edge
 	_returning = false
+	_twist = 0.0
+	_from_twist = 0.0
+	# The torso twist also turns the capsule's nose (a sibling under Visual).
+	_nose = get_parent().get_node_or_null("Nose") as Node3D
+	if _nose != null:
+		_nose_base = Vector3(_nose.position.x, 0.0, _nose.position.z)
 	_apply()
 
 
@@ -156,6 +171,7 @@ func update_action(action: ActionData, time: float) -> void:
 		var t := clampf(time / maxf(windup_end, 0.001), 0.0, 1.0)
 		var k := ease(t, windup_ease)
 		_tip = _from_tip.lerp(windup_point, k) + Vector3.FORWARD * windup_arc_forward * sin(PI * k)
+		_twist = lerpf(_from_twist, _pose_twist(action.swing_windup), k)
 		var travel := _slash_tangent(windup_point, end_point, 0.0)
 		var target := _pose(_tip, travel, wrist_start_angle)
 		_blend_orientation(_from_blade, _from_edge, target[0], target[1], k)
@@ -164,6 +180,7 @@ func update_action(action: ActionData, time: float) -> void:
 		var t := clampf((time - windup_end) / maxf(active_end - windup_end, 0.001), 0.0, 1.0)
 		var s := ease(t, slash_ease)
 		_tip = _slash_point(windup_point, end_point, s)
+		_twist = lerpf(_pose_twist(action.swing_windup), _pose_twist(action.swing_end), s)
 		var travel := _slash_tangent(windup_point, end_point, s)
 		var pose := _pose(_tip, travel, lerpf(wrist_start_angle, wrist_end_angle, s))
 		_blade_dir = pose[0]
@@ -173,6 +190,7 @@ func update_action(action: ActionData, time: float) -> void:
 		var t := clampf((time - active_end) / maxf(action.duration - active_end, 0.001), 0.0, 1.0)
 		var k := ease(t, follow_ease)
 		_tip = end_point.lerp(follow_point, k) + Vector3.FORWARD * windup_arc_forward * sin(PI * k)
+		_twist = lerpf(_pose_twist(action.swing_end), _pose_twist(action.swing_follow), k)
 		var travel := _slash_tangent(windup_point, end_point, 1.0)
 		var overshot := _pose(_tip, travel, wrist_end_angle - follow_overshoot)
 		if t < OVERSHOOT_PORTION:
@@ -205,6 +223,7 @@ func _process(delta: float) -> void:
 	var t := clampf(_return_time / maxf(rest_return_time, 0.001), 0.0, 1.0)
 	var k := ease(t, -2.0)
 	_tip = _from_tip.lerp(_rest_tip, k)
+	_twist = lerpf(_from_twist, 0.0, k)
 	_blend_orientation(_from_blade, _from_edge, _rest_blade, _rest_edge, k)
 	_apply()
 	if t >= 1.0:
@@ -262,6 +281,7 @@ func _remember_current() -> void:
 	_from_tip = _tip
 	_from_blade = _blade_dir
 	_from_edge = _edge_dir
+	_from_twist = _twist
 
 
 func _blend_orientation(from_blade: Vector3, from_edge: Vector3, to_blade: Vector3, to_edge: Vector3, t: float) -> void:
@@ -282,9 +302,32 @@ func _set_active(active: bool) -> void:
 		_material.albedo_color = active_color if active else idle_color
 
 
+## Torso twist for a clock pose: positive = twisted to the right, negative = to the left.
+func _pose_twist(pose: Vector3) -> float:
+	return max_twist_degrees * sin(deg_to_rad(pose.x * 30.0))
+
+
+## Turn the whole arm swing (and the capsule's nose) around the body's vertical axis.
+## Godot's positive Y rotation turns the player's front toward its left, so a twist to the
+## right is a negative angle.
+func _apply_twist() -> void:
+	var yaw := -deg_to_rad(_twist)
+	rotation.y = yaw
+	if _nose == null:
+		return
+	if absf(_twist) < 0.001 and not _nose_twisted:
+		return
+	var turned := _nose_base.rotated(Vector3.UP, yaw)
+	_nose.position.x = turned.x
+	_nose.position.z = turned.z
+	_nose.rotation.y = yaw
+	_nose_twisted = absf(_twist) >= 0.001
+
+
 ## Place the arm and hand, and build the blade's orientation: local -Z along the blade,
 ## local +X toward the cutting edge.
 func _apply() -> void:
+	_apply_twist()
 	var arm_dir := _arm_direction(_tip)
 	var arm_up := Vector3.UP
 	if absf(arm_dir.dot(Vector3.UP)) > 0.99:
