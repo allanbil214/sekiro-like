@@ -59,6 +59,7 @@ script = ExtResource("2_fcs02")
 
 [node name="SwordVisual" type="Node3D" parent="Visual" unique_id=1806981421]
 script = ExtResource("3_8ydkj")
+rest_edge_direction = Vector3(0, -1, 0)
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=76740487]
 script = ExtResource("2_gmlin")

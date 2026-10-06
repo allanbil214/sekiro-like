@@ -8,9 +8,10 @@
 
 | Phase | Content | Status |
 |---|---|---|
-| **3a-1** | Ground 5-attack combo, loop, TAE-style chain/cancel, follow-through flourish, blending, lunge, sword visual (arm swing), `WeaponData` | **built**; the user approved the look; cancels, lunge, and the ledge stop not formally tested yet |
+| **3a-1** | Ground 5-attack combo, loop, TAE-style chain/cancel, follow-through flourish, blending, lunge, sword visual (arm swing, body twist, arm lead), `WeaponData` | **built**; the user approved the look; cancels, lunge, and the ledge stop not formally tested yet |
 | **3a-2** | Hold detection, charged zigzag thrust, chaining in and out of the thrust | not started |
 | **3b** | Crouch, slide, dash, and jump attack variants (tap and hold each) | not started; send a full check per variant group before building |
+| **3c** | Sheathing (visual only) and the draw slash | not started; design agreed (2026-10-06), see section 7b; do it after 3a-2 |
 
 Each phase is its own chat: paste handoff + work agreement + this spec + a fresh snapshot (`python pack_for_claude.py`). Confirm quickly with the user before building (the work agreement still applies).
 
@@ -37,7 +38,7 @@ Hitboxes, damage, and hitstop are **Step 4**. Attacks in Step 3 swing and chain 
 - **Flourish:** after the active window the sword drifts through a relaxed follow-through pose, slightly behind the player. It plays only if the player does not chain or cancel.
 - **Steering:** you can turn toward the movement input during the wind-up; locked once the active window starts. **Also locked while locked on** (Step 9; until then the `AttackState._can_steer()` hook just returns true).
 - **Lunge (forward momentum):** each attack moves the player forward through the action's move window. Direction = movement input at the attack start; with **no input, half strength forward** (in the facing direction). **While steering is allowed (before the active window), a held input keeps updating the direction (full strength); releasing it keeps the last direction and strength.** Attack 5 and the thrust have the most momentum.
-- **Ledge stop:** a lunge never carries the player off an edge. If there is no floor 0.4 m ahead (a tunable export) in the lunge direction, the lunge is dropped for that frame.
+- **Ledge stop:** a lunge never carries the player off an edge. If there is no floor `ledge_check_distance` ahead in the lunge direction (0.4 m default, 0.8 m set by the user, about 1.4 m suggested for attack 5 at 11.5 m/s), the lunge is dropped for that frame.
 - **Reset:** the combo counter only continues through direct chains. If the attack finishes without a chain, or any other action takes over, the counter resets to step 1.
 - **Combo counter semantics:** every attack (slash or thrust) advances the same counter through steps 1 to 5 and wraps to 1. A **thrust takes the step it falls on**. Example: attack 1, thrust (step 2), attack 3, thrust (step 4), attack 5, thrust (step 6, wraps to 1), then the next tap is attack 2.
 
@@ -66,11 +67,23 @@ Hitboxes, damage, and hitstop are **Step 4**. Attacks in Step 3 swing and chain 
 | 4 | 0.75 | 0.14 to 0.26 | 0.30 to 0.75 | 0.10 to 0.75 | 3.5 m/s, 0.06 to 0.24 |
 | 5 | 1.00 | 0.26 to 0.42 | 0.52 to 1.00 | 0.15 to 1.00 | 5.5 m/s, 0.08 to 0.40 |
 
+**Current tuned values** (the user approved these after two slow-down passes and a longer wind-up on attack 1; the first-guess table above is the original design). Seconds and m/s; the lunge distance is about 3x the first guess, attack 5 is faster than the dash (9.0 m/s):
+
+| # | duration | locked_until | active_hit | cancel_window | buffer_window | lunge speed / window |
+|---|---|---|---|---|---|---|
+| 1 | 1.16 | 0.52 | 0.35 to 0.52 | 0.64 to 1.16 | 0.14 to 1.16 | 6.3, 0.22 to 0.51 |
+| 2 | 1.01 | 0.35 | 0.17 to 0.35 | 0.47 to 1.01 | 0.14 to 1.01 | 6.3, 0.07 to 0.31 |
+| 3 | 1.08 | 0.41 | 0.23 to 0.41 | 0.52 to 1.08 | 0.14 to 1.08 | 7.3, 0.08 to 0.37 |
+| 4 | 1.08 | 0.37 | 0.20 to 0.37 | 0.49 to 1.08 | 0.14 to 1.08 | 7.3, 0.08 to 0.35 |
+| 5 | 1.44 | 0.60 | 0.37 to 0.60 | 0.80 to 1.44 | 0.22 to 1.44 | 11.5, 0.12 to 0.58 |
+
+Attack 1 has a deliberately long wind-up (0.35s) like the opener in Souls-likes; it also applies when the combo loops back to attack 1.
+
 **Placeholder clock poses** (hour, radius m, forward m; all tunable in `actions/attack_N.tres`):
 
 | # | wind-up | slash end | follow-through |
 |---|---|---|---|
-| 1 | 1:00, 0.9, -0.3 | 7:00, 0.9, 0.9 | 7:30, 0.8, -0.3 |
+| 1 | 1:00, 1.0, -0.5 | 7:00, 0.9, 0.9 | 7:30, 0.8, -0.3 |
 | 2 | 7:00, 0.9, -0.2 | 12:45, 1.0, 0.9 | 1:30, 0.9, -0.3 |
 | 3 | 8:30, 0.9, -0.3 | 2:30, 0.9, 0.9 | 3:00, 0.8, -0.3 |
 | 4 | 3:30, 0.9, -0.3 | 9:00, 0.9, 0.9 | 9:30, 0.8, -0.3 |
@@ -133,7 +146,8 @@ Each pose is a clock pose, a `Vector3`: **(clock hour, radius in m, forward in m
 - **Wrist angle:** the blade bends away from the arm by `wrist_start_angle` (50 deg, trailing) at the slash start, easing to `wrist_end_angle` (-10 deg, slightly leading) at the end. A small `follow_overshoot` (15 deg) at the start of the flourish, then the blade relaxes toward the rest direction (`follow_relax` 0.5).
 - **Path:** the aim point travels from the wind-up pose to the end pose along a chord bowed forward in the middle (`slash_arc_forward` 0.5 m); the wind-up and follow-through use `windup_arc_forward` (0.25 m). The travel direction at each moment is the path's slope.
 - **Edge:** the strip leads along the travel direction (the edge side is the part of the travel direction perpendicular to the blade). `flip_edge` if it is on the wrong side.
-- Segments over `action_time` (data stays authoritative, no tweens): blend from the captured previous pose to the wind-up, wind-up to end (the active window, fast ease, the blade turns red), end to follow-through. Returns to `rest_pose` (hand on the arm line toward it, blade pointing down and forward, edge up) when the combo ends.
+- Segments over `action_time` (data stays authoritative, no tweens): blend from the captured previous pose to the wind-up, wind-up to end (the active window, fast ease, the blade turns red), end to follow-through. Returns to `rest_pose` (hand on the arm line toward it, blade pointing down and forward, **edge down**: the user set Rest Edge Direction to (0, -1, 0); an edge-up sheathed pose comes in 3c) when the combo ends.
+- **Body twist (visual only):** the arm swing and the capsule's `Nose` rotate around the body's vertical axis. A pose's twist = `max_twist_degrees` (30) x sin(hour angle), positive = to the right, so attack 1 twists right in the wind-up and left with the cut, attack 2 starts left and goes slightly right, attacks 3 and 4 are the strongest, attack 5 is slight. The twist follows the same segments and eases as the sword, chains start from the previous twist, and it returns to neutral when the combo ends. **Arm lead:** the arm swing turns `arm_twist_factor` (1.5) times the body twist; the nose follows the plain body twist. It changes no facing, lunge, steering, or hitbox (Step 4 decides what the hitbox follows). The Nose is only moved in x and z, because the crouch code owns its y.
 - The real tip only roughly follows the aim point, since the blade bends at the wrist and its length is fixed.
 - History: the first version placed the **grip** at the pose point and the sword hung beside the body. The poses now aim the arm instead.
 
@@ -152,6 +166,17 @@ Thrust and hold (3a-2), all variants (3b), hitboxes and damage (Step 4), guard c
 
 ---
 
+## 7b. Sheathing and the draw slash (3c, design agreed 2026-10-06, nothing built)
+
+- **Two states, visual only:** the sword is **sheathed** (resting in a scabbard at the left hip, edge up, like a katana in a belt) or **drawn** (held relaxed at the side, edge down: the current rest pose). Sheathing changes no movement, speed, or rules.
+- **Data:** `WeaponData` gets `sheathed_pose` (where the sword rests when sheathed; its edge-up direction too) and `draw_attack: ActionData` (the draw slash). `rest_pose` stays the drawn pose. A simple box scabbard is added at the left hip as a visual-only placeholder.
+- **Draw slash:** pressing attack while sheathed plays the draw slash, a slash from **8:00 to 2:00** (left to right), and the sword ends up drawn. It uses the same `ActionData` windows and clock poses as any attack. **It chains into the normal combo: the next attack press is attack 1**, then 2 to 5 as usual (it ends near 1:00, where attack 1 winds up, so the blend is smooth).
+- **Sheathe:** a dedicated button, **R** (a new Input Map action, `sheathe`; Claude gives the editor steps when building). It also **auto-sheathes after some idle time** (placeholder 5 s without combat). Proposed default for R when the sword is sheathed: draw it without attacking.
+- **Open items (ask before building):** whether the sword starts sheathed or drawn at spawn (default: sheathed); the sheathe and unsheathe transition time; whether crouch, slide, dash, and jump attacks from the sheathed state draw instantly (default: yes); whether getting hit or dodging counts as combat for the auto-sheathe timer (default: any attack, hit, or dodge restarts it).
+- **Animation later:** with real animation, locomotion needs a **sheathed and a drawn set** (idle, walk, sprint, dash, crouch, slide, jump, and so on), chosen by the sheathed flag. See section 8.
+
+---
+
 ## 8. Later: real animation (notes for when the user learns Blender)
 
 - Export a rigged character as glTF with one animation per action, named to match `ActionData.animation` (`attack_1`, `dodge`, `slide`, ...). Author them **in place** (no root motion); lunge and dodge speeds stay in the data.
@@ -159,4 +184,5 @@ Thrust and hold (3a-2), all variants (3b), hitboxes and damage (Step 4), guard c
 - `ActionState` plays `action.animation` and seeks it to `action_time` each frame (the data stays authoritative).
 - Retune each action's windows (`active_hit`, `cancel_window`, lunge window, duration) to the animation's timeline in the Godot animation editor.
 - Locomotion (idle, walk, run, crouch) needs an `AnimationTree` with blend spaces driven by speed; actions play on top.
+- With sheathing (3c), locomotion needs **two sets of animations, sheathed and drawn** (idle, walk, sprint, dash, crouch, slide, jump, ...), switched by the sheathed flag, plus draw and sheathe transitions.
 - Each weapon's `ActionData` names its own animations, so weapons stay data-driven.

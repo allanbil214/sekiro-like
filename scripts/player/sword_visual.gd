@@ -47,11 +47,21 @@ extends Node3D
 ## How far (degrees) the torso twists for a pose at 3:00 or 9:00. Other poses twist in
 ## proportion to how far left or right they are (1:00 = half). 0 turns the twist off.
 @export var max_twist_degrees: float = 30.0
+## How much further the arms turn than the body (the arms lead the torso). 1.0 = the same
+## angle as the body; 1.5 = 50% further.
+@export var arm_twist_factor: float = 2.0
 @export_group("Look and timing")
 @export var idle_color: Color = Color(0.8, 0.8, 0.85)
 @export var active_color: Color = Color(1.0, 0.15, 0.1)
 @export var edge_color: Color = Color(1.0, 0.9, 0.3)
 @export var arm_color: Color = Color(0.45, 0.5, 0.6)
+## Thrust charge: the blade blends toward this color and glows as the charge fills.
+@export var charge_color: Color = Color(1.0, 0.55, 0.1)
+@export var glow_energy: float = 2.0
+## How fast the glow fades after a thrust fires (per second).
+@export var glow_fade_speed: float = 4.0
+## Time to pull the sword back from the slash wind-up to the charge pose.
+@export var charge_blend_time: float = 0.15
 ## Time to return to the rest pose when the combo ends.
 @export var rest_return_time: float = 0.2
 ## Easing curves (Godot's ease(): negative = in-out, 0 to 1 = fast start, above 1 = slow start).
@@ -79,6 +89,9 @@ var _from_twist: float = 0.0
 var _nose: Node3D
 var _nose_base: Vector3 = Vector3.ZERO
 var _nose_twisted: bool = false
+var _glow: float = 0.0
+var _is_active: bool = false
+var _charging_visual: bool = false
 var _returning: bool = false
 var _return_time: float = 0.0
 
@@ -94,6 +107,9 @@ func setup(weapon: WeaponData) -> void:
 	var thin := width * 0.2
 	_material = StandardMaterial3D.new()
 	_material.albedo_color = idle_color
+	_material.emission_enabled = true
+	_material.emission = charge_color
+	_material.emission_energy_multiplier = 0.0
 	var edge_material := StandardMaterial3D.new()
 	edge_material.albedo_color = edge_color
 	var blade := MeshInstance3D.new()
@@ -143,10 +159,11 @@ func setup(weapon: WeaponData) -> void:
 	_apply()
 
 
-## (clock hour, radius, forward) -> the point the arm aims at, in the player's local space
+## (clock hour, radius, forward) -> the point the arm aims at (mirror = left-right flipped), in the player's local space
 ## (-Z is forward). Radius and forward are multiplied by pose_scale.
-func pose_to_point(pose: Vector3) -> Vector3:
-	var angle := deg_to_rad(pose.x * 30.0)
+func pose_to_point(pose: Vector3, mirror: bool = false) -> Vector3:
+	var hour := 12.0 - pose.x if mirror else pose.x
+	var angle := deg_to_rad(hour * 30.0)
 	var offset := Vector3(sin(angle) * pose.y, cos(angle) * pose.y, -pose.z)
 	return Vector3(0.0, center_height, 0.0) + offset * pose_scale
 
@@ -154,13 +171,17 @@ func pose_to_point(pose: Vector3) -> Vector3:
 ## An attack starts (or chains): remember where the sword is now so the wind-up blends from it.
 func begin_action(_action: ActionData) -> void:
 	_returning = false
+	_charging_visual = false
 	_remember_current()
 	_set_active(false)
 
 
 ## Position the sword for the given action time.
-func update_action(action: ActionData, time: float) -> void:
+func update_action(action: ActionData, time: float, mirror: bool = false) -> void:
 	if _hand == null:
+		return
+	if action.blade_aims_at_end:
+		_update_thrust(action, time, mirror)
 		return
 	var windup_point := pose_to_point(action.swing_windup)
 	var end_point := pose_to_point(action.swing_end)
@@ -210,6 +231,7 @@ func update_action(action: ActionData, time: float) -> void:
 func end_combo() -> void:
 	if _hand == null:
 		return
+	_charging_visual = false
 	_remember_current()
 	_return_time = 0.0
 	_returning = true
@@ -217,6 +239,9 @@ func end_combo() -> void:
 
 
 func _process(delta: float) -> void:
+	if _glow > 0.0 and not _charging_visual:
+		_glow = move_toward(_glow, 0.0, glow_fade_speed * delta)
+		_refresh_color()
 	if not _returning:
 		return
 	_return_time += delta
@@ -277,6 +302,90 @@ func _pose(tip: Vector3, travel: Vector3, wrist_deg: float) -> Array[Vector3]:
 	return pose
 
 
+## The wind-up ended with the button still held: start pulling back into the charge pose.
+func begin_charge() -> void:
+	_returning = false
+	_charging_visual = true
+	_remember_current()
+	_set_active(false)
+
+
+## While charging a thrust: pull the sword from where it is to the thrust's wind-up pose (hand
+## back, blade pointing forward) and glow more as the charge fills.
+func update_charge(thrust: ActionData, mirror: bool, charge_seconds: float, fraction: float) -> void:
+	if _hand == null:
+		return
+	var windup_point := pose_to_point(thrust.swing_windup, mirror)
+	var end_point := pose_to_point(thrust.swing_end, mirror)
+	var t := clampf(charge_seconds / maxf(charge_blend_time, 0.001), 0.0, 1.0)
+	var k := ease(t, windup_ease)
+	_tip = _from_tip.lerp(windup_point, k)
+	var pose := _thrust_pose(_tip, end_point)
+	_blend_orientation(_from_blade, _from_edge, pose[0], pose[1], k)
+	_twist = lerpf(_from_twist, _pose_twist(thrust.swing_windup, mirror) * thrust.twist_scale, k)
+	_glow = fraction
+	_refresh_color()
+	_apply()
+
+
+## A thrust: the hand moves from the wind-up pose to the end pose along a straight line, the
+## blade always points at the end pose, and the edge faces down.
+func _update_thrust(action: ActionData, time: float, mirror: bool) -> void:
+	var windup_point := pose_to_point(action.swing_windup, mirror)
+	var end_point := pose_to_point(action.swing_end, mirror)
+	var follow_point := pose_to_point(action.swing_follow, mirror)
+	var twist_windup := _pose_twist(action.swing_windup, mirror) * action.twist_scale
+	var twist_end := _pose_twist(action.swing_end, mirror) * action.twist_scale
+	var twist_follow := _pose_twist(action.swing_follow, mirror) * action.twist_scale
+	var windup_end := action.active_hit.x
+	var active_end := action.active_hit.y
+	if time < windup_end:
+		var t := clampf(time / maxf(windup_end, 0.001), 0.0, 1.0)
+		var k := ease(t, windup_ease)
+		_tip = _from_tip.lerp(windup_point, k)
+		var pose := _thrust_pose(_tip, end_point)
+		_blend_orientation(_from_blade, _from_edge, pose[0], pose[1], k)
+		_twist = lerpf(_from_twist, twist_windup, k)
+		_set_active(false)
+	elif time < active_end:
+		var t := clampf((time - windup_end) / maxf(active_end - windup_end, 0.001), 0.0, 1.0)
+		var s := ease(t, slash_ease)
+		_tip = windup_point.lerp(end_point, s)
+		var pose := _thrust_pose(_tip, end_point)
+		_blade_dir = pose[0]
+		_edge_dir = pose[1]
+		_twist = lerpf(twist_windup, twist_end, s)
+		_set_active(true)
+	else:
+		var t := clampf((time - active_end) / maxf(action.duration - active_end, 0.001), 0.0, 1.0)
+		var k := ease(t, follow_ease)
+		_tip = end_point.lerp(follow_point, k)
+		var pose := _thrust_pose(_tip, end_point)
+		_blade_dir = _blend_dir(pose[0], _rest_blade, follow_relax * k)
+		_edge_dir = _blend_dir(pose[1], _rest_edge, follow_relax * k)
+		_twist = lerpf(twist_end, twist_follow, k)
+		_set_active(false)
+	_apply()
+
+
+## Blade and edge directions for a thrust with the arm aimed at `tip`: the blade points from
+## the hand at the end pose, and the edge faces down.
+func _thrust_pose(tip: Vector3, end_point: Vector3) -> Array[Vector3]:
+	var hand := _shoulder() + _arm_direction(tip) * arm_reach
+	var to_end := end_point - hand
+	var blade := Vector3.FORWARD
+	if to_end.length_squared() > 0.0001:
+		blade = to_end.normalized()
+	var edge := Vector3.DOWN - blade * Vector3.DOWN.dot(blade)
+	if edge.length_squared() < 0.0001:
+		edge = Vector3.RIGHT
+	edge = edge.normalized()
+	if flip_edge:
+		edge = -edge
+	var pose: Array[Vector3] = [blade, edge]
+	return pose
+
+
 func _remember_current() -> void:
 	_from_tip = _tip
 	_from_blade = _blade_dir
@@ -298,21 +407,35 @@ func _blend_dir(a: Vector3, b: Vector3, t: float) -> Vector3:
 
 
 func _set_active(active: bool) -> void:
-	if _material != null:
-		_material.albedo_color = active_color if active else idle_color
+	_is_active = active
+	_refresh_color()
+
+
+## Blade color: red while the hit window is open, otherwise the idle color tinted toward the
+## charge color (and glowing) by the current charge glow.
+func _refresh_color() -> void:
+	if _material == null:
+		return
+	if _is_active:
+		_material.albedo_color = active_color
+	else:
+		_material.albedo_color = idle_color.lerp(charge_color, _glow)
+	_material.emission_energy_multiplier = _glow * glow_energy
 
 
 ## Torso twist for a clock pose: positive = twisted to the right, negative = to the left.
-func _pose_twist(pose: Vector3) -> float:
-	return max_twist_degrees * sin(deg_to_rad(pose.x * 30.0))
+func _pose_twist(pose: Vector3, mirror: bool = false) -> float:
+	var hour := 12.0 - pose.x if mirror else pose.x
+	return max_twist_degrees * sin(deg_to_rad(hour * 30.0))
 
 
-## Turn the whole arm swing (and the capsule's nose) around the body's vertical axis.
+## Turn the capsule's nose by the body twist, and the whole arm swing by arm_twist_factor
+## times that, around the body's vertical axis.
 ## Godot's positive Y rotation turns the player's front toward its left, so a twist to the
 ## right is a negative angle.
 func _apply_twist() -> void:
 	var yaw := -deg_to_rad(_twist)
-	rotation.y = yaw
+	rotation.y = yaw * arm_twist_factor
 	if _nose == null:
 		return
 	if absf(_twist) < 0.001 and not _nose_twisted:

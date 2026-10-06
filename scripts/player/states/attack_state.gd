@@ -4,24 +4,56 @@ extends ActionState
 ## attack in Locomotion starts attack 1; a press inside the buffer window chains to the next
 ## attack at the earliest allowed point; after the last attack the next press loops to 1.
 ## Dodge, jump, and crouch cancel at any time except while the hit window is active.
+##
+## Hold: if the attack button is still held when the wind-up ends, the attack becomes a
+## charge and fires Player.weapon.thrust when the button is released (or at max charge).
+## A thrust takes the combo step it falls on. Its side connects to the combo: chained from a
+## slash it starts on the side where that slash ended; chained from a thrust it takes the
+## opposite side (zigzag); started from idle it is right-aligned.
 ## No hitboxes or damage yet (Step 4).
+
+enum Phase { NORMAL, WAITING, CHARGING }
 
 ## Lunge strength (fraction of the action's move speed) when there is no movement input.
 @export var no_input_lunge_factor: float = 0.5
 ## A lunge stops this far (m) before an edge, so an attack never carries you off a ledge.
 @export var ledge_check_distance: float = 0.4
+## The lunge also stops this many seconds of travel before an edge (the larger distance wins).
+@export var ledge_check_time: float = 0.14
+## Grace at the end of the wind-up: if the attack button is still held then, wait up to this
+## many seconds for it to be released (still a normal slash) before charging. 0 = decide at once.
+@export var hold_extra_time: float = 0.0
+
+## While charging, the action clock is frozen this far (s) before the hit window opens, so
+## cancels (which are blocked during the hit window) stay allowed.
+const FREEZE_MARGIN: float = 0.001
 
 ## Zero-based position in the combo (0 = attack 1).
 var combo_index: int = 0
+## Damage multiplier of the current attack (1.0, or up to the thrust's charge_damage_max).
+## Stored for Step 4.
+var damage_multiplier: float = 1.0
 
 var _queued: bool = false
+var _phase: Phase = Phase.NORMAL
+var _decided: bool = false
+var _is_thrust: bool = false
+var _hold_wait: float = 0.0
+var _charge_time: float = 0.0
+var _freeze_time: float = 0.0
+var _lunge_scale: float = 1.0
+var _thrust_side_left: bool = false
+var _thrust_mirror: bool = false
 
 
 func enter(previous: StringName) -> void:
 	var combo := player.weapon.combo
 	if previous == &"Attack":
+		# `action` still holds the attack we are chaining from.
+		_thrust_side_left = _side_left_after_previous()
 		combo_index = (combo_index + 1) % combo.size()
 	else:
+		_thrust_side_left = false
 		combo_index = 0
 	action = combo[combo_index]
 	super.enter(previous)
@@ -31,6 +63,8 @@ func exit(next: StringName) -> void:
 	super.exit(next)
 	if next != &"Attack":
 		combo_index = 0
+		_thrust_side_left = false
+		_phase = Phase.NORMAL
 		if player.sword_visual != null:
 			player.sword_visual.end_combo()
 
@@ -41,29 +75,52 @@ func get_debug_text() -> String:
 		phase = "ACTIVE"
 	elif action_time >= action.active_hit.y:
 		phase = "recovery"
-	var buffer_open := _in_buffer_window()
-	var chain_open := action_time >= _chain_time()
-	return "Combo: %d/%d (%s)\nBuffer: %s  Chain: %s  Queued: %s" % [
-		combo_index + 1, player.weapon.combo.size(), phase,
-		"open" if buffer_open else "-", "open" if chain_open else "-", _queued,
+	var kind := "THRUST" if _is_thrust else "Combo"
+	var text := "%s: %d/%d (%s)\nBuffer: %s  Chain: %s  Queued: %s" % [
+		kind, combo_index + 1, player.weapon.combo.size(), phase,
+		"open" if _in_buffer_window() else "-",
+		"open" if action_time >= _chain_time() else "-", _queued,
 	]
+	if _phase == Phase.WAITING:
+		text += "\nHold: deciding..."
+	elif _phase == Phase.CHARGING:
+		text += "\nCharge: %.2f / %.2f (%s next)" % [
+			_charge_time, player.weapon.thrust.charge_time, "left" if _thrust_mirror else "right"]
+	elif _is_thrust:
+		text += "\nThrust: %s, damage x%.2f, lunge x%.2f" % [
+			"left" if _thrust_mirror else "right", damage_multiplier, _lunge_scale]
+	return text
 
 
 func _on_action_enter(_previous: StringName) -> void:
 	_queued = false
+	_phase = Phase.NORMAL
+	_decided = false
+	_is_thrust = false
+	_hold_wait = 0.0
+	_charge_time = 0.0
+	_lunge_scale = 1.0
+	damage_multiplier = 1.0
 	_update_lunge_direction(true)
 	if player.sword_visual != null:
 		player.sword_visual.begin_action(action)
 
 
 func _on_action_update(delta: float) -> void:
-	# Steering: during the wind-up the body turns toward the input, and the lunge follows
-	# a held direction. Both lock when the active window starts.
+	# The decision point is the end of the wind-up: still holding attack = charge a thrust.
+	if _phase == Phase.NORMAL and not _is_thrust and not _decided \
+			and action_time >= action.active_hit.x:
+		_decide()
+	if _phase != Phase.NORMAL:
+		_update_hold(delta)
+		return
+	# Steering: during the wind-up the body turns toward the movement input, and the lunge
+	# follows a held direction. Both lock when the active window starts.
 	if action_time < action.active_hit.x and _can_steer():
 		player.face_input(delta)
 		_update_lunge_direction(false)
 	if player.sword_visual != null:
-		player.sword_visual.update_action(action, action_time)
+		player.sword_visual.update_action(action, action_time, _thrust_mirror)
 	_accept_attack_press()
 	if action.is_hit_active(action_time):
 		return
@@ -78,31 +135,120 @@ func _can_steer() -> bool:
 	return true
 
 
+func _can_charge() -> bool:
+	var thrust := player.weapon.thrust
+	return thrust != null and thrust.charge_time > 0.0
+
+
+## The wind-up just ended: charge a thrust if the button is held, otherwise carry on as a slash.
+func _decide() -> void:
+	if _can_charge() and Input.is_action_pressed("attack"):
+		_hold_wait = 0.0
+		_freeze_time = action.active_hit.x - FREEZE_MARGIN
+		if hold_extra_time > 0.0:
+			_phase = Phase.WAITING
+		else:
+			_begin_charge()
+	else:
+		_decided = true
+
+
+func _begin_charge() -> void:
+	_phase = Phase.CHARGING
+	_charge_time = 0.0
+	_thrust_mirror = _thrust_side_left
+	if player.sword_visual != null:
+		player.sword_visual.begin_charge()
+
+
+## Waiting (grace) or charging: the action clock is frozen at the end of the wind-up.
+func _update_hold(delta: float) -> void:
+	action_time = _freeze_time
+	if _can_steer():
+		player.face_input(delta)
+	if _try_cancel():
+		return
+	var held := Input.is_action_pressed("attack")
+	if _phase == Phase.WAITING:
+		_hold_wait += delta
+		if player.sword_visual != null:
+			player.sword_visual.update_action(action, action_time)
+		if not held:
+			# Released inside the grace time: a normal slash after all.
+			_phase = Phase.NORMAL
+			_decided = true
+		elif _hold_wait >= hold_extra_time:
+			_begin_charge()
+		return
+	_charge_time += delta
+	var thrust := player.weapon.thrust
+	var fraction := clampf(_charge_time / thrust.charge_time, 0.0, 1.0)
+	if player.sword_visual != null:
+		player.sword_visual.update_charge(thrust, _thrust_mirror, _charge_time, fraction)
+	if not held or fraction >= 1.0:
+		_fire_thrust(fraction)
+
+
+## Release (or max charge): swap the slash for the thrust, scaled by the charge so far.
+func _fire_thrust(fraction: float) -> void:
+	var thrust := player.weapon.thrust
+	damage_multiplier = lerpf(1.0, thrust.charge_damage_max, fraction)
+	_lunge_scale = lerpf(1.0, thrust.charge_lunge_max, fraction)
+	action = thrust
+	action_time = 0.0
+	speed_scale = thrust.speed_scale
+	_phase = Phase.NORMAL
+	_is_thrust = true
+	_decided = true
+	_queued = false
+	_move_dir = Vector3.ZERO
+	_move_speed_multiplier = 1.0
+	_update_lunge_direction(true)
+	if player.sword_visual != null:
+		player.sword_visual.begin_action(action)
+
+
+## Which side a thrust chained from the previous attack starts on: the opposite of a previous
+## thrust's side, or the side where a previous slash ended (from its swing_end pose; a slash
+## ending near the center line counts as right).
+func _side_left_after_previous() -> bool:
+	if _is_thrust:
+		return not _thrust_mirror
+	var lateral := sin(deg_to_rad(action.swing_end.x * 30.0))
+	return lateral < -0.1
+
+
 ## The lunge direction is the movement input at the attack start (no input: facing, at half
 ## strength). While steering is allowed, a held input keeps updating it; releasing the input
-## keeps the last direction and strength.
+## keeps the last direction and strength. A charged thrust scales it by _lunge_scale.
 func _update_lunge_direction(initial: bool) -> void:
 	var input_dir := player.get_move_input()
 	if input_dir.length_squared() > 0.01:
 		input_dir.y = 0.0
 		_move_dir = input_dir.normalized()
-		_move_speed_multiplier = 1.0
+		_move_speed_multiplier = _lunge_scale
 	elif initial:
 		var facing := player.get_facing_direction()
 		facing.y = 0.0
 		_move_dir = facing.normalized()
-		_move_speed_multiplier = no_input_lunge_factor
+		_move_speed_multiplier = no_input_lunge_factor * _lunge_scale
 
 
-## Same as the base, but the lunge stops short of an edge.
+## Same as the base, but there is no lunge while charging, and the lunge stops short of an
+## edge: at least ledge_check_distance, or ledge_check_time of travel at the lunge speed.
 func _apply_action_movement(delta: float) -> void:
-	if _move_dir != Vector3.ZERO and player.is_on_floor() \
-			and not player.has_ground_ahead(_move_dir, ledge_check_distance):
-		var saved := _move_dir
-		_move_dir = Vector3.ZERO
-		super(delta)
-		_move_dir = saved
+	if _phase != Phase.NORMAL:
+		player.decelerate(delta)
 		return
+	if _move_dir != Vector3.ZERO and player.is_on_floor():
+		var check := maxf(ledge_check_distance,
+				action.move_speed * _move_speed_multiplier * ledge_check_time)
+		if not player.has_ground_ahead(_move_dir, check):
+			var saved := _move_dir
+			_move_dir = Vector3.ZERO
+			super(delta)
+			_move_dir = saved
+			return
 	super(delta)
 
 

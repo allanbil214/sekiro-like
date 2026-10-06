@@ -305,14 +305,15 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Dodge: speed / window / end factor | 11 m/s / 0 to 0.30s / 0.3 (current, feels good to the user) |
 | Backstep speed multiplier | 0.7 |
 | Dash speed | 9.0 m/s |
-| Attack timings and lunge speeds | see the Step 3 spec (section 4); the tuned values live in `actions/attack_1..5.tres` |
-| Attack lunge: no-input strength / ledge stop distance | 0.5x / 0.4 m (`AttackState` exports) |
+| Attack timings and lunge speeds | tuned by the user; the current values are in the Step 3 spec (section 4) and live in `actions/attack_1..5.tres` |
+| Attack lunge: no-input strength / ledge stop distance | 0.5x / 0.8 m (`AttackState` exports; 0.8 is the user's scene value, about 1.4 m was suggested for attack 5 at 11.5 m/s) |
 | Sword: pose scale / arm reach | 1.5 / 0.6 m |
 | Sword: shoulder offset / shoulder height / clock center height | 0.35 m / 1.4 m / 1.2 m |
 | Sword: slash arc / wind-up arc (forward bow of the tip path) | 0.5 m / 0.25 m |
 | Sword: wrist angle start / end / follow overshoot / follow relax | 50 deg / -10 deg / 15 deg / 0.5 |
+| Sword: body twist max / arm twist factor | 30 deg / 1.5 (the arms turn 1.5x as far as the body) |
 | Blade length / width | 1.1 m / 0.14 m (the shipped `katana.tres` had 0.08; widened so the edge reads) |
-| Sword rest | clock pose (4, 0.9, 0.3), blade direction (0.15, -0.5, -0.85), edge up (tune in `katana.tres` and `SwordVisual`) |
+| Sword rest | clock pose (4, 0.9, 0.3), blade direction (0.15, -0.5, -0.85), edge down (Rest Edge Direction = (0, -1, 0), set by the user; tune in `katana.tres` and `SwordVisual`) |
 
 ---
 
@@ -342,6 +343,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
    - **3a-1.** Ground 5-attack combo, loop, chain/cancel, flourish, lunge, sword visual, `WeaponData`. **(done)**
    - **3a-2.** Hold detection, charged zigzag thrust, chaining in and out of the thrust.
    - **3b.** Dash, crouch, slide, and jump attack variants (tap and hold).
+   - **3c.** Sheathing (visual only: scabbard, `sheathe` button R, auto-sheathe) and the draw slash 8:00 to 2:00 that chains into attack 1. Design agreed, see the spec section 7b. Needs sheathed and drawn animation sets later.
 4. Hitboxes, damage, hitstop on a dummy enemy; player hurtbox profiles (stand/crouch/air) and duck-under whiffs.
 5. Guard, deflect, shrinking window, jump versions.
 6. Posture, posture break, deathblow (+ player stagger rules).
@@ -378,6 +380,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [x] 3a-1. Ground 5-attack combo, loop, chain/cancel, arm-swing sword visual, `WeaponData` (see the Step 3 spec) **(built; the user saw the combo and the arm-swing sword working and approved the look; cancels, the lunge, and the ledge stop were not formally tested yet)**
 - [ ] 3a-2. Hold, charged zigzag thrust
 - [ ] 3b. Dash, crouch, slide, and jump attack variants
+- [ ] 3c. Sheathing (visual) and the draw slash (design agreed, see the spec section 7b)
 - [ ] 4. Hitboxes, damage, hitstop
 - [ ] 5. Guard, deflect, shrinking window, jump versions
 - [ ] 6. Posture, deathblow, player stagger
@@ -387,7 +390,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Steps 1 to 2d (all traversal) are complete and tested, and **Step 3a-1 is built** (ground combo and the arm-swing sword; see "Step 3a-1: what exists" below). **Next: Step 3a-2** (hold, charged zigzag thrust). The design is in `docs/step3-combat-spec.md` (sections 5 and 7). Start a **new chat** for 3a-2 and paste the handoff, the work agreement, the Step 3 spec, and a fresh snapshot (`python pack_for_claude.py`). Before building, give a quick sanity test of the 3a-1 combat details (cancels, lunge, ledge stop) and report anything off.
+**Current state:** Steps 1 to 2d (all traversal) are complete and tested, and **Step 3a-1 is built** (ground combo and the arm-swing sword; see "Step 3a-1: what exists" below). **Next: Step 3a-2** (hold, charged zigzag thrust; sheathing and the draw slash are planned later as 3c). The design is in `docs/step3-combat-spec.md` (sections 5 and 7). Start a **new chat** for 3a-2 and paste the handoff, the work agreement, the Step 3 spec, and a fresh snapshot (`python pack_for_claude.py`). Before building, give a quick sanity test of the 3a-1 combat details (cancels, lunge, ledge stop) and report anything off.
 
 ### Step 1: what exists
 
@@ -518,7 +521,7 @@ State node names must match exactly (`LedgeClimb`, `LedgeHang`).
 - **Chain:** a press is accepted inside `buffer_window` (the input buffer also remembers a press up to 0.15s before the window opens) and marks the attack `_queued`. The chain happens at `cancel_window.x` (or `locked_until` if the cancel window is unset), never while the active window is open.
 - **Cancels:** dodge, jump, and crouch cancel at any time except while the hit window is active (wind-up and recovery both cancel), and only on the floor. `ActionData.can_cancel()` is not used for these.
 - **Steering and lunge:** before `active_hit.x` the body turns toward the movement input (`face_input`). The lunge direction is the movement input at the attack start (no input: facing, at `no_input_lunge_factor` = 0.5). While steering is allowed, a held input keeps updating the lunge direction; releasing keeps the last direction and strength. Both lock when the active window starts. `_can_steer()` is a hook that returns true; **Step 9 (lock-on) makes it return false while locked on**.
-- **Ledge stop:** if there is no floor within `ledge_check_distance` (0.4 m) ahead in the lunge direction, the lunge is dropped for that frame, so an attack never carries you off a ledge. Leaving the floor any other way just continues the action with gravity, and it ends in Air via Locomotion.
+- **Ledge stop:** if there is no floor within `ledge_check_distance` (default 0.4 m, 0.8 m in the scene) ahead in the lunge direction, the lunge is dropped for that frame, so an attack never carries you off a ledge. Leaving the floor any other way just continues the action with gravity, and it ends in Air via Locomotion.
 - The action finishes into `Locomotion`. No hitboxes or damage yet.
 
 **`SwordVisual`: the arm swing (placeholder)**
@@ -527,7 +530,10 @@ State node names must match exactly (`LedgeClimb`, `LedgeHang`).
 - The aim point travels along a path bowed forward in the middle (**slash arc**, `slash_arc_forward` 0.5; `windup_arc_forward` 0.25 for the wind-up and follow-through), so a slash sweeps through the space in front of the player.
 - The cutting edge (a bright yellow strip on the blade) **leads along the direction of travel** (the path's tangent). `flip_edge` flips it if it is on the wrong side.
 - Segments over `action_time`: previous pose to wind-up (blends from the captured current pose, so chains are smooth), wind-up to end (the active window, fast ease; the blade turns red), end to follow-through (a small wrist overshoot, then it relaxes toward the rest direction by `follow_relax`). With no chain the sword returns to rest over `rest_return_time`.
+- **Body twist (visual only, added after the first arm swing):** the whole arm swing and the capsule's `Nose` rotate around the body's vertical axis, driven by the clock poses (a pose's left/right position sets the twist: `max_twist_degrees` 30 x sin(hour angle), so 3:00 and 9:00 are the strongest, 1:00 and 7:00 half). The twist builds in the wind-up, swings with the slash on the same eases, eases to the follow-through side, and returns to neutral at the end of the combo; a chain starts from the previous twist. The **arms lead the torso**: the arm swing turns `arm_twist_factor` (1.5) times the body twist, while the nose follows the plain body twist. It does not change facing, lunge, steering, or any hitbox (Step 4 decides what the hitbox follows). The nose position is only touched in x and z (the crouch code owns its y).
 - The first version put the **grip** at the pose point; the sword then hung beside the body and swung up and down. The fix was to make the poses aim the arm and keep the tip path in front of the player. Keep this in mind when tuning: the real tip only roughly follows the aim point (the blade bends at the wrist).
+
+**Tuning history (3a-1):** the attacks were slowed twice (about 1.2x each time, with the chain window opening a little later), the lunge distance was raised about 3x in total (attack 5 moves at 11.5 m/s), and attack 1 got a longer wind-up (souls-like opener; this applies when the combo loops back to it). Attack 1's wind-up pose is also drawn back further. The current numbers are in the Step 3 spec, section 4.
 
 **Hooks for later:** `_can_steer()` (Step 9); `active_hit` becomes the hitbox window and `damage` / `posture_damage` get real values in Step 4; guard joins the cancel list in Step 5; 3a-2 adds the thrust to `WeaponData`; 3b adds the variants.
 
@@ -577,6 +583,7 @@ Set **Weapon** on the `Player` root to `weapons/katana.tres`. State node names m
 - **Wrist angle:** the angle between the blade and the arm; positive = trailing (cocked), negative = leading.
 - **Slash arc:** the forward bow of the tip's path during a slash.
 - **Edge-leading:** the cutting edge (the yellow strip) faces the direction of travel.
+- **Body twist / arm lead:** the torso (and nose) rotates toward each pose's side, and the arm swing rotates `arm_twist_factor` times further than the body.
 - **Chain, flourish, lunge, TAE-style:** defined in `docs/step3-combat-spec.md`.
 
 ---

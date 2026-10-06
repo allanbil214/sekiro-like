@@ -41,6 +41,19 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export var swing_end: Vector3 = Vector3.ZERO
 ## Relaxed follow-through pose, played only if the combo is not continued.
 @export var swing_follow: Vector3 = Vector3.ZERO
+## Thrust style: the blade always points at the end pose while the hand moves from the wind-up
+## pose to the end pose (a straight stab), instead of bending at the wrist like a slash.
+@export var blade_aims_at_end: bool = false
+## Scales the body twist for this action (a thrust keeps the body mostly square).
+@export var twist_scale: float = 1.0
+
+@export_group("Charge")
+## Seconds to reach full charge when the attack button is held. 0 = cannot be charged.
+@export var charge_time: float = 0.0
+## Damage multiplier at full charge (1.0 at no charge). Stored now, used in Step 4.
+@export var charge_damage_max: float = 1.5
+## Lunge speed multiplier at full charge (1.0 at no charge).
+@export var charge_lunge_max: float = 1.4
 
 @export_group("Combat")
 @export var damage: float = 0.0
