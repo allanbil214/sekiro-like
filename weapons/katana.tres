@@ -7,10 +7,12 @@
 [ext_resource type="Resource" uid="uid://dw7rfx82nc5vj" path="res://actions/attack_3.tres" id="5_attack3"]
 [ext_resource type="Resource" uid="uid://bv7edob07g0qu" path="res://actions/attack_4.tres" id="6_attack4"]
 [ext_resource type="Resource" uid="uid://2t6ygukwe0e7" path="res://actions/attack_5.tres" id="7_attack5"]
+[ext_resource type="Resource" path="res://actions/dash_attack.tres" id="7_rn1fk"]
 [ext_resource type="Resource" path="res://actions/thrust.tres" id="8_bduk1"]
 
 [resource]
 script = ExtResource("1_weapon")
 combo = Array[ExtResource("2_actiondata")]([ExtResource("3_attack1"), ExtResource("4_attack2"), ExtResource("5_attack3"), ExtResource("6_attack4"), ExtResource("7_attack5")])
 thrust = ExtResource("8_bduk1")
+dash_attack = ExtResource("7_rn1fk")
 rest_pose = Vector3(4, 0.9, 0.3)

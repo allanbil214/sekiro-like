@@ -9,6 +9,10 @@ extends Resource
 ## The charged thrust (hold the attack button at the end of a wind-up). Empty = no thrust.
 @export var thrust: ActionData
 
+@export_group("Variants")
+## Attack pressed while dashing (a slash that continues into the combo; hold = its Hold Action).
+@export var dash_attack: ActionData
+
 @export_group("Blade")
 ## Placeholder box blade, in meters.
 @export var blade_length: float = 1.1

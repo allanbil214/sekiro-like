@@ -10,6 +10,8 @@ extends ActionState
 ## A thrust takes the combo step it falls on. Its side connects to the combo: chained from a
 ## slash it starts on the side where that slash ended; chained from a thrust it takes the
 ## opposite side (zigzag); started from idle it is right-aligned.
+## Variants (3b): Dash, Crouch, and Slide hand over a variant ActionData with
+## try_start_variant(). A variant counts as combo step 1, so the next tap chains to attack 2.
 ## No hitboxes or damage yet (Step 4).
 
 enum Phase { NORMAL, WAITING, CHARGING }
@@ -35,6 +37,9 @@ var combo_index: int = 0
 var damage_multiplier: float = 1.0
 
 var _queued: bool = false
+var _pending_variant: ActionData
+var _is_variant: bool = false
+var _hold_action: ActionData
 var _phase: Phase = Phase.NORMAL
 var _decided: bool = false
 var _is_thrust: bool = false
@@ -48,15 +53,34 @@ var _thrust_mirror: bool = false
 
 func enter(previous: StringName) -> void:
 	var combo := player.weapon.combo
-	if previous == &"Attack":
-		# `action` still holds the attack we are chaining from.
-		_thrust_side_left = _side_left_after_previous()
-		combo_index = (combo_index + 1) % combo.size()
-	else:
+	if _pending_variant != null:
+		# A variant (dash attack and so on) counts as step 1 of the combo.
+		action = _pending_variant
+		_pending_variant = null
+		_is_variant = true
 		_thrust_side_left = false
 		combo_index = 0
-	action = combo[combo_index]
+	else:
+		_is_variant = false
+		if previous == &"Attack":
+			# `action` still holds the attack we are chaining from.
+			_thrust_side_left = _side_left_after_previous()
+			combo_index = (combo_index + 1) % combo.size()
+		else:
+			_thrust_side_left = false
+			combo_index = 0
+		action = combo[combo_index]
 	super.enter(previous)
+
+
+## Another state (Dash, Crouch, Slide) asks to start a variant attack. Returns false if the
+## weapon has none. The state calls this instead of transitioning itself.
+func try_start_variant(variant: ActionData) -> bool:
+	if variant == null:
+		return false
+	_pending_variant = variant
+	machine.transition_to(&"Attack")
+	return true
 
 
 func exit(next: StringName) -> void:
@@ -75,7 +99,11 @@ func get_debug_text() -> String:
 		phase = "ACTIVE"
 	elif action_time >= action.active_hit.y:
 		phase = "recovery"
-	var kind := "THRUST" if _is_thrust else "Combo"
+	var kind := "Combo"
+	if _is_thrust:
+		kind = "THRUST"
+	elif _is_variant:
+		kind = "VARIANT"
 	var text := "%s: %d/%d (%s)\nBuffer: %s  Chain: %s  Queued: %s" % [
 		kind, combo_index + 1, player.weapon.combo.size(), phase,
 		"open" if _in_buffer_window() else "-",
@@ -85,7 +113,7 @@ func get_debug_text() -> String:
 		text += "\nHold: deciding..."
 	elif _phase == Phase.CHARGING:
 		text += "\nCharge: %.2f / %.2f (%s next)" % [
-			_charge_time, player.weapon.thrust.charge_time, "left" if _thrust_mirror else "right"]
+			_charge_time, _hold_action.charge_time, "left" if _thrust_mirror else "right"]
 	elif _is_thrust:
 		text += "\nThrust: %s, damage x%.2f, lunge x%.2f" % [
 			"left" if _thrust_mirror else "right", damage_multiplier, _lunge_scale]
@@ -99,6 +127,7 @@ func _on_action_enter(_previous: StringName) -> void:
 	_is_thrust = false
 	_hold_wait = 0.0
 	_charge_time = 0.0
+	_hold_action = null
 	_lunge_scale = 1.0
 	damage_multiplier = 1.0
 	_update_lunge_direction(true)
@@ -135,28 +164,39 @@ func _can_steer() -> bool:
 	return true
 
 
-func _can_charge() -> bool:
-	var thrust := player.weapon.thrust
-	return thrust != null and thrust.charge_time > 0.0
+## What replaces this attack when the button is held at the end of its wind-up: its own
+## Hold Action, or (for a ground combo attack with none) the weapon's charged thrust.
+func _hold_target() -> ActionData:
+	if action.hold_action != null:
+		return action.hold_action
+	if _is_variant:
+		return null
+	return player.weapon.thrust
 
 
-## The wind-up just ended: charge a thrust if the button is held, otherwise carry on as a slash.
+## The wind-up just ended: hold = swap in the hold action, otherwise carry on as a slash.
 func _decide() -> void:
-	if _can_charge() and Input.is_action_pressed("attack"):
+	var target := _hold_target()
+	if target != null and Input.is_action_pressed("attack"):
+		_hold_action = target
 		_hold_wait = 0.0
 		_freeze_time = action.active_hit.x - FREEZE_MARGIN
 		if hold_extra_time > 0.0:
 			_phase = Phase.WAITING
 		else:
-			_begin_charge()
+			_begin_hold()
 	else:
 		_decided = true
 
 
-func _begin_charge() -> void:
+## Start the hold action: charge first if it has a charge time, otherwise swap it in at once.
+func _begin_hold() -> void:
+	_thrust_mirror = _thrust_side_left
+	if _hold_action.charge_time <= 0.0:
+		_fire_thrust(0.0)
+		return
 	_phase = Phase.CHARGING
 	_charge_time = 0.0
-	_thrust_mirror = _thrust_side_left
 	if player.sword_visual != null:
 		player.sword_visual.begin_charge()
 
@@ -178,10 +218,10 @@ func _update_hold(delta: float) -> void:
 			_phase = Phase.NORMAL
 			_decided = true
 		elif _hold_wait >= hold_extra_time:
-			_begin_charge()
+			_begin_hold()
 		return
 	_charge_time += delta
-	var thrust := player.weapon.thrust
+	var thrust := _hold_action
 	var fraction := clampf(_charge_time / thrust.charge_time, 0.0, 1.0)
 	if player.sword_visual != null:
 		player.sword_visual.update_charge(thrust, _thrust_mirror, _charge_time, fraction)
@@ -189,9 +229,10 @@ func _update_hold(delta: float) -> void:
 		_fire_thrust(fraction)
 
 
-## Release (or max charge): swap the slash for the thrust, scaled by the charge so far.
+## Release (or max charge): swap the slash for the hold action (the thrust), scaled by the
+## charge so far.
 func _fire_thrust(fraction: float) -> void:
-	var thrust := player.weapon.thrust
+	var thrust := _hold_action
 	damage_multiplier = lerpf(1.0, thrust.charge_damage_max, fraction)
 	_lunge_scale = lerpf(1.0, thrust.charge_lunge_max, fraction)
 	action = thrust

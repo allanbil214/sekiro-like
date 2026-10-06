@@ -1,6 +1,6 @@
 # Step 3 Spec: Attacks, Combos, and Variants (Godot 4)
 
-> Companion to `HANDOFF_sekiro_like_prototype.md` (the main handoff). Paste this together with the handoff and the work agreement when working on **Step 3**. All design below is **agreed by the user (2026-10-05); 3a-1 is built (section 7), 3a-2 and 3b are not**. Update the status table (section 1) at the end of each session.
+> Companion to `HANDOFF_sekiro_like_prototype.md` (the main handoff). Paste this together with the handoff and the work agreement when working on **Step 3**. All design below is **agreed by the user (2026-10-05); 3a-1, 3a-2, and 3b-1 are built (section 7), the rest of 3b and 3c are not**. Update the status table (section 1) at the end of each session.
 
 ---
 
@@ -9,8 +9,11 @@
 | Phase | Content | Status |
 |---|---|---|
 | **3a-1** | Ground 5-attack combo, loop, TAE-style chain/cancel, follow-through flourish, blending, lunge, sword visual (arm swing, body twist, arm lead), `WeaponData` | **built**; the user approved the look; cancels, lunge, and the ledge stop not formally tested yet |
-| **3a-2** | Hold detection, charged zigzag thrust, chaining in and out of the thrust | not started |
-| **3b** | Crouch, slide, dash, and jump attack variants (tap and hold each) | not started; send a full check per variant group before building |
+| **3a-2** | Hold detection, charged zigzag thrust, chaining in and out of the thrust | **built and tested by the user**; the zigzag connects to the combo (section 5) |
+| **3b-1** | Dash attack: tap = slash that continues into the combo, hold = simple thrust | **built**; the user tuned the lunge speeds and the slash angle (section 7.9) |
+| **3b-2** | Crouch and slide attacks (3:00 to 9:00 then uncrouch; hold = upward slash 8:00 to 1:00), crouch visuals for the sword | not started; design agreed (section 6), send a full check first |
+| **3b-3** | Air tap loop (2:00 to 10:00, then 10:00 to 2:00, repeating) | not started; design agreed (section 6), send a full check first |
+| **3b-4** | Helm splitter (hold in the air) | not started; design agreed (section 6), send a full check first |
 | **3c** | Sheathing (visual only) and the draw slash | not started; design agreed (2026-10-06), see section 7b; do it after 3a-2 |
 
 Each phase is its own chat: paste handoff + work agreement + this spec + a fresh snapshot (`python pack_for_claude.py`). Confirm quickly with the user before building (the work agreement still applies).
@@ -38,7 +41,7 @@ Hitboxes, damage, and hitstop are **Step 4**. Attacks in Step 3 swing and chain 
 - **Flourish:** after the active window the sword drifts through a relaxed follow-through pose, slightly behind the player. It plays only if the player does not chain or cancel.
 - **Steering:** you can turn toward the movement input during the wind-up; locked once the active window starts. **Also locked while locked on** (Step 9; until then the `AttackState._can_steer()` hook just returns true).
 - **Lunge (forward momentum):** each attack moves the player forward through the action's move window. Direction = movement input at the attack start; with **no input, half strength forward** (in the facing direction). **While steering is allowed (before the active window), a held input keeps updating the direction (full strength); releasing it keeps the last direction and strength.** Attack 5 and the thrust have the most momentum.
-- **Ledge stop:** a lunge never carries the player off an edge. If there is no floor `ledge_check_distance` ahead in the lunge direction (0.4 m default, 0.8 m set by the user, about 1.4 m suggested for attack 5 at 11.5 m/s), the lunge is dropped for that frame.
+- **Ledge stop:** a lunge never carries the player off an edge. If there is no floor `ledge_check_distance` ahead in the lunge direction (0.4 m default, 1.4 m in the user's scene) or `ledge_check_time` (0.14 s) of travel at the current lunge speed, whichever is larger, the lunge is dropped for that frame.
 - **Reset:** the combo counter only continues through direct chains. If the attack finishes without a chain, or any other action takes over, the counter resets to step 1.
 - **Combo counter semantics:** every attack (slash or thrust) advances the same counter through steps 1 to 5 and wraps to 1. A **thrust takes the step it falls on**. Example: attack 1, thrust (step 2), attack 3, thrust (step 4), attack 5, thrust (step 6, wraps to 1), then the next tap is attack 2.
 
@@ -96,10 +99,12 @@ Attack 1 has a deliberately long wind-up (0.35s) like the opener in Souls-likes;
 - **Decision point:** at the end of the wind-up. Still held = charge; released = normal slash.
 - **Charge:** a pulled-back charge pose that glows more as it fills. **Auto-fires at max charge** (placeholder 0.6s). Releasing earlier fires with the charge so far.
 - **Charge scaling:** damage multiplier 1.0 to about 1.5 and lunge 1.0 to about 1.4 at full charge (placeholders). The damage multiplier is stored now and used in Step 4.
-- **Zigzag:** thrusts alternate sides: **right-aligned first**, then left, then right, and so on. The side **resets after any action that is not a thrust**, including a normal attack.
+- **Zigzag (as built, connected to the combo):** a thrust chained from a slash starts on the side where that slash **ended** (attacks 1 and 4 end left, 2, 3, and 5 end right, read from each attack's `swing_end` pose), so the sword is already there. Chained from a thrust it takes the **opposite** side, so repeated thrusts still alternate. Started from idle it is right-aligned. (The first design said the side resets after any normal attack; the user replaced that with this rule.)
 - **Repeatable:** holding again after a thrust charges the next one.
 - **Chaining:** any combo attack can chain into a thrust (hold) and a thrust can chain into the next combo step (see the counter semantics in section 3).
 - **Lunge:** similar to attack 5 (the most forward momentum), scaled by charge.
+
+**As built (3a-2), thrust values** (`actions/thrust.tres`, first-guess numbers scaled to the tuned attacks so the thrust is slower than any slash: its hit window opens at least 0.10 s later than the slash it replaces, and it lasts longer overall): duration 1.2, active_hit 0.10 to 0.26, locked_until 0.26, cancel_window 0.62 to 1.2, buffer_window 0.20 to 1.2, lunge 10.0 m/s over 0 to 0.42 (about 2.1 m, up to 14 m/s and about 2.9 m at full charge), charge_time 0.6, damage max 1.5, lunge max 1.4. **The user later tuned the thrust's lunge speed to 20 m/s.** Details and rules are in section 7.8.
 
 ---
 
@@ -110,12 +115,23 @@ Attack 1 has a deliberately long wind-up (0.35s) like the opener in Souls-likes;
 | Context | Tap | Hold |
 |---|---|---|
 | Ground (standing) | combo (section 4) | zigzag thrust (section 5) |
-| **Dash** (attack while dashing) | simple slash that continues into the combo | simple thrust |
+| **Dash** (attack while dashing) | simple slash, **2:45 to 8:45** (the user's choice), that continues into the combo | simple thrust |
 | **Crouch** | one crouch attack: slash from 3:00 to 9:00, then **uncrouch**; can continue into the combo | upward slash: wind-up to 8:00, slash to 1:00 |
 | **Slide** (attack while sliding) | same as the crouch tap | same as the crouch hold |
 | **Jump** (airborne) | 2-attack loop: slash 2:00 to 10:00, then 10:00 to 2:00, repeating | **helm splitter** (Dante style): faster fall, motion from 12:00 to 6:00, **hold the blade at 6:00 until landing**, then a wind-down that can be cancelled |
 
-Open items for 3b (ask before building): which combo step follows a crouch/slide/dash tap (default proposal: the variant counts as step 1, so the next tap is attack 2); how many air attacks per airtime; the helm splitter's fall-speed multiplier; whether the jump attack stops upward momentum briefly.
+**Decisions (2026-10-06, discussed and agreed with the user):**
+1. Dash, crouch, and slide **tap** variants count as combo step 1: the next tap is attack 2 (as in the first design).
+2. **No charge on any variant hold.** Dash hold = a simple thrust; crouch and slide hold = the upward slash (8:00 to 1:00). Holding at the end of the wind-up just selects a different attack.
+3. **Dash attack:** it ends the dash; the lunge keeps the dash direction at a fixed speed (first guess 7 m/s; the user tuned the dash slash to 15 and the dash thrust to 20).
+4. **Slide attack** is allowed after the slide's locked window, the same rule as the dodge and jump cancels.
+5. **After a crouch attack** you stand up if there is headroom, otherwise stay crouched; chaining into the standing combo also needs headroom.
+6. **Air attacks:** no limit while airborne (the 2:00 to 10:00 / 10:00 to 2:00 loop); the **helm splitter only once per airtime**.
+7. **No hover:** no gravity reduction or upward-speed damping during air attacks (the game is not DMC-style juggling).
+8. **Helm splitter:** gravity multiplier 2.5x while diving, the blade held at 6:00 until landing, then a wind-down that can be cancelled (cancel window from about 0.3 s after landing).
+9. **Crouch visuals:** the sword and arm swing lower with the body when crouched (a `SwordVisual` tweak, done in 3b-2).
+
+**Phases:** 3b-1 dash (also the shared plumbing: variants start through `AttackState.try_start_variant()`, and each action can name its own `hold_action`), 3b-2 crouch and slide, 3b-3 the air tap loop, 3b-4 the helm splitter. A full check before each phase.
 
 ---
 
@@ -129,7 +145,7 @@ Open items for 3b (ask before building): which combo step follows a crouch/slide
 ### 7.2 `WeaponData` (new resource, `resources/weapon_data.gd`)
 - `display_name: String`
 - `combo: Array[ActionData]` (the 5 ground attacks, in order)
-- `blade_length: float` (1.1 m placeholder), `blade_thickness: float` (used as the blade's **width**, edge to spine; 0.14 m)
+- `blade_length: float` (1.1 m placeholder), `blade_thickness: float` (used as the blade's **width**, edge to spine; 0.08 m, the script default)
 - `rest_pose: Vector3` (sword at rest, same pose format as below)
 - Later phases add: `thrust: ActionData`, `dash_attack`, `crouch_attack`, and so on.
 - The Player gets `@export var weapon: WeaponData`; `weapons/katana.tres` is the first weapon.
@@ -147,7 +163,7 @@ Each pose is a clock pose, a `Vector3`: **(clock hour, radius in m, forward in m
 - **Path:** the aim point travels from the wind-up pose to the end pose along a chord bowed forward in the middle (`slash_arc_forward` 0.5 m); the wind-up and follow-through use `windup_arc_forward` (0.25 m). The travel direction at each moment is the path's slope.
 - **Edge:** the strip leads along the travel direction (the edge side is the part of the travel direction perpendicular to the blade). `flip_edge` if it is on the wrong side.
 - Segments over `action_time` (data stays authoritative, no tweens): blend from the captured previous pose to the wind-up, wind-up to end (the active window, fast ease, the blade turns red), end to follow-through. Returns to `rest_pose` (hand on the arm line toward it, blade pointing down and forward, **edge down**: the user set Rest Edge Direction to (0, -1, 0); an edge-up sheathed pose comes in 3c) when the combo ends.
-- **Body twist (visual only):** the arm swing and the capsule's `Nose` rotate around the body's vertical axis. A pose's twist = `max_twist_degrees` (30) x sin(hour angle), positive = to the right, so attack 1 twists right in the wind-up and left with the cut, attack 2 starts left and goes slightly right, attacks 3 and 4 are the strongest, attack 5 is slight. The twist follows the same segments and eases as the sword, chains start from the previous twist, and it returns to neutral when the combo ends. **Arm lead:** the arm swing turns `arm_twist_factor` (1.5) times the body twist; the nose follows the plain body twist. It changes no facing, lunge, steering, or hitbox (Step 4 decides what the hitbox follows). The Nose is only moved in x and z, because the crouch code owns its y.
+- **Body twist (visual only):** the arm swing and the capsule's `Nose` rotate around the body's vertical axis. A pose's twist = `max_twist_degrees` (30) x sin(hour angle), positive = to the right, so attack 1 twists right in the wind-up and left with the cut, attack 2 starts left and goes slightly right, attacks 3 and 4 are the strongest, attack 5 is slight. The twist follows the same segments and eases as the sword, chains start from the previous twist, and it returns to neutral when the combo ends. **Arm lead:** the arm swing turns `arm_twist_factor` (now 2.0, the user raised it from 1.5) times the body twist; the nose follows the plain body twist. It changes no facing, lunge, steering, or hitbox (Step 4 decides what the hitbox follows). The Nose is only moved in x and z, because the crouch code owns its y.
 - The real tip only roughly follows the aim point, since the blade bends at the wrist and its length is fixed.
 - History: the first version placed the **grip** at the pose point and the sword hung beside the body. The poses now aim the arm instead.
 
@@ -162,7 +178,25 @@ Each pose is a clock pose, a `Vector3`: **(clock hour, radius in m, forward in m
 - **Editor:** under `Player/StateMachine` a `Node` named exactly `Attack` (script `attack_state.gd`); under `Player/Visual` a `Node3D` named `SwordVisual` (script `sword_visual.gd`); on the `Player` root **Weapon** set to `weapons/katana.tres`. No Input Map changes.
 
 ### 7.7 Not in 3a-1
-Thrust and hold (3a-2), all variants (3b), hitboxes and damage (Step 4), guard cancels (Step 5), real sword mesh and animation.
+Thrust and hold (built later in 3a-2, see 7.8), all variants (3b), hitboxes and damage (Step 4), guard cancels (Step 5), real sword mesh and animation.
+
+### 7.8 3a-2 as built (hold and the charged thrust)
+- **Files:** new `actions/thrust.tres`; modified `resources/action_data.gd` (`blade_aims_at_end`, `twist_scale`, the Charge group), `resources/weapon_data.gd` (`thrust`), `scripts/player/states/attack_state.gd`, `scripts/player/sword_visual.gd`. **Editor:** set **Thrust** on `weapons/katana.tres` to `actions/thrust.tres`. No new nodes or Input Map changes.
+- **Decision point:** when the action clock reaches `active_hit.x`, a held attack button (with a chargeable thrust on the weapon) starts a charge; otherwise the slash continues. `hold_extra_time` (default 0) can wait for a release first.
+- **Charging:** the action clock is frozen 0.001 s before the hit window opens, so steering and the dodge, jump, and crouch cancels still work. No lunge while charging.
+- **Fire:** release or `charge_time` swaps the slot's slash for the thrust (clock restarts at 0), with damage and lunge multipliers from the charge fraction. `combo_index` is unchanged, so the thrust takes the step it falls on.
+- **Sides:** from the previous slash's `swing_end` side, the opposite of a previous thrust, or right from idle. Left = the right poses mirrored (hour becomes 12 minus hour).
+- **Visuals:** thrust style (hand moves straight from the wind-up pose to the end pose, blade points at the end pose, edge down, body twist scaled by `twist_scale` 0.25); the charge pose is pulled back with an orange glow that grows with the charge. Known quirk: the slash's lunge window usually starts before the decision point, so there can be a small step forward before a charge.
+- **Ledge stop:** speed-aware (see section 3).
+
+### 7.9 3b-1 as built (the dash attack)
+- **Files:** new `actions/dash_attack.tres` and `actions/dash_thrust.tres`; modified `resources/action_data.gd` (`hold_action`), `resources/weapon_data.gd` (a Variants group with `dash_attack`), `scripts/player/states/attack_state.gd`, `scripts/player/states/dash_state.gd`. **Editor:** set **Dash Attack** on `weapons/katana.tres` to `actions/dash_attack.tres` (its Hold Action already points at `dash_thrust.tres`).
+- **Entry:** `DashState` takes an attack press (after the jump check) and calls `AttackState.try_start_variant(weapon.dash_attack)`, which sets a pending variant and transitions to `Attack`. The variant counts as step 1 (`combo_index` 0), so chaining goes to attack 2. A variant's side for a thrust is right; after a chain the connected zigzag rule applies as usual.
+- **`hold_action` (new, on `ActionData`):** what replaces the attack when the button is held at the decision point. `charge_time` 0 on that action = swapped in at once (no charge phase, no glow); above 0 = charged first. Empty on a ground combo attack = the weapon's charged thrust (unchanged); empty on a variant = no hold.
+- **Dash slash (first guess):** duration 0.95, active 0.22 to 0.38, locked_until 0.38, cancel_window 0.50 to 0.95, buffer_window 0.10 to 0.95, lunge 7.0 m/s over 0.05 to 0.40. **Poses (user's change): wind-up 2:45 `(2.75, 0.9, -0.3)`, end 8:45 `(8.75, 0.9, 0.9)`, follow `(9.25, 0.8, -0.3)`.** Because it now ends at 8:45, a held chain out of it starts the thrust on the left.
+- **Dash thrust (first guess):** duration 1.0, active 0.10 to 0.26, cancel_window 0.55 to 1.0, buffer_window 0.20 to 1.0, lunge 8.5 m/s over 0 to 0.35, same poses as the ground thrust, no charge.
+- **User tuning:** `dash_attack` move_speed 15, `dash_thrust` move_speed 20, `thrust` move_speed 20 (it feels good).
+- **Ledge stop note:** it looks ahead `ledge_check_time` (0.14 s) of travel at the lunge speed, so at 20 m/s (times up to 1.4 for a charged thrust) it checks about 3 to 4 m ahead and stops earlier near edges. Lower `ledge_check_time` (for example 0.08) if that is too cautious, at the risk of lunging over an edge.
 
 ---
 

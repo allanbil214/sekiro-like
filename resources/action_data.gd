@@ -54,6 +54,10 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export var charge_damage_max: float = 1.5
 ## Lunge speed multiplier at full charge (1.0 at no charge).
 @export var charge_lunge_max: float = 1.4
+## What replaces this attack when the attack button is still held at the end of its wind-up.
+## If that action has a charge_time above 0 it is charged first; at 0 it starts at once.
+## Empty on a ground combo attack = the weapon's charged thrust; empty on a variant = no hold.
+@export var hold_action: ActionData
 
 @export_group("Combat")
 @export var damage: float = 0.0

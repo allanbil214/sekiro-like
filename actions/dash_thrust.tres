@@ -5,19 +5,16 @@
 [resource]
 script = ExtResource("1_actiondata")
 kind = 0
-animation = &"thrust"
-duration = 1.2
+animation = &"dash_thrust"
+duration = 1.0
 locked_until = 0.26
-cancel_window = Vector2(0.62, 1.2)
-buffer_window = Vector2(0.2, 1.2)
+cancel_window = Vector2(0.55, 1)
+buffer_window = Vector2(0.2, 1)
 active_hit = Vector2(0.1, 0.26)
-move_speed = 20.0
-move_window = Vector2(0, 0.42)
+move_speed = 20
+move_window = Vector2(0, 0.35)
 swing_windup = Vector3(3, 0.5, -0.4)
 swing_end = Vector3(2.5, 0.35, 1.3)
 swing_follow = Vector3(3.5, 0.5, 0.2)
 blade_aims_at_end = true
 twist_scale = 0.25
-charge_time = 0.6
-charge_damage_max = 1.5
-charge_lunge_max = 1.4
