@@ -11,7 +11,10 @@ extends ActionState
 ## slash it starts on the side where that slash ended; chained from a thrust it takes the
 ## opposite side (zigzag); started from idle it is right-aligned.
 ## Variants (3b): Dash, Crouch, and Slide hand over a variant ActionData with
-## try_start_variant(). A variant counts as combo step 1, so the next tap chains to attack 2.
+## try_start_variant(). A dash variant counts as combo step 1, so the next tap chains to
+## attack 2. The crouch variant is a left/right loop (ActionData.combo_next, the second one
+## loops back to the first) that keeps you crouched and ends back in Crouch; holding at the end
+## of a wind-up swaps in the upward slash, which stands you up and chains on into attack 1.
 ## No hitboxes or damage yet (Step 4).
 
 enum Phase { NORMAL, WAITING, CHARGING }
@@ -40,6 +43,11 @@ var _queued: bool = false
 var _pending_variant: ActionData
 var _is_variant: bool = false
 var _hold_action: ActionData
+var _variant_root: ActionData
+## True while the attack plays crouched (it started from Crouch or Slide).
+var _crouch_context: bool = false
+## True after the upward slash stood you up: the next chain is attack 1.
+var _rose: bool = false
 var _phase: Phase = Phase.NORMAL
 var _decided: bool = false
 var _is_thrust: bool = false
@@ -53,11 +61,30 @@ var _thrust_mirror: bool = false
 
 func enter(previous: StringName) -> void:
 	var combo := player.weapon.combo
+	_crouch_context = player.is_crouched
 	if _pending_variant != null:
-		# A variant (dash attack and so on) counts as step 1 of the combo.
+		# A variant (dash attack, crouch loop) counts as step 1 of the combo.
 		action = _pending_variant
 		_pending_variant = null
+		_variant_root = action
 		_is_variant = true
+		_rose = false
+		_thrust_side_left = false
+		combo_index = 0
+	elif previous == &"Attack" and _rose:
+		# The upward slash stood you up: carry on with the combo from attack 1.
+		_rose = false
+		_is_variant = false
+		_thrust_side_left = false
+		combo_index = 0
+		action = combo[0]
+	elif previous == &"Attack" and _is_variant and _variant_root != null \
+			and _variant_root.combo_next != null:
+		# A variant loop (the crouch attacks): follow combo_next, then back to the first.
+		if not _is_thrust and action.combo_next != null:
+			action = action.combo_next
+		else:
+			action = _variant_root
 		_thrust_side_left = false
 		combo_index = 0
 	else:
@@ -89,6 +116,11 @@ func exit(next: StringName) -> void:
 		combo_index = 0
 		_thrust_side_left = false
 		_phase = Phase.NORMAL
+		_rose = false
+		# Leaving a crouch attack for anything but Crouch: stand up (Crouch keeps you crouched).
+		if _crouch_context and next != &"Crouch":
+			player.set_crouched(false)
+		_crouch_context = false
 		if player.sword_visual != null:
 			player.sword_visual.end_combo()
 
@@ -104,6 +136,8 @@ func get_debug_text() -> String:
 		kind = "THRUST"
 	elif _is_variant:
 		kind = "VARIANT"
+	if _crouch_context:
+		kind += " (crouched)"
 	var text := "%s: %d/%d (%s)\nBuffer: %s  Chain: %s  Queued: %s" % [
 		kind, combo_index + 1, player.weapon.combo.size(), phase,
 		"open" if _in_buffer_window() else "-",
@@ -133,6 +167,14 @@ func _on_action_enter(_previous: StringName) -> void:
 	_update_lunge_direction(true)
 	if player.sword_visual != null:
 		player.sword_visual.begin_action(action)
+
+
+## Crouch attacks end back in Crouch (you stay crouched); everything else ends standing.
+func _on_action_finished() -> void:
+	if _crouch_context:
+		machine.transition_to(&"Crouch")
+	else:
+		super()
 
 
 func _on_action_update(delta: float) -> void:
@@ -167,6 +209,9 @@ func _can_steer() -> bool:
 ## What replaces this attack when the button is held at the end of its wind-up: its own
 ## Hold Action, or (for a ground combo attack with none) the weapon's charged thrust.
 func _hold_target() -> ActionData:
+	# Standing up for the upward slash needs headroom.
+	if _crouch_context and not player.can_stand():
+		return null
 	if action.hold_action != null:
 		return action.hold_action
 	if _is_variant:
@@ -242,6 +287,11 @@ func _fire_thrust(fraction: float) -> void:
 	_is_thrust = true
 	_decided = true
 	_queued = false
+	if _crouch_context:
+		# The upward slash out of a crouch: stand up now and carry on as a standing attack.
+		_crouch_context = false
+		_rose = true
+		player.set_crouched(false)
 	_move_dir = Vector3.ZERO
 	_move_speed_multiplier = 1.0
 	_update_lunge_direction(true)
@@ -294,6 +344,8 @@ func _apply_action_movement(delta: float) -> void:
 
 
 func _try_cancel() -> bool:
+	if _crouch_context and player.is_on_floor():
+		return _try_cancel_crouched()
 	if player.is_on_floor():
 		if player.input_buffer.consume(&"dodge"):
 			machine.transition_to(&"Dodge")
@@ -304,6 +356,32 @@ func _try_cancel() -> bool:
 			return true
 		if Input.is_action_just_pressed("crouch"):
 			machine.transition_to(&"Crouch")
+			return true
+	return false
+
+
+## Cancels while crouched follow the Crouch state: dodge and jump need headroom, and pressing
+## crouch (or releasing it, in hold mode) stands you up.
+func _try_cancel_crouched() -> bool:
+	var headroom := player.can_stand()
+	if player.input_buffer.has_pressed(&"dodge"):
+		if headroom:
+			player.input_buffer.consume(&"dodge")
+			machine.transition_to(&"Dodge")
+			return true
+		player.input_buffer.clear(&"dodge")
+	if player.input_buffer.has_pressed(&"jump"):
+		if headroom:
+			player.input_buffer.consume(&"jump")
+			player.start_jump()
+			machine.transition_to(&"Air")
+			return true
+		player.input_buffer.clear(&"jump")
+	if headroom:
+		var wants_stand := not Input.is_action_pressed("crouch") if player.crouch_is_hold \
+				else Input.is_action_just_pressed("crouch")
+		if wants_stand:
+			machine.transition_to(&"Locomotion")
 			return true
 	return false
 

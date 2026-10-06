@@ -90,6 +90,8 @@ var _nose: Node3D
 var _nose_base: Vector3 = Vector3.ZERO
 var _nose_twisted: bool = false
 var _glow: float = 0.0
+var _player: Player
+var _drop: float = 0.0
 var _is_active: bool = false
 var _charging_visual: bool = false
 var _returning: bool = false
@@ -154,6 +156,7 @@ func setup(weapon: WeaponData) -> void:
 	_from_twist = 0.0
 	# The torso twist also turns the capsule's nose (a sibling under Visual).
 	_nose = get_parent().get_node_or_null("Nose") as Node3D
+	_player = get_parent().get_parent() as Player
 	if _nose != null:
 		_nose_base = Vector3(_nose.position.x, 0.0, _nose.position.z)
 	_apply()
@@ -165,7 +168,7 @@ func pose_to_point(pose: Vector3, mirror: bool = false) -> Vector3:
 	var hour := 12.0 - pose.x if mirror else pose.x
 	var angle := deg_to_rad(hour * 30.0)
 	var offset := Vector3(sin(angle) * pose.y, cos(angle) * pose.y, -pose.z)
-	return Vector3(0.0, center_height, 0.0) + offset * pose_scale
+	return Vector3(0.0, center_height - _drop, 0.0) + offset * pose_scale
 
 
 ## An attack starts (or chains): remember where the sword is now so the wind-up blends from it.
@@ -239,6 +242,7 @@ func end_combo() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_crouch_drop(delta)
 	if _glow > 0.0 and not _charging_visual:
 		_glow = move_toward(_glow, 0.0, glow_fade_speed * delta)
 		_refresh_color()
@@ -269,7 +273,7 @@ func _slash_tangent(a: Vector3, b: Vector3, s: float) -> Vector3:
 
 
 func _shoulder() -> Vector3:
-	return Vector3(shoulder_offset, shoulder_height, 0.0)
+	return Vector3(shoulder_offset, shoulder_height - _drop, 0.0)
 
 
 func _arm_direction(tip: Vector3) -> Vector3:
@@ -421,6 +425,25 @@ func _refresh_color() -> void:
 	else:
 		_material.albedo_color = idle_color.lerp(charge_color, _glow)
 	_material.emission_energy_multiplier = _glow * glow_energy
+
+
+## The whole arm swing lowers with the body while crouched, easing like the body does. The
+## stored aim points shift by the same amount so nothing jumps.
+func _update_crouch_drop(delta: float) -> void:
+	if _player == null or _hand == null:
+		return
+	var full_drop := _player.stand_height - _player.crouch_height
+	var target := full_drop if _player.is_crouched else 0.0
+	if is_equal_approx(_drop, target):
+		return
+	var speed := full_drop / maxf(_player.crouch_transition_time, 0.001)
+	var new_drop := move_toward(_drop, target, speed * delta)
+	var shift := new_drop - _drop
+	_tip.y -= shift
+	_from_tip.y -= shift
+	_rest_tip.y -= shift
+	_drop = new_drop
+	_apply()
 
 
 ## Torso twist for a clock pose: positive = twisted to the right, negative = to the left.

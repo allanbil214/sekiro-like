@@ -1,11 +1,10 @@
-[gd_resource type="Resource" script_class="ActionData" format=3]
+[gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://d1cknvhhe60ni"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
-[ext_resource type="Resource" path="res://actions/dash_thrust.tres" id="2_dashthrust"]
+[ext_resource type="Resource" uid="uid://cnos31i7vcmq0" path="res://actions/dash_thrust.tres" id="2_dashthrust"]
 
 [resource]
 script = ExtResource("1_actiondata")
-kind = 0
 animation = &"dash_attack"
 duration = 0.95
 locked_until = 0.38

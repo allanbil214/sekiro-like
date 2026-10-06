@@ -2,15 +2,18 @@ class_name CrouchState
 extends State
 ## Crouched ground movement (slower, shorter body). Toggle by default, or hold if
 ## Player.crouch_is_hold is on. Jump and dodge stand you up into the action, but
-## only when there is headroom; under a low ceiling those presses are ignored.
+## only when there is headroom; under a low ceiling those presses are ignored. Attack
+## starts the weapon's crouch attack loop (you stay crouched).
 
 
 func enter(_previous: StringName) -> void:
 	player.set_crouched(true)
 
 
-func exit(_next: StringName) -> void:
-	player.set_crouched(false)
+func exit(next: StringName) -> void:
+	# Crouch attacks start from here and keep you crouched.
+	if next != &"Attack":
+		player.set_crouched(false)
 
 
 func physics_update(delta: float) -> void:
@@ -32,6 +35,11 @@ func physics_update(delta: float) -> void:
 			machine.transition_to(&"Dodge")
 			return
 		player.input_buffer.clear(&"dodge")
+	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
+		var attack := machine.get_node_or_null("Attack") as AttackState
+		if attack != null and attack.try_start_variant(player.weapon.crouch_attack):
+			player.input_buffer.consume(&"attack")
+			return
 	if headroom:
 		var wants_stand := not Input.is_action_pressed("crouch") if player.crouch_is_hold \
 				else Input.is_action_just_pressed("crouch")

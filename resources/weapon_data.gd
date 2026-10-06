@@ -12,6 +12,9 @@ extends Resource
 @export_group("Variants")
 ## Attack pressed while dashing (a slash that continues into the combo; hold = its Hold Action).
 @export var dash_attack: ActionData
+## Attack pressed while crouched or sliding: the first of a left/right loop (its Combo Next
+## names the second; the second loops back to this one). Hold = its Hold Action, which stands you up.
+@export var crouch_attack: ActionData
 
 @export_group("Blade")
 ## Placeholder box blade, in meters.

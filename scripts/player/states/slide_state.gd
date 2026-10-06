@@ -2,13 +2,14 @@ class_name SlideState
 extends ActionState
 ## Slide: a low burst of movement with i-frames, started by pressing crouch while
 ## dashing. Ends in Crouch. Jump and dodge cancel it after the locked window, but
-## only when there is headroom to stand up.
+## only when there is headroom to stand up. Attack (after the locked window) starts the
+## weapon's crouch attack loop.
 
 
 func exit(next: StringName) -> void:
 	super.exit(next)
 	player.stop_slide_arms()
-	if next != &"Crouch":
+	if next != &"Crouch" and next != &"Attack":
 		player.set_crouched(false)
 
 
@@ -30,6 +31,11 @@ func _on_action_update(_delta: float) -> void:
 		return
 	if not action.can_cancel(action_time):
 		return
+	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
+		var attack := machine.get_node_or_null("Attack") as AttackState
+		if attack != null and attack.try_start_variant(player.weapon.crouch_attack):
+			player.input_buffer.consume(&"attack")
+			return
 	var headroom := player.can_stand()
 	if player.input_buffer.has_pressed(&"jump"):
 		if headroom:

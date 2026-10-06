@@ -65,7 +65,8 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export var guardable: bool = true
 @export var deflectable: bool = true
 @export var pauses_posture_regen: bool = true
-## Next action in a combo. Loop back to the first one for the combo loop.
+## Next attack in a variant loop (the crouch loop; later the air loop). Empty = back to the
+## first attack of the loop. Not used by the ground combo (WeaponData.combo holds that).
 @export var combo_next: ActionData
 
 
