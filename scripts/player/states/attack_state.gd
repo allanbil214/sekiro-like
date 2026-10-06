@@ -52,6 +52,9 @@ var _phase: Phase = Phase.NORMAL
 var _decided: bool = false
 var _is_thrust: bool = false
 var _hold_wait: float = 0.0
+## True once the attack button was up at any time since this action began. A hold only counts
+## if the button stayed down the whole time, so rapid clicks are never read as a hold.
+var _released: bool = false
 var _charge_time: float = 0.0
 var _freeze_time: float = 0.0
 var _lunge_scale: float = 1.0
@@ -81,11 +84,12 @@ func enter(previous: StringName) -> void:
 	elif previous == &"Attack" and _is_variant and _variant_root != null \
 			and _variant_root.combo_next != null:
 		# A variant loop (the crouch attacks): follow combo_next, then back to the first.
+		# A hold out of it starts on the side where the previous attack ended.
+		_thrust_side_left = false if _is_thrust else _side_left_after_previous()
 		if not _is_thrust and action.combo_next != null:
 			action = action.combo_next
 		else:
 			action = _variant_root
-		_thrust_side_left = false
 		combo_index = 0
 	else:
 		_is_variant = false
@@ -160,6 +164,7 @@ func _on_action_enter(_previous: StringName) -> void:
 	_decided = false
 	_is_thrust = false
 	_hold_wait = 0.0
+	_released = false
 	_charge_time = 0.0
 	_hold_action = null
 	_lunge_scale = 1.0
@@ -178,6 +183,8 @@ func _on_action_finished() -> void:
 
 
 func _on_action_update(delta: float) -> void:
+	if _phase == Phase.NORMAL and not Input.is_action_pressed("attack"):
+		_released = true
 	# The decision point is the end of the wind-up: still holding attack = charge a thrust.
 	if _phase == Phase.NORMAL and not _is_thrust and not _decided \
 			and action_time >= action.active_hit.x:
@@ -222,7 +229,7 @@ func _hold_target() -> ActionData:
 ## The wind-up just ended: hold = swap in the hold action, otherwise carry on as a slash.
 func _decide() -> void:
 	var target := _hold_target()
-	if target != null and Input.is_action_pressed("attack"):
+	if target != null and not _released and Input.is_action_pressed("attack"):
 		_hold_action = target
 		_hold_wait = 0.0
 		_freeze_time = action.active_hit.x - FREEZE_MARGIN
@@ -236,7 +243,12 @@ func _decide() -> void:
 
 ## Start the hold action: charge first if it has a charge time, otherwise swap it in at once.
 func _begin_hold() -> void:
-	_thrust_mirror = _thrust_side_left
+	# Thrusts are authored right-handed (mirrored to start left); a slash-style hold action
+	# (the crouch upward slash) is authored left-handed (mirrored to start right).
+	if _hold_action.blade_aims_at_end:
+		_thrust_mirror = _thrust_side_left
+	else:
+		_thrust_mirror = not _thrust_side_left
 	if _hold_action.charge_time <= 0.0:
 		_fire_thrust(0.0)
 		return

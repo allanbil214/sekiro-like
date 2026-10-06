@@ -186,16 +186,16 @@ func update_action(action: ActionData, time: float, mirror: bool = false) -> voi
 	if action.blade_aims_at_end:
 		_update_thrust(action, time, mirror)
 		return
-	var windup_point := pose_to_point(action.swing_windup)
-	var end_point := pose_to_point(action.swing_end)
-	var follow_point := pose_to_point(action.swing_follow)
+	var windup_point := pose_to_point(action.swing_windup, mirror)
+	var end_point := pose_to_point(action.swing_end, mirror)
+	var follow_point := pose_to_point(action.swing_follow, mirror)
 	var windup_end := action.active_hit.x
 	var active_end := action.active_hit.y
 	if time < windup_end:
 		var t := clampf(time / maxf(windup_end, 0.001), 0.0, 1.0)
 		var k := ease(t, windup_ease)
 		_tip = _from_tip.lerp(windup_point, k) + Vector3.FORWARD * windup_arc_forward * sin(PI * k)
-		_twist = lerpf(_from_twist, _pose_twist(action.swing_windup), k)
+		_twist = lerpf(_from_twist, _pose_twist(action.swing_windup, mirror), k)
 		var travel := _slash_tangent(windup_point, end_point, 0.0)
 		var target := _pose(_tip, travel, wrist_start_angle)
 		_blend_orientation(_from_blade, _from_edge, target[0], target[1], k)
@@ -204,7 +204,7 @@ func update_action(action: ActionData, time: float, mirror: bool = false) -> voi
 		var t := clampf((time - windup_end) / maxf(active_end - windup_end, 0.001), 0.0, 1.0)
 		var s := ease(t, slash_ease)
 		_tip = _slash_point(windup_point, end_point, s)
-		_twist = lerpf(_pose_twist(action.swing_windup), _pose_twist(action.swing_end), s)
+		_twist = lerpf(_pose_twist(action.swing_windup, mirror), _pose_twist(action.swing_end, mirror), s)
 		var travel := _slash_tangent(windup_point, end_point, s)
 		var pose := _pose(_tip, travel, lerpf(wrist_start_angle, wrist_end_angle, s))
 		_blade_dir = pose[0]
@@ -214,7 +214,7 @@ func update_action(action: ActionData, time: float, mirror: bool = false) -> voi
 		var t := clampf((time - active_end) / maxf(action.duration - active_end, 0.001), 0.0, 1.0)
 		var k := ease(t, follow_ease)
 		_tip = end_point.lerp(follow_point, k) + Vector3.FORWARD * windup_arc_forward * sin(PI * k)
-		_twist = lerpf(_pose_twist(action.swing_end), _pose_twist(action.swing_follow), k)
+		_twist = lerpf(_pose_twist(action.swing_end, mirror), _pose_twist(action.swing_follow, mirror), k)
 		var travel := _slash_tangent(windup_point, end_point, 1.0)
 		var overshot := _pose(_tip, travel, wrist_end_angle - follow_overshoot)
 		if t < OVERSHOOT_PORTION:
