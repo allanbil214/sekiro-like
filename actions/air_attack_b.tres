@@ -1,12 +1,13 @@
-[gd_resource type="Resource" script_class="ActionData" format=3]
+[gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://dlny273ois6tk"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
+[ext_resource type="Resource" path="res://actions/helm_splitter.tres" id="1_lhwi3"]
 
 [resource]
 script = ExtResource("1_actiondata")
-kind = 0
 animation = &"air_attack_b"
 duration = 0.85
+speed_scale = 1.5
 locked_until = 0.32
 cancel_window = Vector2(0.45, 0.85)
 buffer_window = Vector2(0.1, 0.85)
@@ -14,4 +15,4 @@ active_hit = Vector2(0.18, 0.32)
 swing_windup = Vector3(10, 0.9, -0.3)
 swing_end = Vector3(2, 0.9, 0.9)
 swing_follow = Vector3(2.5, 0.8, -0.3)
-
+hold_action = ExtResource("1_lhwi3")

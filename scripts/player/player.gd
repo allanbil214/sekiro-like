@@ -84,6 +84,8 @@ var reach_ready: bool = true
 var wall_jumps_used: int = 0
 ## The next attack of the air tap loop (empty = start from the first). Landing resets it.
 var air_loop_next: ActionData
+## The helm splitter is once per airtime; landing (reset_air_actions) clears it.
+var helm_used: bool = false
 ## Set by try_air_jump() when it returns true: the surface normal of the wall to jump from.
 var wall_normal: Vector3 = Vector3.ZERO
 ## Set by try_ledge_grab() when it returns true (read by the LedgeClimb state).
@@ -244,6 +246,7 @@ func reset_air_actions() -> void:
 	reach_ready = true
 	wall_jumps_used = 0
 	air_loop_next = null
+	helm_used = false
 
 
 func play_reach_arms() -> void:

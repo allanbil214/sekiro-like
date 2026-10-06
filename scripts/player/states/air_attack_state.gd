@@ -8,10 +8,14 @@ extends ActionState
 ## can turn toward the movement input during the wind-up. Cancels (outside the hit window): a
 ## wall jump or mid-air reach (jump), a ledge grab, and on the floor dodge, jump, and crouch.
 ## Landing mid-swing lets the swing play out; a tap queued by then continues the ground combo
-## at attack 2 (an air attack counts as combo step 1). Holding attack does nothing yet (the
-## helm splitter is 3b-4). No hitboxes or damage yet (Step 4).
+## at attack 2 (an air attack counts as combo step 1). Holding attack at the end of the wind-up
+## hands over to the helm splitter (the action's Hold Action; once per airtime). No hitboxes or
+## damage yet (Step 4).
 
 var _queued: bool = false
+var _decided: bool = false
+## True once attack was up at any time since this action began (rapid taps never read as a hold).
+var _released: bool = false
 
 
 ## Called by the Air state when attack is pressed in the air. Returns false if the weapon has
@@ -33,7 +37,8 @@ func enter(previous: StringName) -> void:
 func exit(next: StringName) -> void:
 	super.exit(next)
 	# A chain (air or ground) carries the sword's pose over; anything else lets it rest.
-	if next != &"AirAttack" and next != &"Attack" and player.sword_visual != null:
+	if next != &"AirAttack" and next != &"Attack" and next != &"HelmSplitter" \
+			and player.sword_visual != null:
 		player.sword_visual.end_combo()
 
 
@@ -52,6 +57,8 @@ func get_debug_text() -> String:
 
 func _on_action_enter(_previous: StringName) -> void:
 	_queued = false
+	_decided = false
+	_released = false
 	if player.sword_visual != null:
 		player.sword_visual.begin_action(action)
 
@@ -60,6 +67,13 @@ func _on_action_update(delta: float) -> void:
 	# Landing resets the air actions (and the loop), even while the swing plays out.
 	if player.is_on_floor() and player.velocity.y <= 0.0:
 		player.reset_air_actions()
+	if not Input.is_action_pressed("attack"):
+		_released = true
+	# Decision point (end of the wind-up): still holding = the helm splitter.
+	if not _decided and action_time >= action.active_hit.x:
+		_decided = true
+		if _try_helm_splitter():
+			return
 	if action_time < action.active_hit.x:
 		player.face_input(delta)
 	if player.sword_visual != null:
@@ -95,6 +109,14 @@ func _chain() -> void:
 		if attack != null and attack.try_continue_combo(1):
 			return
 	machine.transition_to(&"AirAttack")
+
+
+## Hold at the decision point, in the air, once per airtime, with a Hold Action on the attack.
+func _try_helm_splitter() -> bool:
+	if _released or action.hold_action == null or player.helm_used or player.is_on_floor():
+		return false
+	var helm := machine.get_node_or_null("HelmSplitter") as HelmSplitterState
+	return helm != null and helm.start(action.hold_action)
 
 
 func _try_cancel() -> bool:

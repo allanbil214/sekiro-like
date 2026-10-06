@@ -52,6 +52,9 @@ func _process(_delta: float) -> void:
 	var air_attack_state := machine.current as AirAttackState
 	if air_attack_state != null:
 		text += "\n" + air_attack_state.get_debug_text()
+	var helm_state := machine.current as HelmSplitterState
+	if helm_state != null:
+		text += "\n" + helm_state.get_debug_text()
 	_label.text = text
 	if _body != null:
 		if tint_on_iframes and _player.invulnerable:
