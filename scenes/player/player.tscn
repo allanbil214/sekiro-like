@@ -107,6 +107,7 @@ script = ExtResource("17_uf5tr")
 
 [node name="Attack" type="Node" parent="StateMachine" unique_id=1151625086]
 script = ExtResource("19_3j4b4")
+ledge_check_distance = 1.4
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")
