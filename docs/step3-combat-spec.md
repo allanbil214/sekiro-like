@@ -1,6 +1,6 @@
 # Step 3 Spec: Attacks, Combos, and Variants (Godot 4)
 
-> Companion to `HANDOFF_sekiro_like_prototype.md` (the main handoff). Paste this together with the handoff and the work agreement when working on **Step 3**. All design below is **agreed by the user (2026-10-05); 3a-1, 3a-2, and 3b-1 are built (section 7), the rest of 3b and 3c are not**. Update the status table (section 1) at the end of each session.
+> Companion to `HANDOFF_sekiro_like_prototype.md` (the main handoff). Paste this together with the handoff and the work agreement when working on **Step 3**. All design below is **agreed by the user (2026-10-05); 3a-1, 3a-2, 3b-1, 3b-2, and 3b-3 are built (section 7), the rest of 3b and 3c are not**. Update the status table (section 1) at the end of each session.
 
 ---
 
@@ -11,8 +11,8 @@
 | **3a-1** | Ground 5-attack combo, loop, TAE-style chain/cancel, follow-through flourish, blending, lunge, sword visual (arm swing, body twist, arm lead), `WeaponData` | **built**; the user approved the look; cancels, lunge, and the ledge stop not formally tested yet |
 | **3a-2** | Hold detection, charged zigzag thrust, chaining in and out of the thrust | **built and tested by the user**; the zigzag connects to the combo (section 5) |
 | **3b-1** | Dash attack: tap = slash that continues into the combo, hold = simple thrust | **built**; the user tuned the lunge speeds and the slash angle (section 7.9) |
-| **3b-2** | Crouch and slide attacks (3:00 to 9:00 then uncrouch; hold = upward slash 8:00 to 1:00), crouch visuals for the sword | not started; design agreed (section 6), send a full check first |
-| **3b-3** | Air tap loop (2:00 to 10:00, then 10:00 to 2:00, repeating) | not started; design agreed (section 6), send a full check first |
+| **3b-2** | Crouch and slide attacks (a 3:00 to 9:00 / 9:00 to 3:00 loop that keeps you crouched; hold = the upward slash, alternating sides), crouch visuals for the sword | **built and tested by the user**; as built differs from the first design (section 7.10) |
+| **3b-3** | Air tap loop (2:00 to 10:00, then 10:00 to 2:00, repeating) | **built and tested by the user** (section 7.11) |
 | **3b-4** | Helm splitter (hold in the air) | not started; design agreed (section 6), send a full check first |
 | **3c** | Sheathing (visual only) and the draw slash | not started; design agreed (2026-10-06), see section 7b; do it after 3a-2 |
 
@@ -28,7 +28,7 @@ Hitboxes, damage, and hitstop are **Step 4**. Attacks in Step 3 swing and chain 
 - A slash is the **sword tip passing from one clock pose to the other, across the front of the body**, swung by an **arm swing** (see below). The path bows forward in the middle (the **slash arc**) so it sweeps through the space in front of the player. The wind-up pose is cocked back (behind and above); the end of the slash is in front.
 - **Clock pose** = a `Vector3` (hour, radius in m, forward in m) saying where the sword's **tip** should pass; it is turned into an **aim point** (radius and forward times `pose_scale`) that the arm points at.
 - **Arm swing** = the placeholder sword motion: the arm points from the right shoulder to the aim point, the hand sits at arm's reach, the blade bends at the wrist (**wrist angle**: cocked at the start of a cut, straightening through it), and the cutting edge leads along the direction of travel. Details in section 7.4.
-- **Tap** = the attack button released before the decision point. **Hold** = still held at the decision point (the end of the wind-up, where the active window would begin). Quick taps cost no extra latency because the wind-up exists anyway.
+- **Tap** = the attack button released before the decision point. **Hold** = still held at the decision point (the end of the wind-up, where the active window would begin). Quick taps cost no extra latency because the wind-up exists anyway. A hold only counts if the button stayed down since the action began (rapid clicks never read as a hold).
 - **TAE-style behavior:** with no input the whole action plays out (including the flourish). A buffered input cuts the action at the earliest allowed point for that input, and the next action blends from the current pose.
 
 ---
@@ -116,7 +116,7 @@ Attack 1 has a deliberately long wind-up (0.35s) like the opener in Souls-likes;
 |---|---|---|
 | Ground (standing) | combo (section 4) | zigzag thrust (section 5) |
 | **Dash** (attack while dashing) | simple slash, **2:45 to 8:45** (the user's choice), that continues into the combo | simple thrust |
-| **Crouch** | one crouch attack: slash from 3:00 to 9:00, then **uncrouch**; can continue into the combo | upward slash: wind-up to 8:00, slash to 1:00 |
+| **Crouch** | **as built:** a loop, 3:00 to 9:00 then 9:00 to 3:00, repeating; you stay crouched (the first design was one slash that uncrouches) | upward slash: wind-up to 8:00, slash to 1:00, stands you up and chains into attack 1; starts on the side where the previous attack ended (section 7.10) |
 | **Slide** (attack while sliding) | same as the crouch tap | same as the crouch hold |
 | **Jump** (airborne) | 2-attack loop: slash 2:00 to 10:00, then 10:00 to 2:00, repeating | **helm splitter** (Dante style): faster fall, motion from 12:00 to 6:00, **hold the blade at 6:00 until landing**, then a wind-down that can be cancelled |
 
@@ -125,8 +125,8 @@ Attack 1 has a deliberately long wind-up (0.35s) like the opener in Souls-likes;
 2. **No charge on any variant hold.** Dash hold = a simple thrust; crouch and slide hold = the upward slash (8:00 to 1:00). Holding at the end of the wind-up just selects a different attack.
 3. **Dash attack:** it ends the dash; the lunge keeps the dash direction at a fixed speed (first guess 7 m/s; the user tuned the dash slash to 15 and the dash thrust to 20).
 4. **Slide attack** is allowed after the slide's locked window, the same rule as the dodge and jump cancels.
-5. **After a crouch attack** you stand up if there is headroom, otherwise stay crouched; chaining into the standing combo also needs headroom.
-6. **Air attacks:** no limit while airborne (the 2:00 to 10:00 / 10:00 to 2:00 loop); the **helm splitter only once per airtime**.
+5. **After a crouch attack** you stay crouched (changed in 3b-2: the tap is a loop). Only the hold (the upward slash) stands you up, and it needs headroom.
+6. **Air attacks:** no limit while airborne (the 2:00 to 10:00 / 10:00 to 2:00 loop, built in 3b-3 as its own `AirAttack` state; landing restarts the loop); the **helm splitter only once per airtime**.
 7. **No hover:** no gravity reduction or upward-speed damping during air attacks (the game is not DMC-style juggling).
 8. **Helm splitter:** gravity multiplier 2.5x while diving, the blade held at 6:00 until landing, then a wind-down that can be cancelled (cancel window from about 0.3 s after landing).
 9. **Crouch visuals:** the sword and arm swing lower with the body when crouched (a `SwordVisual` tweak, done in 3b-2).
@@ -197,6 +197,23 @@ Thrust and hold (built later in 3a-2, see 7.8), all variants (3b), hitboxes and 
 - **Dash thrust (first guess):** duration 1.0, active 0.10 to 0.26, cancel_window 0.55 to 1.0, buffer_window 0.20 to 1.0, lunge 8.5 m/s over 0 to 0.35, same poses as the ground thrust, no charge.
 - **User tuning:** `dash_attack` move_speed 15, `dash_thrust` move_speed 20, `thrust` move_speed 20 (it feels good).
 - **Ledge stop note:** it looks ahead `ledge_check_time` (0.14 s) of travel at the lunge speed, so at 20 m/s (times up to 1.4 for a charged thrust) it checks about 3 to 4 m ahead and stops earlier near edges. Lower `ledge_check_time` (for example 0.08) if that is too cautious, at the risk of lunging over an edge.
+
+### 7.10 3b-2 as built (crouch and slide attacks)
+- **Files:** new `actions/crouch_attack_a.tres`, `crouch_attack_b.tres`, `crouch_upward.tres`; modified `resources/action_data.gd` (`combo_next`), `resources/weapon_data.gd` (`crouch_attack`), `scripts/player/states/attack_state.gd`, `crouch_state.gd`, `slide_state.gd`, `scripts/player/sword_visual.gd`. **Editor:** set **Crouch Attack** on `weapons/katana.tres` to `actions/crouch_attack_a.tres`.
+- **Loop:** crouch or slide + attack starts A (3:00 to 9:00); a chained tap goes to B (9:00 to 3:00), then back to A. Each ends in Crouch. Slide attacks are allowed after the slide's locked window. Taps count as combo step 1.
+- **Hold:** at the end of any crouch attack's wind-up it is replaced by the upward slash (8:00 to 1:00, no charge); it stands you up (needs headroom, otherwise a hold does nothing) and the next tap is attack 1.
+- **Alternating sides:** the upward slash starts where the previous attack ended: after A from the left (as authored), after B from the right (mirrored 4:00 to 11:00), from crouch idle or slide from the right (mirrored). The mirror rule: thrusts (`blade_aims_at_end`) are authored right-handed, slash-style hold actions left-handed; `SwordVisual` now honors `mirror` on the slash path (poses and body twist).
+- **Hold fix:** `_released` in `AttackState` makes a hold require a continuously held button since the action began; applies to all attacks.
+- **Crouch visuals:** `SwordVisual._update_crouch_drop` lowers the arm swing with the body.
+- **Values:** in the handoff, "Step 3b-2: what exists".
+
+### 7.11 3b-3 as built (the air tap loop)
+- **Files:** new `scripts/player/states/air_attack_state.gd`, `actions/air_attack_a.tres`, `actions/air_attack_b.tres`; modified `air_state.gd` (entry), `attack_state.gd` (`try_continue_combo`), `player.gd` (`air_loop_next`), `resources/weapon_data.gd` (`air_attack`), `scripts/ui/debug_overlay.gd`. **Editor:** a `Node` named `AirAttack` under `StateMachine` with the new script; set **Air Attack** on `weapons/katana.tres`.
+- **Design as built:** a separate state (`AirAttackState extends ActionState`). A press in the air (not near the ground) starts A; chained taps follow `combo_next`, then loop. `Player.air_loop_next` tracks the loop and `reset_air_actions()` (landing) restarts it. No lunge, no hover, normal air control, steering during the wind-up.
+- **Cancels** (outside the hit window): ledge grab, jump (wall jump or the reach), and on the floor dodge, jump, crouch. No air dodge.
+- **Landing mid-swing:** the swing plays out; a queued tap continues the ground combo at attack 2.
+- **Not hooked up:** attacking during the wall-jump action. **Hold in the air** does nothing until 3b-4.
+- **Values:** in the handoff, "Step 3b-3: what exists".
 
 ---
 

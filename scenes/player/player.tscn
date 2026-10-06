@@ -21,6 +21,7 @@
 [ext_resource type="Resource" path="res://actions/ledge_climb.tres" id="16_uf5tr"]
 [ext_resource type="Script" uid="uid://d12d2s8f0emov" path="res://scripts/player/states/ledge_hang_state.gd" id="17_uf5tr"]
 [ext_resource type="Script" uid="uid://lildwbaa2uws" path="res://scripts/player/states/attack_state.gd" id="19_3j4b4"]
+[ext_resource type="Script" uid="uid://dqdrrj1rqs24h" path="res://scripts/player/states/air_attack_state.gd" id="21_yj68g"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -109,6 +110,9 @@ script = ExtResource("17_uf5tr")
 [node name="Attack" type="Node" parent="StateMachine" unique_id=1151625086]
 script = ExtResource("19_3j4b4")
 ledge_check_distance = 1.4
+
+[node name="AirAttack" type="Node" parent="StateMachine" unique_id=1182446338]
+script = ExtResource("21_yj68g")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")

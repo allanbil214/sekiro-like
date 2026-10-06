@@ -82,6 +82,8 @@ var is_crouched: bool = false
 ## Mid-air reach is once per airtime; a wall jump restores it. Landing resets both.
 var reach_ready: bool = true
 var wall_jumps_used: int = 0
+## The next attack of the air tap loop (empty = start from the first). Landing resets it.
+var air_loop_next: ActionData
 ## Set by try_air_jump() when it returns true: the surface normal of the wall to jump from.
 var wall_normal: Vector3 = Vector3.ZERO
 ## Set by try_ledge_grab() when it returns true (read by the LedgeClimb state).
@@ -241,6 +243,7 @@ func _fits_standing_at(feet: Vector3) -> bool:
 func reset_air_actions() -> void:
 	reach_ready = true
 	wall_jumps_used = 0
+	air_loop_next = null
 
 
 func play_reach_arms() -> void:

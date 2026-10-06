@@ -349,8 +349,8 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
    - **3a-2.** Hold detection, charged zigzag thrust, chaining in and out of the thrust. **(done)**
    - **3b.** Dash, crouch, slide, and jump attack variants (tap and hold), split into four phases (decisions in the spec, section 6):
      - **3b-1.** Dash attack (tap = slash that continues into the combo, hold = simple thrust), plus the shared variant plumbing. **(done)**
-     - **3b-2.** Crouch and slide attacks, and the sword and arm swing lowering with the body when crouched.
-     - **3b-3.** Air tap loop (2:00 to 10:00, then 10:00 to 2:00, repeating, no limit while airborne).
+     - **3b-2.** Crouch and slide attacks (a left/right tap loop that keeps you crouched; hold = the upward slash, which alternates sides), and the sword and arm swing lowering with the body when crouched. **(done)**
+     - **3b-3.** Air tap loop (2:00 to 10:00, then 10:00 to 2:00, repeating, no limit while airborne). **(done)**
      - **3b-4.** Helm splitter (hold in the air, once per airtime, faster fall, held at 6:00 until landing).
    - **3c.** Sheathing (visual only: scabbard, `sheathe` button R, auto-sheathe) and the draw slash 8:00 to 2:00 that chains into attack 1. Design agreed, see the spec section 7b. Needs sheathed and drawn animation sets later.
 4. Hitboxes, damage, hitstop on a dummy enemy; player hurtbox profiles (stand/crouch/air) and duck-under whiffs.
@@ -389,8 +389,8 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [x] 3a-1. Ground 5-attack combo, loop, chain/cancel, arm-swing sword visual, `WeaponData` (see the Step 3 spec) **(built; the user saw the combo and the arm-swing sword working and approved the look; cancels, the lunge, and the ledge stop were not formally tested yet)**
 - [x] 3a-2. Hold, charged zigzag thrust that connects to the combo (see "Step 3a-2: what exists") **(done and tested by the user)**
 - [x] 3b-1. Dash attack (tap and hold) and the shared variant plumbing **(done and tested by the user; lunge speeds and the 2:45 to 8:45 angle tuned by the user)**
-- [ ] 3b-2. Crouch and slide attacks, crouch visuals for the sword
-- [ ] 3b-3. Air tap loop
+- [x] 3b-2. Crouch and slide attacks, crouch visuals for the sword (see "Step 3b-2: what exists") **(done and tested by the user; the rapid-click hold fix and the alternating upward slash were added and tested 2026-10-06)**
+- [x] 3b-3. Air tap loop (see "Step 3b-3: what exists") **(done and tested by the user)**
 - [ ] 3b-4. Helm splitter
 - [ ] 3c. Sheathing (visual) and the draw slash (design agreed, see the spec section 7b)
 - [ ] 4. Hitboxes, damage, hitstop
@@ -402,7 +402,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Steps 1 to 2d (all traversal) are complete and tested, and **Steps 3a-1 (ground combo, arm-swing sword), 3a-2 (hold, charged zigzag thrust), and 3b-1 (dash attack) are built and tested** (see "Step 3a-1: what exists", "Step 3a-2: what exists", and "Step 3b-1: what exists" below). **Next: Step 3b-2** (crouch and slide attacks) **or 3c** (sheathing and the draw slash); the user picks the order, and Step 4 (hitboxes, damage, hitstop) follows. The design is in `docs/step3-combat-spec.md` (sections 6, 7, and 7b). Start a **new chat** for each phase and paste the handoff, the work agreement, the Step 3 spec, and a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
+**Current state:** Steps 1 to 2d (all traversal) are complete and tested, and **Steps 3a-1 (ground combo, arm-swing sword), 3a-2 (hold, charged zigzag thrust), 3b-1 (dash attack), 3b-2 (crouch and slide attacks), and 3b-3 (air tap loop) are built and tested** (see "Step 3a-1: what exists", "Step 3a-2: what exists", "Step 3b-1: what exists", "Step 3b-2: what exists", and "Step 3b-3: what exists" below). **Next: Step 3b-4** (helm splitter) **or 3c** (sheathing and the draw slash); the user picks the order, and Step 4 (hitboxes, damage, hitstop) follows. The design is in `docs/step3-combat-spec.md` (sections 6, 7, and 7b). Start a **new chat** for each phase and paste the handoff, the work agreement, the Step 3 spec, and a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
 
 ### Step 1: what exists
 
@@ -598,6 +598,51 @@ Set **Weapon** on the `Player` root to `weapons/katana.tres`. State node names m
 **Ledge stop with big lunges:** the lunge looks ahead `ledge_check_time` (0.14 s) of travel at the lunge speed, so at 20 m/s (up to 1.4x for a charged thrust) it checks about 3 to 4 m ahead and stops earlier near edges. Lower `ledge_check_time` on `StateMachine/Attack` (for example 0.08) if that is too cautious.
 
 **Not done in 3b-1:** crouch and slide attacks (3b-2), the air tap loop (3b-3), the helm splitter (3b-4), sheathing (3c), hitboxes and damage (Step 4).
+
+### Step 3b-2: what exists
+
+**As built (differs from the first design):** crouch and slide attacks are a **two-attack left/right loop that keeps you crouched**, not a single attack that stands you up.
+- **Tap loop:** attack A (3:00 to 9:00, left-ward) then attack B (9:00 to 3:00, right-ward), then back to A, as long as you keep tapping. After each one you end back in Crouch. Every crouch or slide tap counts as combo step 1 (`combo_index` 0).
+- **Hold = the upward slash** (`crouch_upward`, authored 8:00 to 1:00): held at the end of any crouch attack's wind-up it replaces that attack (no charge). It **stands you up** (needs headroom; without headroom a hold does nothing) and the next chained tap is **attack 1** of the standing combo.
+- **Alternating sides (2026-10-06):** the upward slash starts on the side where the previous attack ended: after A (ended left) from the left (8:00 to 1:00, as authored); after B (ended right) from the right (mirrored, 4:00 to 11:00); from crouch idle or slide, or in the first attack of the loop after idle, from the right (mirrored). Thrusts are authored right-handed and mirrored to start left; a slash-style hold action (no `blade_aims_at_end`) is authored left-handed and mirrored to start right.
+- **Slide attack:** the same loop, allowed after the slide's locked window (`SlideState` calls `try_start_variant(weapon.crouch_attack)` like `CrouchState`).
+- **Hold detection fix (2026-10-06):** `AttackState` tracks `_released`, true once the attack button was up at any time since the action began. A hold counts only if the button was never released, so rapid clicks are no longer read as a hold (previously only `is_action_pressed` at the decision point was checked, so a second quick click landing at the decision point counted). It applies to every attack, including the ground and dash thrusts.
+- **Crouch visuals:** `SwordVisual._update_crouch_drop` lowers the whole arm swing with the body while crouched (stored aim points shift by the same amount, so nothing jumps).
+
+**Files** (editor step: on `weapons/katana.tres` set **Crouch Attack** (Variants group) to `actions/crouch_attack_a.tres`)
+- `actions/crouch_attack_a.tres`, `crouch_attack_b.tres`, `crouch_upward.tres`: `ActionData`. A's Combo Next = B, A's and B's Hold Action = the upward slash. **Never overwrite; changes come as "change X to Y".**
+- `resources/action_data.gd`: new `combo_next` (next attack in a variant loop; empty = back to the first). `resources/weapon_data.gd`: `crouch_attack`.
+- `scripts/player/states/attack_state.gd`: `_crouch_context` (the attack plays crouched; it ends in Crouch, and leaving to anything but Crouch stands you up), `_rose` (after the upward slash the next chain is attack 1), `_released`, `_hold_target()` (headroom check), crouched cancels follow the Crouch state's rules (dodge and jump need headroom, crouch press or hold-release stands you up).
+- `scripts/player/states/crouch_state.gd` and `slide_state.gd`: an attack press starts the crouch loop.
+- `scripts/player/sword_visual.gd`: the slash path now honors the `mirror` flag (poses and body twist), used by the mirrored upward slash.
+
+**Values in the snapshot (2026-10-06, seconds and m/s):**
+
+| Action | duration | active_hit | cancel_window | buffer_window | lunge | poses |
+|---|---|---|---|---|---|---|
+| crouch A | 0.80 | 0.20 to 0.34 | 0.45 to 0.80 | 0.10 to 0.80 | 6.0, 0.05 to 0.30 | 3:00 to 9:00, follow 9:30 |
+| crouch B | 1.25 | 0.18 to 0.32 | 0.95 to 1.25 | 0.10 to 1.25 | 6.0, 0.05 to 0.28 | 9:00 to 3:00, follow 3:30 |
+| crouch upward | 1.00 | 0.22 to 0.38 | 0.55 to 1.00 | 0.12 to 1.00 | 6.0, 0.05 to 0.35 | 8:00 to 1:00, follow 1:30 |
+
+**Not done in 3b-2:** the air tap loop (3b-3), the helm splitter (3b-4), sheathing (3c), hitboxes and damage (Step 4).
+
+### Step 3b-3: what exists
+
+- **Behavior:** attack pressed while airborne starts the **air tap loop**: A (2:00 to 10:00), then B (10:00 to 2:00), then A again, with no limit while airborne. It is its own state, `AirAttack` (`AirAttackState extends ActionState`), not part of `AttackState`.
+- **Loop reset:** `Player.air_loop_next` holds the next attack of the loop (empty = the first); `reset_air_actions()` clears it, so **landing restarts the loop at A**. A swing that ends without a chain does not reset it.
+- **Movement:** no lunge, no hover. Normal air control (`apply_horizontal_movement`), gravity as usual, and the body turns toward the movement input during the wind-up. After landing mid-swing the player brakes with `decelerate`.
+- **Entry:** `AirState` starts it on an attack press (buffered press) when `is_near_ground()` is false. Near the ground the press stays buffered, so landing makes it a normal ground attack. Coyote time and falling off a ledge count as airborne. **Not hooked up:** attacking during the wall-jump action itself (it works once the wall jump has finished and you are in `Air`).
+- **Cancels (outside the hit window):** in the air a ledge grab and jump (wall jump, else the mid-air reach); on the floor dodge, jump, and crouch. **No air dodge.**
+- **Landing mid-swing:** the swing plays out. A tap queued by then continues the ground combo at **attack 2** through `AttackState.try_continue_combo(1)` (an air attack counts as combo step 1); with no queued tap it ends in Locomotion.
+- **Hold in the air:** nothing yet (3b-4 adds the helm splitter).
+
+**Files** (editor steps: under `Player/StateMachine` add a `Node` named exactly `AirAttack` with `scripts/player/states/air_attack_state.gd`; on `weapons/katana.tres` set **Air Attack** (Variants group) to `actions/air_attack_a.tres`)
+- `actions/air_attack_a.tres` and `air_attack_b.tres`: `ActionData` (A's Combo Next = B). No Hold Action yet. **Never overwrite; changes come as "change X to Y".**
+- `scripts/player/states/air_attack_state.gd` (new), `air_state.gd` (the entry), `attack_state.gd` (`try_continue_combo`, `_pending_index`), `player.gd` (`air_loop_next`, cleared in `reset_air_actions`), `resources/weapon_data.gd` (`air_attack`), `scripts/ui/debug_overlay.gd` (shows the air attack line).
+
+**First-guess values** (A and B alike, seconds): duration 0.85, locked_until 0.32, active_hit 0.18 to 0.32, cancel_window 0.45 to 0.85, buffer_window 0.10 to 0.85, move_speed 0. Poses: A wind-up 2:00 `(2, 0.9, -0.3)`, end 10:00 `(10, 0.9, 0.9)`, follow `(10.5, 0.8, -0.3)`; B the mirror (10:00 to 2:00, follow `(2.5, 0.8, -0.3)`). Retune freely; the user has not changed them yet.
+
+**Not done in 3b-3:** the helm splitter (3b-4), sheathing (3c), hitboxes and damage (Step 4).
 
 ---
 

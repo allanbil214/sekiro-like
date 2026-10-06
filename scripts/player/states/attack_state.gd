@@ -41,6 +41,8 @@ var damage_multiplier: float = 1.0
 
 var _queued: bool = false
 var _pending_variant: ActionData
+## Set by try_continue_combo(): start the ground combo at this zero-based step (-1 = none).
+var _pending_index: int = -1
 var _is_variant: bool = false
 var _hold_action: ActionData
 var _variant_root: ActionData
@@ -74,6 +76,14 @@ func enter(previous: StringName) -> void:
 		_rose = false
 		_thrust_side_left = false
 		combo_index = 0
+	elif _pending_index >= 0:
+		# Handed over from an air attack that landed: carry on with the ground combo.
+		combo_index = clampi(_pending_index, 0, combo.size() - 1)
+		_pending_index = -1
+		_is_variant = false
+		_rose = false
+		_thrust_side_left = false
+		action = combo[combo_index]
 	elif previous == &"Attack" and _rose:
 		# The upward slash stood you up: carry on with the combo from attack 1.
 		_rose = false
@@ -110,6 +120,16 @@ func try_start_variant(variant: ActionData) -> bool:
 	if variant == null:
 		return false
 	_pending_variant = variant
+	machine.transition_to(&"Attack")
+	return true
+
+
+## The air attack landed with a tap queued: continue the ground combo at this zero-based step
+## (1 = attack 2, since an air attack counts as step 1). Returns false if there is no combo.
+func try_continue_combo(index: int) -> bool:
+	if player.weapon == null or player.weapon.combo.is_empty():
+		return false
+	_pending_index = index
 	machine.transition_to(&"Attack")
 	return true
 

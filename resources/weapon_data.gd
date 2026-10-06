@@ -15,6 +15,9 @@ extends Resource
 ## Attack pressed while crouched or sliding: the first of a left/right loop (its Combo Next
 ## names the second; the second loops back to this one). Hold = its Hold Action, which stands you up.
 @export var crouch_attack: ActionData
+## Attack pressed while airborne: the first of a loop (its Combo Next names the second; the
+## second loops back to this one). No hold variant yet (the helm splitter comes in 3b-4).
+@export var air_attack: ActionData
 
 @export_group("Blade")
 ## Placeholder box blade, in meters.

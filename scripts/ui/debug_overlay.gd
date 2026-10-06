@@ -49,6 +49,9 @@ func _process(_delta: float) -> void:
 	var attack_state := machine.current as AttackState
 	if attack_state != null:
 		text += "\n" + attack_state.get_debug_text()
+	var air_attack_state := machine.current as AirAttackState
+	if air_attack_state != null:
+		text += "\n" + air_attack_state.get_debug_text()
 	_label.text = text
 	if _body != null:
 		if tint_on_iframes and _player.invulnerable:
