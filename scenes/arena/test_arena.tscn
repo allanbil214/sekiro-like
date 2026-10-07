@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_btlyn"]
 [ext_resource type="PackedScene" path="res://scenes/enemy/dummy.tscn" id="2_kti05"]
+[ext_resource type="PackedScene" uid="uid://bntfdj8gcmn7r" path="res://scenes/enemy/enemy.tscn" id="3_wt5dk"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -24,6 +25,10 @@ albedo_color = Color(0, 1, 1, 1)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1589050391]
 environment = SubResource("Environment_wt5dk")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=989296371]
+transform = Transform3D(0.81729025, -0.4414149, 0.3703911, 0, 0.64278764, 0.76604444, -0.57622623, -0.62608063, 0.5253441, 0, 10.818325, 12.643993)
+shadow_enabled = true
 
 [node name="Floor" type="CSGBox3D" parent="." unique_id=1387525308]
 transform = Transform3D(-0.5, 0, 0, 0, -0.5, 0, 0, 0, -0.5, 0, 0, 0)
@@ -67,24 +72,23 @@ use_collision = true
 size = Vector3(8, 6.057243, 0.5)
 material = SubResource("StandardMaterial3D_lh4ft")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=989296371]
-transform = Transform3D(0.81729025, -0.4414149, 0.3703911, 0, 0.64278764, 0.76604444, -0.57622623, -0.62608063, 0.5253441, 0, 10.818325, 12.643993)
-shadow_enabled = true
-
-[node name="Player" parent="." unique_id=1991767212 instance=ExtResource("1_btlyn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
-
 [node name="Gap" type="CSGBox3D" parent="." unique_id=187459232]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5731297, 2.0931957, -3.6003382)
 use_collision = true
 size = Vector3(3, 0.324927, 3)
 material = SubResource("StandardMaterial3D_lh4ft")
 
-[node name="Dummy" parent="." unique_id=1141339365 instance=ExtResource("2_kti05")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2741022, 0.35307217, -6.604761)
-
 [node name="Gap2" type="CSGBox3D" parent="." unique_id=1602716903]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.790889, 3.738432, -5.583893)
 use_collision = true
 size = Vector3(3, 0.324927, 3)
 material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="Player" parent="." unique_id=1991767212 instance=ExtResource("1_btlyn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
+
+[node name="Dummy" parent="." unique_id=1141339365 instance=ExtResource("2_kti05")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2741022, 0.35307217, 10.986627)
+
+[node name="Enemy" parent="." unique_id=1794124896 instance=ExtResource("3_wt5dk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13450336, 0.25, -9.79158)

@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemy/enemy.gd" id="1_enemy"]
+[ext_resource type="Resource" path="res://ai/enemy_default.tres" id="2_ai"]
+[ext_resource type="Resource" path="res://weapons/katana.tres" id="3_weapon"]
+[ext_resource type="Script" path="res://scripts/player/sword_visual.gd" id="4_sword"]
+[ext_resource type="Script" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]
+[ext_resource type="Script" path="res://scripts/combat/hurtbox.gd" id="6_hurtbox"]
+[ext_resource type="Script" path="res://scripts/combat/combatant.gd" id="7_combatant"]
+[ext_resource type="Script" path="res://scripts/ui/enemy_bar.gd" id="8_bar"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_nose"]
+size = Vector3(0.2, 0.2, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hitbox"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hurt"]
+radius = 0.45
+height = 1.8
+
+[node name="Enemy" type="CharacterBody3D"]
+script = ExtResource("1_enemy")
+ai = ExtResource("2_ai")
+weapon = ExtResource("3_weapon")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="Nose" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.5)
+mesh = SubResource("BoxMesh_nose")
+
+[node name="SwordVisual" type="Node3D" parent="Visual" node_paths=PackedStringArray("hitbox")]
+script = ExtResource("4_sword")
+hitbox = NodePath("Hitbox")
+rest_edge_direction = Vector3(0, -1, 0)
+
+[node name="Hitbox" type="Area3D" parent="Visual/SwordVisual"]
+script = ExtResource("5_hitbox")
+team = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Visual/SwordVisual/Hitbox"]
+shape = SubResource("BoxShape3D_hitbox")
+
+[node name="Hurtbox" type="Area3D" parent="."]
+script = ExtResource("6_hurtbox")
+team = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_hurt")
+
+[node name="Combatant" type="Node" parent="."]
+script = ExtResource("7_combatant")
+max_health = 500.0
+
+[node name="Bar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, 0)
+script = ExtResource("8_bar")
