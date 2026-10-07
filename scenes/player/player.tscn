@@ -138,6 +138,7 @@ script = ExtResource("21_yj68g")
 [node name="HelmSplitter" type="Node" parent="StateMachine" unique_id=293210707]
 script = ExtResource("22_007i1")
 land_action = ExtResource("23_6cv16")
+dive_gravity_factor = 5.0
 action = ExtResource("24_j4nxn")
 
 [node name="Guard" type="Node" parent="StateMachine" unique_id=482233069]
