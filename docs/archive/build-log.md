@@ -707,3 +707,28 @@ Tested and approved by the user ("it finally feels like Sekiro"). Docs: handoff 
 
 ### Step 5 follow-up 3: log off by default (2026-10-07)
 - The user confirmed the spam reset works (attack resets the count; only back-to-back presses shrink the window). `Combatant.debug_log` now defaults to off; the on-screen overlay line is unchanged. Step 5 is closed.
+
+### Step 6: posture, posture break, deathblow, player stagger (2026-10-07)
+Built in the main zip, then three follow-ups (fix1: charged posture and defense; fix2: the deathblow thrust and the marker; marker look exports). All tested by the user.
+
+**Decisions (confirmed by the user):**
+- Posture is a 0 to 100 meter on the shared `Combatant`, filling up. Full = posture break. Per outcome the defender takes: plain guard 100% of the hit's `posture_damage`, deflect 10%, unguarded hit 50%; on a deflect the ATTACKER takes 50% (found with `Combatant.of(hit.attacker)`, which reads a `combatant` property on the attacker).
+- Placeholder amounts: every attack's `posture_damage` is about 1.5x its `damage` (set in the 17 attack `.tres` files); the dummy's swing carries 25 (`attack_posture_damage`).
+- Regen: 15 per second after 1 s without posture damage; paused while the owner attacks, dashes, or dodges (`ActionData.pauses_posture_regen`, `DashState`); x0.5 at 0 HP, linear to x1 at full HP; player only: x2 after guarding for 3 s (`fast_regen_on_guard`, set by `Player._setup_hurtbox()`).
+- Player stagger (`StaggerState`): posture full leads to 6 s, no walking, guard, or attack; dodge locked for the first 2 s, then a dodge cancels it; `Combatant.vulnerable` makes unguarded hits do x1.5 damage; posture resets to 0 when it ends (any way). Placeholder visual: a forward lean (`Player.set_stagger_lean`, `stagger_lean` 0.5 rad). A break during a ledge climb waits for it to finish (`_stagger_pending`); hanging is knocked off first.
+- Enemy side (the dummy for now; the Step 7 enemy reuses it): `health_bars` (dummy 2, `Combatant.health_bars`) shown as pips on one bar. An empty bar fills posture and opens a deathblow window (4 s, `deathblow_window`); a posture break at any health opens the same window. `execute_deathblow()` inside it removes a bar (the next starts full, posture 0); on the last bar it kills. Missed: health returns to 1 (not refilled) and posture to 0, so the next damage empties it again, repeating until a deathblow. A missed window on the final bar of a non-boss kills it; `boss` (off by default) loops at 1 HP instead. This settles O1.
+- Deathblow input: a fresh `attack` press within 2.5 m, inside a 120 degree cone in front, of an enemy in group `enemy` whose window is open (`Player._try_deathblow()`, checked before the state update, from any state that can cancel and is not in a hit window; ground only). `DeathblowState` is an `ActionState` with no hitbox: it steps toward the target (stops 1.1 m short) and calls `execute_deathblow()` halfway through `active_hit`; guard cannot cancel before that. Visual: thrust poses (`deathblow_thrust.tres`) when drawn, the draw slash poses when sheathed; timing always comes from `deathblow.tres`.
+- UI: posture bar under the health bar, filling from both ends toward the middle (white to orange, red when full); pips top left (only with 2 or more bars); a deathblow marker on the enemy's chest while the window is open (a code-drawn dot with a thick dark-red outline, white-reddish fill, red glow, gentle pulse; all looks are `EnemyBar` exports: size, offset, pulse, dot ratio, outline thickness, glow alpha, four colors). The player's posture is on the debug overlay only (Posture line, Deathblow target, a STAGGER line).
+- fix1: `ActionData.charge_posture_max` (default 1.5, like `charge_damage_max`) scales posture damage with the charge, separate from damage (`AttackState.posture_multiplier`, `ActionState._hit_posture_multiplier()`). `Combatant` Defense group: `health_taken_multiplier` and `posture_taken_multiplier` (both 1.0), applied last (health covers damage and chip; posture covers every posture hit, including a deflect's posture on an attacker). For the Step 7 `EnemyAIData`.
+
+**Files:** new `scripts/player/states/stagger_state.gd`, `deathblow_state.gd`, `actions/deathblow.tres`, `actions/deathblow_thrust.tres`. Changed `combatant.gd`, `hit_data.gd`, `player.gd`, `dummy.gd`, `enemy_bar.gd`, `debug_overlay.gd`, `action_state.gd`, `attack_state.gd`, `action_data.gd`, and the 17 attack `.tres` files (one `posture_damage` line each). Editor: `Stagger` and `Deathblow` nodes under the player's StateMachine.
+
+**Not obvious from the code:**
+- `DeathblowState` sets its own `action` to `deathblow.tres` in `_ready()` if the Inspector's Action is empty.
+- `Dummy._ready()` copies `health_bars`, `boss`, and `deathblow_window` to its Combatant, then calls `combatant.reset()` before binding the bar (children are ready before the parent, so `Combatant._ready()` runs first).
+- Hits during an open window do no health damage (health is already 0) and add no posture (already full).
+- All the resets to 0 (window end, stagger end, a landed deathblow) are instant on purpose; regen is the only gradual part.
+- Posture breaks only on posture damage; the old rule that HP 0 on the player refills after 1.5 s is unchanged (Step 10).
+
+**Not done:** a player HUD posture bar (Step 11), a stagger animation, sparks and sounds, the enemy's recovery pose and AI (Step 7), a countdown ring on the marker.
+**Noticed, not fixed:** staggering under a low ceiling stands the player up (the Crouch and Slide `exit()` do it, no headroom check).

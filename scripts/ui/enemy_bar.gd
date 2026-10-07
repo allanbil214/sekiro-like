@@ -32,6 +32,17 @@ extends Node3D
 ## Where the marker sits, relative to this bar (the default is about chest height).
 @export var marker_offset: Vector3 = Vector3(0.0, -1.1, 0.0)
 @export var marker_pulse: bool = true
+## The dot (with its outline) as a share of marker_size; the rest is glow.
+@export_range(0.2, 0.95) var marker_dot_ratio: float = 0.55
+## Outline thickness as a share of the marker's radius (thick by default).
+@export_range(0.0, 0.4) var marker_outline_thickness: float = 0.13
+## Peak opacity of the glow right outside the outline (0 = no glow).
+@export_range(0.0, 1.0) var marker_glow_alpha: float = 0.55
+@export var marker_glow_color: Color = Color(0.95, 0.1, 0.08)
+@export var marker_outline_color: Color = Color(0.4, 0.02, 0.03)
+## The dot is this color in the middle and fades to the rim color at its edge.
+@export var marker_center_color: Color = Color(1.0, 0.96, 0.93)
+@export var marker_rim_color: Color = Color(1.0, 0.6, 0.55)
 
 var _back: MeshInstance3D
 var _yellow: MeshInstance3D
@@ -47,8 +58,6 @@ var _posture_full: bool = false
 var _pips: Array[MeshInstance3D] = []
 var _marker: Sprite3D
 var _marker_time: float = 0.0
-
-static var _marker_texture: ImageTexture
 
 
 func _ready() -> void:
@@ -69,8 +78,9 @@ func _ready() -> void:
 	_posture_right.position.y = posture_y
 	_set_posture(0.0, false)
 	_marker = Sprite3D.new()
-	_marker.texture = _get_marker_texture()
-	_marker.pixel_size = marker_size / float(_marker_texture.get_width())
+	var marker_texture := _build_marker_texture()
+	_marker.texture = marker_texture
+	_marker.pixel_size = marker_size / float(marker_texture.get_width())
 	_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_marker.no_depth_test = true
 	_marker.shaded = false
@@ -129,36 +139,31 @@ func _on_deathblow_closed(_executed: bool, _killed: bool) -> void:
 	_marker.visible = false
 
 
-## The marker image, built once: a red glow, a thick dark-red outline, and a white-reddish dot.
-static func _get_marker_texture() -> ImageTexture:
-	if _marker_texture != null:
-		return _marker_texture
+## The marker image: a red glow, a thick dark-red outline, and a white-reddish dot (all from the
+## marker_* exports). Built once per bar at startup.
+func _build_marker_texture() -> ImageTexture:
 	var size := 256
 	var half := float(size) * 0.5
 	var image := Image.create_empty(size, size, false, Image.FORMAT_RGBA8)
-	var dot_radius := 0.55
-	var stroke := 0.13
-	var fill_radius := dot_radius - stroke
+	# Radii are shares of the marker's half-width (1.0 = the edge of the glow).
+	var dot_radius := marker_dot_ratio
+	var fill_radius := maxf(dot_radius - marker_outline_thickness, 0.02)
 	var edge := 1.5 / half
-	var glow_color := Color(0.95, 0.1, 0.08)
-	var stroke_color := Color(0.4, 0.02, 0.03)
-	var center_color := Color(1.0, 0.96, 0.93)
-	var rim_color := Color(1.0, 0.6, 0.55)
 	for y in size:
 		for x in size:
 			var d := Vector2(float(x) + 0.5 - half, float(y) + 0.5 - half).length() / half
-			var glow_fade := clampf(1.0 - maxf(d - dot_radius, 0.0) / (1.0 - dot_radius), 0.0, 1.0)
-			var pixel := Color(glow_color.r, glow_color.g, glow_color.b, 0.55 * glow_fade * glow_fade)
+			var glow_fade := clampf(1.0 - maxf(d - dot_radius, 0.0) / maxf(1.0 - dot_radius, 0.001), 0.0, 1.0)
+			var pixel := Color(marker_glow_color.r, marker_glow_color.g, marker_glow_color.b,
+					marker_glow_alpha * glow_fade * glow_fade)
 			if d >= 1.0:
 				pixel.a = 0.0
-			pixel = _over(Color(stroke_color.r, stroke_color.g, stroke_color.b,
-					1.0 - smoothstep(dot_radius - edge, dot_radius, d)), pixel)
-			var fill := center_color.lerp(rim_color, clampf(d / fill_radius, 0.0, 1.0))
+			pixel = _over(Color(marker_outline_color.r, marker_outline_color.g, marker_outline_color.b,
+					marker_outline_color.a * (1.0 - smoothstep(dot_radius - edge, dot_radius, d))), pixel)
+			var fill := marker_center_color.lerp(marker_rim_color, clampf(d / fill_radius, 0.0, 1.0))
 			pixel = _over(Color(fill.r, fill.g, fill.b,
-					1.0 - smoothstep(fill_radius - edge, fill_radius, d)), pixel)
+					fill.a * (1.0 - smoothstep(fill_radius - edge, fill_radius, d))), pixel)
 			image.set_pixel(x, y, pixel)
-	_marker_texture = ImageTexture.create_from_image(image)
-	return _marker_texture
+	return ImageTexture.create_from_image(image)
 
 
 ## `top` drawn over `bottom` (straight alpha).

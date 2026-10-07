@@ -7,6 +7,7 @@
 ## Design decisions (confirmed by the user)
 
 ### 3.1 Health, posture, deathblow
+> **Built in Step 6** (numbers are placeholders; rules and files in the build log, "Step 6"). Confirmed rules that go beyond the text below: when health reaches 0 posture fills too and the deathblow window opens; a missed window on a non-final bar (or a boss's final bar) returns the enemy to 1 HP and posture to 0, and the next damage empties it again, repeating until a deathblow lands (a landed one removes a bar and the next starts full); a missed window on a non-boss final bar kills; a posture break at any health opens the same window. The enemy's health is one bar with pips for the bars left.
 - **Enemy has 2 health bars.** Emptying a bar leaves the enemy **standing stunned** for a deathblow window. Posture break also opens a deathblow.
 - If the deathblow isn't taken, the enemy falls and dies (as stated by the user, like Sekiro). **See open question O1** for non-final bars.
 - **Posture regenerates over time** for both sides, but **pauses** while attacking, dashing, or dodging. It regenerates normally when idle or moving.
@@ -107,13 +108,14 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Deflect window reset | 1.0s of no guard/actions |
 | Clash overlap window | 0.1s |
 | Enemy reaction delay | 0.1-0.3s random |
-| Player stagger duration | 6s (range 5-8s) |
-| Dodge locked during stagger | first 2s |
-| Staggered damage multiplier | 1.5x |
+| Player stagger duration | 6s (range 5-8s) (built in Step 6) |
+| Dodge locked during stagger | first 2s (built) |
+| Staggered damage multiplier | 1.5x (built) |
+| Deathblow window | 4s (built) |
 | Heal charges | 3 |
 | Resurrections | 2 (at 50% HP) |
 | Enemy health bars | 2 |
-| Posture amounts, regen rates, low-HP slowdown | TBD during tuning |
+| Posture amounts, regen rates, low-HP slowdown | Built in Step 6 as placeholders: max 100; attack posture about 1.5x damage; guard 100%, deflect 10% (+50% on the attacker), unguarded hit 50%; regen 15/s after 1 s; x0.5 at 0 HP; player x2 after 3 s of guarding; the dummy's swing 25 |
 | Guard cone | 90° front |
 | Hurtbox profiles | stand 1.8/0, crouch 1.1/0, air 1.1/0.7 (height/offset) |
 
@@ -121,8 +123,8 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 
 ## Open questions (unresolved; ask the user before assuming)
 
-- **O1:** When a **non-final** health bar empties and the deathblow window is missed, what happens? (Sekiro: the enemy recovers. The user said the enemy "falls and dies" on a missed deathblow, which clearly applies to the final bar. Confirm the non-final behavior.)
-- **O2:** Exact posture numbers, spam-shrink amount, regen rates.
+- ~~**O1**~~ Resolved in Step 6 (see the note under 3.1). Original question: When a **non-final** health bar empties and the deathblow window is missed, what happens? (Sekiro: the enemy recovers. The user said the enemy "falls and dies" on a missed deathblow, which clearly applies to the final bar. Confirm the non-final behavior.)
+- **O2:** Exact posture numbers and regen rates: placeholders are built in Step 6 (see the table); tune them in play. (The spam-shrink amount was settled in Step 5.)
 - ~~O3~~ Resolved in Step 5: linear, -0.04 s per rapid re-press, floor 0.05 s.
 - **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
 - **O5:** Enemy grab damage amount and exact grab range/wind-up.
