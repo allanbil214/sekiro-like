@@ -46,6 +46,8 @@ var combo_index: int = 0
 ## Damage multiplier of the current attack (1.0, or up to the thrust's charge_damage_max).
 ## Stored for Step 4.
 var damage_multiplier: float = 1.0
+## The same for posture damage (up to the thrust's charge_posture_max).
+var posture_multiplier: float = 1.0
 
 var _queued: bool = false
 var _pending_variant: ActionData
@@ -230,6 +232,7 @@ func _on_action_enter(_previous: StringName) -> void:
 	_hold_action = null
 	_lunge_scale = 1.0
 	damage_multiplier = 1.0
+	posture_multiplier = 1.0
 	_iai_hold = false
 	# A new action is never mirrored unless its own hold sets it (the old mirror stuck after a left thrust).
 	_thrust_mirror = false
@@ -275,6 +278,10 @@ func _on_action_update(delta: float) -> void:
 ## A charged thrust or iai hits harder (the stored charge multiplier).
 func _hit_damage_multiplier() -> float:
 	return damage_multiplier
+
+
+func _hit_posture_multiplier() -> float:
+	return posture_multiplier
 
 
 ## No hits while waiting or charging a hold: the clock is parked at the start of the hit window.
@@ -371,6 +378,7 @@ func _update_hold(delta: float) -> void:
 func _fire_thrust(fraction: float) -> void:
 	var thrust := _hold_action
 	damage_multiplier = lerpf(1.0, thrust.charge_damage_max, fraction)
+	posture_multiplier = lerpf(1.0, thrust.charge_posture_max, fraction)
 	_lunge_scale = lerpf(1.0, thrust.charge_lunge_max, fraction)
 	action = thrust
 	action_time = 0.0

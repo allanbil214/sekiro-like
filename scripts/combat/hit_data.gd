@@ -1,7 +1,7 @@
 class_name HitData
 extends RefCounted
 ## Everything a hit carries from the attacker to the target's Hurtbox and Combatant.
-## posture_damage is carried now and used from Step 6.
+## posture_damage is used from Step 6 (Combatant.add_posture, scaled per outcome).
 
 ## What the target's guard made of the hit (set by Combatant.take_hit).
 enum Outcome { HIT, GUARD, DEFLECT }

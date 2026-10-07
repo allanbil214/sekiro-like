@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://2vtgsh236ggc"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
-[ext_resource type="Resource" path="res://actions/draw_attack_charged.tres" id="2_charged"]
+[ext_resource type="Resource" uid="uid://blbfwpnum6x37" path="res://actions/draw_attack_charged.tres" id="2_charged"]
 
 [resource]
 script = ExtResource("1_actiondata")
@@ -18,4 +18,5 @@ swing_end = Vector3(2, 0.9, 0.9)
 swing_follow = Vector3(1, 0.9, -0.3)
 hold_action = ExtResource("2_charged")
 damage = 15.0
+posture_damage = 23.0
 hitbox_length_scale = 1.5

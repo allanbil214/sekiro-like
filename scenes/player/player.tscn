@@ -28,6 +28,8 @@
 [ext_resource type="Resource" uid="uid://bhemmwny60asf" path="res://actions/helm_splitter.tres" id="24_j4nxn"]
 [ext_resource type="Script" uid="uid://ckyykx3ke8fdi" path="res://scripts/player/states/guard_state.gd" id="26_uniwh"]
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="27_28m0y"]
+[ext_resource type="Script" uid="uid://c3t1jclb0bed4" path="res://scripts/player/states/stagger_state.gd" id="27_tffgl"]
+[ext_resource type="Script" uid="uid://2gky22glbhj6" path="res://scripts/player/states/deathblow_state.gd" id="28_pk8ii"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
@@ -143,6 +145,12 @@ action = ExtResource("24_j4nxn")
 
 [node name="Guard" type="Node" parent="StateMachine" unique_id=482233069]
 script = ExtResource("26_uniwh")
+
+[node name="Stagger" type="Node" parent="StateMachine" unique_id=292787530]
+script = ExtResource("27_tffgl")
+
+[node name="Deathblow" type="Node" parent="StateMachine" unique_id=1205442006]
+script = ExtResource("28_pk8ii")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")

@@ -1,20 +1,18 @@
-[gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://cnos31i7vcmq0"]
+[gd_resource type="Resource" script_class="ActionData" format=3]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
 
 [resource]
 script = ExtResource("1_actiondata")
-animation = &"dash_thrust"
+animation = &"deathblow_thrust"
 duration = 1.0
-locked_until = 0.26
-cancel_window = Vector2(0.55, 1)
-buffer_window = Vector2(0.2, 1)
-active_hit = Vector2(0.1, 0.26)
-move_window = Vector2(0, 0.35)
+locked_until = 0.6
+cancel_window = Vector2(0.6, 1)
+active_hit = Vector2(0.3, 0.42)
+move_speed = 9.0
+move_window = Vector2(0.05, 0.4)
 swing_windup = Vector3(3, 0.5, -0.4)
 swing_end = Vector3(2.5, 0.35, 1.3)
 swing_follow = Vector3(3.5, 0.5, 0.2)
 blade_aims_at_end = true
 twist_scale = 0.25
-damage = 15.0
-posture_damage = 23.0

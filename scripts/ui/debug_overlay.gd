@@ -59,6 +59,19 @@ func _process(_delta: float) -> void:
 			"UP" if guard.guarding else "down", guard.next_window(), guard.press_count,
 			guard.spam_idle(), guard.deflect_reset_time, guard.deflect_left, last,
 		]
+	if _player.combatant != null:
+		var posture := _player.combatant
+		text += "\nPosture: %d / %d%s   Deathblow target: %s" % [
+			posture.posture, posture.max_posture, "  BROKEN" if posture.posture_full else "",
+			"in reach" if _player.find_deathblow_target() != null else "-",
+		]
+	var stagger_state := machine.current as StaggerState
+	if stagger_state != null:
+		text += "\nSTAGGER: %.1f / %.1f s  dodge %s  (x%.1f damage)" % [
+			stagger_state.elapsed, stagger_state.duration,
+			"ready" if stagger_state.elapsed >= stagger_state.dodge_locked_time else "locked",
+			_player.combatant.staggered_damage_multiplier,
+		]
 	text += "\nSword: %s" % ("sheathed" if _player.sheathed else "drawn")
 	if _player.sword_visual != null and _player.sword_visual.is_busy():
 		text += " (moving)"

@@ -11,7 +11,17 @@ extends Node
 ## Every deflect needs a fresh press_guard(); each rapid re-press shrinks the window (not a
 ## lockout). The count resets at once when you act (attack, dodge...), and after
 ## deflect_reset_time of neither guarding nor acting.
-## Step 6 plugs posture into the hit_guarded and hit_deflected signals.
+##
+## Posture (Step 6): a meter from 0 to max_posture. Guarded hits, deflects (a little, and the
+## attacker takes some), and unguarded hits add to it (HitData.posture_damage x a factor per
+## outcome). Full = posture break: posture_broken is emitted and it stays full until
+## reset_posture() (the player's StaggerState does that; with deathblow_enabled the Combatant
+## opens a deathblow window instead). Regen: tick_posture() each physics frame.
+## Deathblow (deathblow_enabled, the dummy now, the enemy later): health_bars bars; emptying a bar
+## fills posture and opens a window (deathblow_window s). execute_deathblow() inside it removes a
+## bar (the next starts full; on the last bar it kills). Missed: health returns to 1 (not refilled)
+## and posture to 0, so the next damage empties it again; a missed window on the final bar of a
+## non-boss kills. A posture break at any health opens the same window (a miss just resets posture).
 
 signal damaged(hit: HitData, amount: float)
 signal health_changed(current: float, maximum: float)
@@ -19,8 +29,53 @@ signal died
 ## A plain guard blocked the hit. `chip` is the health lost (0 unless chip damage is on).
 signal hit_guarded(hit: HitData, chip: float)
 signal hit_deflected(hit: HitData)
+signal posture_changed(current: float, maximum: float)
+## Posture just reached the maximum.
+signal posture_broken
+signal bars_changed(left: int, total: int)
+signal deathblow_opened
+## The window ended: executed (a deathblow landed) and killed (the combatant died of it).
+signal deathblow_closed(executed: bool, killed: bool)
 
 @export var max_health: float = 100.0
+
+@export_group("Health bars and deathblow")
+## How many health bars (Sekiro pips). The player has 1.
+@export var health_bars: int = 1
+## On: an empty bar or a posture break opens a deathblow window (instead of dying). Off: the old
+## behavior, health 0 = died.
+@export var deathblow_enabled: bool = false
+## A boss's final bar never dies of a missed deathblow: it returns to 1 HP and goes on.
+@export var boss: bool = false
+## How long (s) the deathblow window stays open.
+@export var deathblow_window: float = 4.0
+
+@export_group("Defense")
+## Multipliers on what this combatant takes, applied last (1.0 = normal, 0.5 = takes half, 1.5 =
+## weak). Health covers damage and chip damage; posture covers every posture hit, including the
+## posture a deflect puts on an attacker.
+@export var health_taken_multiplier: float = 1.0
+@export var posture_taken_multiplier: float = 1.0
+
+@export_group("Posture")
+@export var max_posture: float = 100.0
+## Posture lost per second while regenerating (starts after posture_regen_delay).
+@export var posture_regen: float = 15.0
+@export var posture_regen_delay: float = 1.0
+## Regen multiplier at 0 health (linear up to 1.0 at full health).
+@export_range(0.0, 1.0) var low_health_regen_factor: float = 0.5
+## Player only: guarding for fast_regen_guard_time seconds multiplies regen by fast_regen_factor.
+@export var fast_regen_on_guard: bool = false
+@export var fast_regen_guard_time: float = 3.0
+@export var fast_regen_factor: float = 2.0
+## Share of the hit's posture_damage the defender takes per outcome.
+@export var posture_factor_hit: float = 0.5
+@export var posture_factor_guard: float = 1.0
+@export var posture_factor_deflect: float = 0.1
+## Share of the hit's posture_damage the ATTACKER takes when its hit is deflected.
+@export var attacker_posture_factor_deflect: float = 0.5
+## Damage multiplier on unguarded hits while `vulnerable` (the player's stagger sets it).
+@export var staggered_damage_multiplier: float = 1.5
 
 @export_group("Guard")
 ## The deflect window (s) opened by a fresh guard press.
@@ -45,6 +100,14 @@ signal hit_deflected(hit: HitData)
 
 var health: float = 0.0
 var dead: bool = false
+var bars_left: int = 1
+var posture: float = 0.0
+## True from the moment posture is full until reset_posture() (or the deathblow window ends).
+var posture_full: bool = false
+var deathblow_open: bool = false
+var deathblow_left: float = 0.0
+## Set by the owner (the player's stagger): unguarded hits do staggered_damage_multiplier x damage.
+var vulnerable: bool = false
 
 ## Set by the owner's guard state.
 var guarding: bool = false
@@ -59,10 +122,21 @@ var press_count: int = 0
 var last_outcome: int = -1
 
 var _spam_idle: float = 0.0
+var _since_posture_hit: float = 0.0
+var _guard_hold: float = 0.0
 
 
 func _ready() -> void:
 	health = max_health
+	bars_left = health_bars
+
+
+func _physics_process(delta: float) -> void:
+	if not deathblow_open:
+		return
+	deathblow_left -= delta
+	if deathblow_left <= 0.0:
+		_deathblow_missed()
 
 
 ## Call once per physics frame. Acting (an attack, dodge, or any other action) resets the spam
@@ -120,29 +194,112 @@ func take_hit(hit: HitData) -> float:
 		print("[Guard] hit -> %s (window left %.2f s)" % [["HIT", "GUARD", "DEFLECT"][outcome], deflect_left])
 	if outcome == HitData.Outcome.DEFLECT:
 		hit_deflected.emit(hit)
+		add_posture(hit.posture_damage * posture_factor_deflect)
+		var attacker := Combatant.of(hit.attacker)
+		if attacker != null:
+			attacker.add_posture(hit.posture_damage * attacker_posture_factor_deflect)
 		return 0.0
 	if outcome == HitData.Outcome.GUARD:
 		var chip := 0.0
 		if chip_damage_enabled:
-			chip = minf(hit.damage * chip_ratio, health)
+			chip = minf(hit.damage * chip_ratio * health_taken_multiplier, health)
 		hit_guarded.emit(hit, chip)
 		_lose_health(chip)
+		add_posture(hit.posture_damage * posture_factor_guard)
 		return chip
-	var amount := minf(hit.damage, health)
+	var multiplier := staggered_damage_multiplier if vulnerable else 1.0
+	var amount := minf(hit.damage * multiplier * health_taken_multiplier, health)
 	health -= amount
 	damaged.emit(hit, amount)
 	health_changed.emit(health, max_health)
+	add_posture(hit.posture_damage * posture_factor_hit)
 	if health <= 0.0:
-		dead = true
-		died.emit()
+		_health_empty()
 	return amount
 
 
-## Back to full health and alive.
+## The Combatant of a node that exposes one as `combatant` (the player, the dummy), or null.
+static func of(node: Object) -> Combatant:
+	if node == null:
+		return null
+	return node.get("combatant") as Combatant
+
+
+## Add posture (ignored while dead, or once it is already full). Full = a posture break.
+func add_posture(amount: float) -> void:
+	if amount <= 0.0 or dead or posture_full:
+		return
+	amount *= posture_taken_multiplier
+	if amount <= 0.0:
+		return
+	posture = minf(posture + amount, max_posture)
+	_since_posture_hit = 0.0
+	posture_changed.emit(posture, max_posture)
+	if posture >= max_posture:
+		posture_full = true
+		posture_broken.emit()
+		if deathblow_enabled:
+			_open_deathblow()
+
+
+## Back to 0 posture (the end of a stagger).
+func reset_posture() -> void:
+	posture = 0.0
+	posture_full = false
+	_since_posture_hit = 0.0
+	posture_changed.emit(posture, max_posture)
+
+
+## Call once per physics frame. `paused`: the owner is attacking, dashing, or dodging.
+func tick_posture(delta: float, paused: bool) -> void:
+	if fast_regen_on_guard and guarding:
+		_guard_hold += delta
+	else:
+		_guard_hold = 0.0
+	if paused or dead or posture_full or deathblow_open or posture <= 0.0:
+		return
+	_since_posture_hit += delta
+	if _since_posture_hit < posture_regen_delay:
+		return
+	var rate := posture_regen * lerpf(low_health_regen_factor, 1.0, clampf(health / maxf(max_health, 0.001), 0.0, 1.0))
+	if fast_regen_on_guard and _guard_hold >= fast_regen_guard_time:
+		rate *= fast_regen_factor
+	posture = maxf(posture - rate * delta, 0.0)
+	posture_changed.emit(posture, max_posture)
+
+
+## A deathblow lands inside the window. Returns false if none is open.
+func execute_deathblow() -> bool:
+	if not deathblow_open:
+		return false
+	deathblow_open = false
+	if bars_left > 1:
+		bars_left -= 1
+		health = max_health
+		reset_posture()
+		health_changed.emit(health, max_health)
+		bars_changed.emit(bars_left, health_bars)
+		deathblow_closed.emit(true, false)
+		return true
+	bars_left = 0
+	health = 0.0
+	dead = true
+	health_changed.emit(health, max_health)
+	bars_changed.emit(bars_left, health_bars)
+	deathblow_closed.emit(true, true)
+	died.emit()
+	return true
+
+
+## Back to full health, all bars, no posture, and alive.
 func reset() -> void:
 	health = max_health
 	dead = false
+	bars_left = health_bars
+	deathblow_open = false
+	reset_posture()
 	health_changed.emit(health, max_health)
+	bars_changed.emit(bars_left, health_bars)
 
 
 func _lose_health(amount: float) -> void:
@@ -150,9 +307,49 @@ func _lose_health(amount: float) -> void:
 		return
 	health -= amount
 	health_changed.emit(health, max_health)
-	if health <= 0.0 and not dead:
-		dead = true
-		died.emit()
+	if health <= 0.0:
+		_health_empty()
+
+
+## Health reached 0: open the deathblow window, or die (no deathblow for this combatant).
+func _health_empty() -> void:
+	if dead:
+		return
+	if deathblow_enabled:
+		health = 0.0
+		_open_deathblow()
+		return
+	dead = true
+	died.emit()
+
+
+## Fill posture and start the window (once).
+func _open_deathblow() -> void:
+	if deathblow_open:
+		return
+	deathblow_open = true
+	deathblow_left = deathblow_window
+	if not posture_full:
+		posture = max_posture
+		posture_full = true
+		posture_changed.emit(posture, max_posture)
+	deathblow_opened.emit()
+
+
+## The window ran out. Empty health: die on a non-boss final bar, else recover at 1 HP. Either way
+## posture goes back to 0.
+func _deathblow_missed() -> void:
+	deathblow_open = false
+	if health <= 0.0:
+		if bars_left <= 1 and not boss:
+			dead = true
+			deathblow_closed.emit(false, true)
+			died.emit()
+			return
+		health = 1.0
+		health_changed.emit(health, max_health)
+	reset_posture()
+	deathblow_closed.emit(false, false)
 
 
 func _resolve(hit: HitData) -> int:

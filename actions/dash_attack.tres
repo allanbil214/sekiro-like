@@ -18,3 +18,4 @@ swing_end = Vector3(8.75, 0.9, 0.9)
 swing_follow = Vector3(9.25, 0.8, -0.3)
 hold_action = ExtResource("2_dashthrust")
 damage = 10.0
+posture_damage = 15.0

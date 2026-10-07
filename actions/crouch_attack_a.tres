@@ -18,4 +18,5 @@ swing_end = Vector3(9, 0.9, 0.9)
 swing_follow = Vector3(9.5, 0.8, -0.3)
 hold_action = ExtResource("2_upward")
 damage = 8.0
+posture_damage = 12.0
 combo_next = ExtResource("3_attackb")

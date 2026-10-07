@@ -95,7 +95,7 @@ func _update_hit() -> void:
 	var template := HitData.new()
 	template.attacker = player
 	template.damage = action.damage * _hit_damage_multiplier()
-	template.posture_damage = action.posture_damage
+	template.posture_damage = action.posture_damage * _hit_posture_multiplier()
 	template.hitstop = action.hitstop
 	template.guardable = action.guardable
 	template.deflectable = action.deflectable
@@ -145,4 +145,9 @@ func _on_action_finished() -> void:
 
 ## Multiplies the action's damage (a charged attack overrides this).
 func _hit_damage_multiplier() -> float:
+	return 1.0
+
+
+## Multiplies the action's posture damage (a charged attack overrides this).
+func _hit_posture_multiplier() -> float:
 	return 1.0

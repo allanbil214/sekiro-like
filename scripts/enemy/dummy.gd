@@ -10,6 +10,12 @@ extends StaticBody3D
 ## (the Hitbox is swept like the player's), recovery, a pause. High passes over a crouching
 ## player, low passes under a jumping one, mid hits everything. A stand-in until the real
 ## enemy (Step 7).
+##
+## Step 6: it has health_bars bars (pips on its bar) and posture. A posture break or an empty bar
+## opens a deathblow window (Combatant): it freezes, pale, with a full red posture bar. The
+## player's deathblow (attack, close and in front) removes a bar. Missed: it recovers (see the
+## Combatant header). Its swing carries posture damage (attack_posture_damage), so guarding and
+## deflecting it can be tried. Posture regenerates only while it is not mid-swing.
 
 enum AttackMode { OFF, CYCLE, HIGH, MID, LOW }
 enum Phase { IDLE, WINDUP, ACTIVE, RECOVER }
@@ -18,6 +24,11 @@ enum Phase { IDLE, WINDUP, ACTIVE, RECOVER }
 const SWING_START: float = 0.3
 
 @export var respawn_delay: float = 2.0
+## Step 6: health bars, whether a missed deathblow on the last bar leaves it alive (boss), and the
+## deathblow window (s). Copied to the Combatant at startup.
+@export var health_bars: int = 2
+@export var boss: bool = false
+@export var deathblow_window: float = 4.0
 ## How far (m) the body shifts away from a hit, and how far (radians) it tilts.
 @export var recoil_distance: float = 0.12
 @export var recoil_tilt: float = 0.15
@@ -37,6 +48,8 @@ const SWING_START: float = 0.3
 @export var pause_time: float = 1.2
 @export var attack_damage: float = 20.0
 @export var attack_hitstop: float = 0.08
+## Posture the swing adds to a guard (a deflect takes a tenth of it).
+@export var attack_posture_damage: float = 25.0
 ## Test hooks for Step 5: turn these off to try an unguardable or undeflectable swing.
 @export var attack_guardable: bool = true
 @export var attack_deflectable: bool = true
@@ -54,6 +67,7 @@ const SWING_START: float = 0.3
 @onready var swing_pivot: Node3D = $SwingPivot
 @onready var hitbox: Hitbox = $SwingPivot/Hitbox
 @onready var arm: MeshInstance3D = $SwingPivot/Arm
+@onready var body: MeshInstance3D = $Visual/Body
 
 var _recoil: float = 0.0
 var _recoil_direction: Vector3 = Vector3.ZERO
@@ -62,12 +76,26 @@ var _timer: float = 0.0
 var _swing_time: float = 0.0
 var _cycle_index: int = 0
 var _player: Node3D
+var _stun_material: StandardMaterial3D
 
 
 func _ready() -> void:
+	add_to_group(&"enemy")
+	combatant.health_bars = health_bars
+	combatant.boss = boss
+	combatant.deathblow_window = deathblow_window
+	combatant.deathblow_enabled = true
+	combatant.reset()
+	_stun_material = StandardMaterial3D.new()
+	_stun_material.albedo_color = Color(0.95, 0.95, 0.85)
+	_stun_material.emission_enabled = true
+	_stun_material.emission = Color(0.9, 0.9, 0.7)
+	_stun_material.emission_energy_multiplier = 0.6
 	bar.bind(combatant)
 	combatant.damaged.connect(_on_damaged)
 	combatant.died.connect(_on_died)
+	combatant.deathblow_opened.connect(_on_deathblow_opened)
+	combatant.deathblow_closed.connect(_on_deathblow_closed)
 	var length := maxf(swing_reach - SWING_START, 0.1)
 	hitbox.configure(length)
 	hitbox.position = Vector3(0.0, 0.0, -SWING_START)
@@ -86,6 +114,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if combatant.dead:
 		_end_attack()
+		return
+	combatant.tick_posture(delta, _phase != Phase.IDLE)
+	if combatant.deathblow_open:
+		# Stunned: no swings, no turning, until the window closes.
 		return
 	if _player == null:
 		_player = get_tree().get_first_node_in_group("player") as Node3D
@@ -111,6 +143,7 @@ func _physics_process(delta: float) -> void:
 			var template := HitData.new()
 			template.attacker = self
 			template.damage = attack_damage
+			template.posture_damage = attack_posture_damage
 			template.hitstop = attack_hitstop
 			template.guardable = attack_guardable
 			template.deflectable = attack_deflectable
@@ -188,7 +221,26 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	_recoil_direction = hit.direction
 
 
+## Stunned (empty bar or posture break): drop any swing and turn pale.
+func _on_deathblow_opened() -> void:
+	_end_attack()
+	body.material_override = _stun_material
+
+
+## The window closed: back to normal. A landed deathblow also makes it recoil from the player.
+func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
+	body.material_override = null
+	_timer = pause_time
+	if executed and _player != null:
+		var away := global_position - _player.global_position
+		away.y = 0.0
+		if away.length_squared() > 0.0001:
+			_recoil = 1.0
+			_recoil_direction = away.normalized()
+
+
 func _on_died() -> void:
+	body.material_override = null
 	visual.visible = false
 	bar.visible = false
 	_end_attack()

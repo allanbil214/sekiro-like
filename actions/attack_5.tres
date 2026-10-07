@@ -16,3 +16,4 @@ swing_windup = Vector3(11, 1, -0.4)
 swing_end = Vector3(5, 1, 1)
 swing_follow = Vector3(6, 0.8, -0.6)
 damage = 15.0
+posture_damage = 23.0

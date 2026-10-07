@@ -100,6 +100,13 @@ var sheathed: bool = false
 @export var hit_recoil_distance: float = 0.15
 @export var hit_recoil_tilt: float = 0.2
 @export var hit_recoil_time: float = 0.25
+@export_group("Posture and deathblow")
+## A deathblow needs an enemy with an open window within this distance (m, flat) ...
+@export var deathblow_range: float = 2.5
+## ... and in front of you: within this total cone (degrees) around where you face.
+@export var deathblow_facing_degrees: float = 120.0
+## How far (radians) the body leans forward while staggered.
+@export var stagger_lean: float = 0.5
 @export_group("Guard")
 ## A guard or deflect uses this share of the hit's hitstop (the plain hit uses all of it).
 @export var guard_hitstop_factor: float = 0.5
@@ -155,6 +162,11 @@ var _hurt_capsule: CapsuleShape3D
 var _nose_drop: float = 0.4
 var _visual_tween: Tween
 var _reach_arms: ReachArms
+## The enemy a deathblow was started on (read by DeathblowState).
+var deathblow_target: Node3D
+var _stagger_pending: bool = false
+var _lean_current: float = 0.0
+var _lean_target: float = 0.0
 ## The placeholder sword (found in _ready). Null if the scene has no SwordVisual.
 var sword_visual: SwordVisual
 
@@ -194,7 +206,9 @@ func _ready() -> void:
 ## The hit wobble: shift and tilt the Visual away from the hit, then ease back. The yaw (facing) is
 ## left alone; only the position and the tilt are set here.
 func _process(delta: float) -> void:
-	if _recoil <= 0.0:
+	var leaning := not is_zero_approx(_lean_current) or not is_zero_approx(_lean_target)
+	_lean_current = move_toward(_lean_current, _lean_target, delta * 4.0)
+	if _recoil <= 0.0 and not leaning:
 		return
 	_recoil = maxf(0.0, _recoil - delta / maxf(hit_recoil_time, 0.001))
 	var k := ease(_recoil, 2.0)
@@ -202,13 +216,16 @@ func _process(delta: float) -> void:
 	# Tilt the top toward the push, in the Visual's own (yawed) frame.
 	var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * _recoil_direction
 	var axis := Vector3.UP.cross(local_dir)
-	visual.rotation.x = axis.x * hit_recoil_tilt * _recoil_scale * k
+	visual.rotation.x = axis.x * hit_recoil_tilt * _recoil_scale * k - _lean_current
 	visual.rotation.z = axis.z * hit_recoil_tilt * _recoil_scale * k
 
 
 func _physics_process(delta: float) -> void:
 	input_buffer.tick(delta)
 	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
+	combatant.tick_posture(delta, _posture_regen_paused())
+	_update_stagger()
+	_try_deathblow()
 	state_machine.physics_update(delta)
 	_update_auto_sheathe(delta)
 	# A knockback push is added on top of the state's own velocity for the move, then taken off
@@ -404,6 +421,7 @@ func _setup_hurtbox() -> void:
 		add_child(combatant)
 	combatant.max_health = max_health
 	combatant.health = max_health
+	combatant.fast_regen_on_guard = true
 	if hurtbox == null:
 		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
 	if hurtbox == null:
@@ -431,6 +449,7 @@ func _setup_hurtbox() -> void:
 	combatant.damaged.connect(_on_damaged)
 	combatant.hit_guarded.connect(_on_guarded)
 	combatant.hit_deflected.connect(_on_deflected)
+	combatant.posture_broken.connect(_on_posture_broken)
 	combatant.died.connect(_on_died)
 	_update_hurtbox()
 
@@ -456,7 +475,7 @@ func _update_hurtbox() -> void:
 
 
 ## Took a hit (the Combatant already lost the health): the combat timer restarts, the hitstop plays,
-## and a hanging player is knocked off the ledge. No stun yet (Step 6).
+## and a hanging player is knocked off the ledge. A full posture staggers (_on_posture_broken).
 func _on_damaged(hit: HitData, _amount: float) -> void:
 	_recoil = 1.0
 	_recoil_scale = 1.0
@@ -470,7 +489,7 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 
 
 ## The guard blocked a hit (no health lost unless chip damage is on): a heavier wobble, an orange
-## blade flash, a shorter hitstop, and the knockback. Step 6 adds the posture damage here.
+## blade flash, a shorter hitstop, and the knockback. (The posture damage is added by the Combatant.)
 func _on_guarded(hit: HitData, _chip: float) -> void:
 	_guard_reaction(hit, false)
 	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_guard)
@@ -492,6 +511,87 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 		# Which side of the player the attacker is on, in the Visual's own frame.
 		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
 		sword_visual.play_guard_hit(deflect, local_dir.x)
+
+
+## Posture is full: stagger as soon as nothing is in the way (a ledge climb finishes first).
+func _on_posture_broken() -> void:
+	_stagger_pending = true
+
+
+func _update_stagger() -> void:
+	if not _stagger_pending:
+		return
+	var current := state_machine.current
+	if current is StaggerState:
+		_stagger_pending = false
+		return
+	if current is LedgeClimbState or current is DeathblowState:
+		return
+	_stagger_pending = false
+	var hang := current as LedgeHangState
+	if hang != null:
+		hang.knock_off()
+	state_machine.transition_to(&"Stagger")
+
+
+## Lean the body forward (radians; 0 = upright). Eases in and out. Used by the stagger.
+func set_stagger_lean(angle: float) -> void:
+	_lean_target = angle
+
+
+## Posture does not regenerate while attacking, dashing, or dodging.
+func _posture_regen_paused() -> bool:
+	var current := state_machine.current
+	var action_state := current as ActionState
+	if action_state != null:
+		return action_state.action.pauses_posture_regen
+	return current is DashState
+
+
+## An enemy with an open deathblow window within reach and in front, or null.
+func find_deathblow_target() -> Node3D:
+	var best: Node3D = null
+	var best_distance := deathblow_range
+	var facing := get_facing_direction()
+	facing.y = 0.0
+	for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+		var enemy := node as Node3D
+		var enemy_combatant := Combatant.of(enemy)
+		if enemy == null or enemy_combatant == null or not enemy_combatant.deathblow_open:
+			continue
+		var to_enemy := enemy.global_position - global_position
+		to_enemy.y = 0.0
+		var distance := to_enemy.length()
+		if distance > best_distance:
+			continue
+		if distance > 0.01 and facing.length_squared() > 0.0001 and facing.normalized().dot(to_enemy.normalized()) \
+				< cos(deg_to_rad(deathblow_facing_degrees * 0.5)):
+			continue
+		best = enemy
+		best_distance = distance
+	return best
+
+
+## A fresh attack press next to a stunned enemy is a deathblow, not a normal attack.
+func _try_deathblow() -> void:
+	if weapon == null or not input_buffer.has_pressed(&"attack") or not is_on_floor():
+		return
+	var current := state_machine.current
+	if current is StaggerState or current is DeathblowState or current is AirState \
+			or current is WallJumpState or current is LedgeHangState or current is LedgeClimbState:
+		return
+	var action_state := current as ActionState
+	if action_state != null and (not action_state.action.can_cancel(action_state.action_time) \
+			or action_state.action.is_hit_active(action_state.action_time)):
+		return
+	if is_crouched and not can_stand():
+		return
+	var target := find_deathblow_target()
+	if target == null:
+		return
+	input_buffer.consume(&"attack")
+	deathblow_target = target
+	state_machine.transition_to(&"Deathblow")
 
 
 ## Push the player away along `direction` by about `distance` metres, easing out over knockback_time.

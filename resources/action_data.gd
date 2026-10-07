@@ -50,8 +50,11 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export_group("Charge")
 ## Seconds to reach full charge when the attack button is held. 0 = cannot be charged.
 @export var charge_time: float = 0.0
-## Damage multiplier at full charge (1.0 at no charge). Stored now, used in Step 4.
+## Damage multiplier at full charge (1.0 at no charge).
 @export var charge_damage_max: float = 1.5
+## Posture damage multiplier at full charge (1.0 at no charge). Separate from the damage one so a
+## charged move can be posture-heavy, health-heavy, or both.
+@export var charge_posture_max: float = 1.5
 ## Lunge speed multiplier at full charge (1.0 at no charge).
 @export var charge_lunge_max: float = 1.4
 ## What replaces this attack when the attack button is still held at the end of its wind-up.
