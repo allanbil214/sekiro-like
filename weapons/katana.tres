@@ -8,10 +8,10 @@
 [ext_resource type="Resource" uid="uid://dw7rfx82nc5vj" path="res://actions/attack_3.tres" id="5_attack3"]
 [ext_resource type="Resource" uid="uid://bv7edob07g0qu" path="res://actions/attack_4.tres" id="6_attack4"]
 [ext_resource type="Resource" uid="uid://2t6ygukwe0e7" path="res://actions/attack_5.tres" id="7_attack5"]
-[ext_resource type="Resource" path="res://actions/crouch_attack_a.tres" id="7_q40jy"]
+[ext_resource type="Resource" uid="uid://dmowbv1wlhgah" path="res://actions/crouch_attack_a.tres" id="7_q40jy"]
 [ext_resource type="Resource" uid="uid://d1cknvhhe60ni" path="res://actions/dash_attack.tres" id="7_rn1fk"]
 [ext_resource type="Resource" uid="uid://caox7hwm3mdoh" path="res://actions/thrust.tres" id="8_bduk1"]
-[ext_resource type="Resource" path="res://actions/draw_attack.tres" id="9_draw"]
+[ext_resource type="Resource" uid="uid://2vtgsh236ggc" path="res://actions/draw_attack.tres" id="9_draw"]
 [ext_resource type="Resource" path="res://actions/helm_splitter_draw.tres" id="10_helmdraw"]
 
 [resource]

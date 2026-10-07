@@ -9,6 +9,9 @@ extends Node3D
 ## travel. Driven by the attack's action_time (the data stays authoritative):
 ## previous pose -> wind-up -> slash -> follow-through. Place it under Visual.
 ##
+## Hits (Step 4): the Hitbox (an Area3D child of this node) follows the hand every frame, so the
+## damage box lies along the blade. Without one set in the Inspector, a Hitbox is created in code.
+##
 ## Sheathing (3c, visual only): the sword rests in a scabbard at the left hip (edge up) while the
 ## arm hangs relaxed. Drawing (R) reaches the right hand across to the grip, then pulls the blade
 ## out; sheathing brings it back, slides it in, and lets go. The draw slash does the same reach
@@ -28,6 +31,8 @@ extends Node3D
 @export var pose_scale: float = 1.5
 ## Draw a simple arm from the shoulder to the hand.
 @export var show_arm: bool = true
+## The damage box that follows the blade (an Area3D with a Hitbox script, a child of this node).
+@export var hitbox: Hitbox
 @export_group("Slash path")
 ## How far (m) the tip bows forward in the middle of a slash. 0 = straight line.
 @export var slash_arc_forward: float = 0.5
@@ -207,6 +212,12 @@ func setup(weapon: WeaponData) -> void:
 	_sheath_blade = weapon.sheathed_blade_direction.normalized()
 	_sheath_edge = weapon.sheathed_edge_direction.normalized()
 	_build_scabbard(weapon)
+	if hitbox == null:
+		push_warning("SwordVisual: no Hitbox set; creating one in code (add an Area3D with hitbox.gd).")
+		hitbox = Hitbox.new()
+		hitbox.name = "Hitbox"
+		add_child(hitbox)
+	hitbox.configure(weapon.blade_length)
 	_apply()
 
 
@@ -644,6 +655,8 @@ func _apply() -> void:
 	x = x.normalized()
 	var y := z.cross(x)
 	_hand.basis = Basis(x, y, z)
+	if hitbox != null:
+		hitbox.transform = _hand.transform
 
 
 ## While the blade is still in the scabbard or in the hand, blend the arm length and the pin

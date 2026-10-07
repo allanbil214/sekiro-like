@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ActionData" format=3]
+[gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://680dnjny1pb"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
 
@@ -12,3 +12,5 @@ swing_windup = Vector3(12, 1, -0.3)
 swing_end = Vector3(6, 0.3, 1)
 swing_follow = Vector3(6, 0.3, 1)
 twist_scale = 0.25
+damage = 25.0
+hitbox_length_scale = 1.5

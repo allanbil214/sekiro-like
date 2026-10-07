@@ -62,6 +62,11 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export_group("Combat")
 @export var damage: float = 0.0
 @export var posture_damage: float = 0.0
+## How far the hitbox reaches along the blade, as a multiple of the blade length. It grows from the
+## tip (the root stays at the hand), so 1.5 fakes the reach of a shockwave or aura. 1.0 = the blade.
+@export var hitbox_length_scale: float = 1.0
+## Seconds of hitstop (a brief near-freeze of the whole game) when this action's hit connects.
+@export var hitstop: float = 0.06
 @export var guardable: bool = true
 @export var deflectable: bool = true
 @export var pauses_posture_regen: bool = true

@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://bmsjl77m5j8qw" path="res://scripts/player/states/state_machine.gd" id="3_5gtgg"]
 [ext_resource type="Script" uid="uid://dgdgib1jc4f4g" path="res://scripts/player/sword_visual.gd" id="3_8ydkj"]
 [ext_resource type="Script" uid="uid://bk7e1ftndsj83" path="res://scripts/player/states/locomotion_state.gd" id="4_h17s1"]
+[ext_resource type="Script" uid="uid://ccpsk46sfaf3q" path="res://scripts/combat/hitbox.gd" id="5_6cv16"]
 [ext_resource type="Script" uid="uid://n7b80fl5racg" path="res://scripts/player/states/air_state.gd" id="5_je7p5"]
 [ext_resource type="Script" uid="uid://dbyobsb5bm262" path="res://scripts/player/states/dodge_state.gd" id="6_fm80t"]
 [ext_resource type="Resource" uid="uid://cqfr8qmc44s6a" path="res://actions/dodge.tres" id="7_gx1jg"]
@@ -37,6 +38,8 @@ height = 1.8
 [sub_resource type="BoxMesh" id="BoxMesh_wynvb"]
 size = Vector3(0.2, 0.2, 0.4)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_v2xx4"]
+
 [sub_resource type="SphereShape3D" id="SphereShape3D_wynvb"]
 radius = 0.2
 
@@ -61,9 +64,16 @@ mesh = SubResource("BoxMesh_wynvb")
 [node name="ReachArms" type="Node3D" parent="Visual" unique_id=1173044197]
 script = ExtResource("2_fcs02")
 
-[node name="SwordVisual" type="Node3D" parent="Visual" unique_id=1806981421]
+[node name="SwordVisual" type="Node3D" parent="Visual" unique_id=1806981421 node_paths=PackedStringArray("hitbox")]
 script = ExtResource("3_8ydkj")
+hitbox = NodePath("Hitbox")
 rest_edge_direction = Vector3(0, -1, 0)
+
+[node name="Hitbox" type="Area3D" parent="Visual/SwordVisual" unique_id=1997284043]
+script = ExtResource("5_6cv16")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Visual/SwordVisual/Hitbox" unique_id=1215039185]
+shape = SubResource("BoxShape3D_v2xx4")
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=76740487]
 script = ExtResource("2_gmlin")

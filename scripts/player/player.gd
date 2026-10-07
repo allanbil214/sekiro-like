@@ -317,6 +317,12 @@ func notify_combat() -> void:
 	sheathe_idle = 0.0
 
 
+## One of the player's attacks connected: restart the auto-sheathe timer and request the hitstop.
+func on_hit_landed(hit: HitData) -> void:
+	notify_combat()
+	Hitstop.request(get_tree(), hit.hitstop)
+
+
 ## Called by ActionState when any action starts. Attacks leave the sword drawn; attacks and
 ## dodges restart the auto-sheathe timer.
 func on_action_started(kind: ActionData.Kind) -> void:

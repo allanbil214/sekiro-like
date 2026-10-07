@@ -1,14 +1,12 @@
-[gd_resource type="Resource" script_class="ActionData" format=3]
+[gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://dmowbv1wlhgah"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
-[ext_resource type="Resource" path="res://actions/crouch_upward.tres" id="2_upward"]
-[ext_resource type="Resource" path="res://actions/crouch_attack_b.tres" id="3_attackb"]
+[ext_resource type="Resource" uid="uid://tws4jaycij8s" path="res://actions/crouch_upward.tres" id="2_upward"]
+[ext_resource type="Resource" uid="uid://drrtl80rphl3b" path="res://actions/crouch_attack_b.tres" id="3_attackb"]
 
 [resource]
 script = ExtResource("1_actiondata")
-kind = 0
 animation = &"crouch_attack_a"
-duration = 0.8
 locked_until = 0.34
 cancel_window = Vector2(0.45, 0.8)
 buffer_window = Vector2(0.1, 0.8)
@@ -19,4 +17,5 @@ swing_windup = Vector3(3, 0.9, -0.3)
 swing_end = Vector3(9, 0.9, 0.9)
 swing_follow = Vector3(9.5, 0.8, -0.3)
 hold_action = ExtResource("2_upward")
+damage = 8.0
 combo_next = ExtResource("3_attackb")

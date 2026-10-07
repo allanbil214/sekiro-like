@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ActionData" format=3]
+[gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://blbfwpnum6x37"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
 
@@ -16,5 +16,5 @@ swing_windup = Vector3(8, 0.9, -0.3)
 swing_end = Vector3(2, 0.9, 0.9)
 swing_follow = Vector3(1, 0.9, -0.3)
 charge_time = 0.6
-charge_damage_max = 1.5
-charge_lunge_max = 1.4
+damage = 20.0
+hitbox_length_scale = 1.5

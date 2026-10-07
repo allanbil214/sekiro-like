@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://dlny273ois6tk"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="1_actiondata"]
-[ext_resource type="Resource" path="res://actions/helm_splitter.tres" id="1_lhwi3"]
+[ext_resource type="Resource" uid="uid://bhemmwny60asf" path="res://actions/helm_splitter.tres" id="1_lhwi3"]
 
 [resource]
 script = ExtResource("1_actiondata")
@@ -16,3 +16,4 @@ swing_windup = Vector3(10, 0.9, -0.3)
 swing_end = Vector3(2, 0.9, 0.9)
 swing_follow = Vector3(2.5, 0.8, -0.3)
 hold_action = ExtResource("1_lhwi3")
+damage = 10.0

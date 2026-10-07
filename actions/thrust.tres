@@ -18,3 +18,4 @@ swing_follow = Vector3(3.5, 0.5, 0.2)
 blade_aims_at_end = true
 twist_scale = 0.25
 charge_time = 0.6
+damage = 15.0

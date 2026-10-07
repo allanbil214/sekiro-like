@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://0op67lhxi146"]
 
 [ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_btlyn"]
+[ext_resource type="PackedScene" path="res://scenes/enemy/dummy.tscn" id="2_kti05"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -27,7 +28,7 @@ environment = SubResource("Environment_wt5dk")
 [node name="Floor" type="CSGBox3D" parent="." unique_id=1387525308]
 transform = Transform3D(-0.5, 0, 0, 0, -0.5, 0, 0, 0, -0.5, 0, 0, 0)
 use_collision = true
-size = Vector3(40, 1, 40)
+size = Vector3(10000, 1, 10000)
 material = SubResource("StandardMaterial3D_v2xx4")
 
 [node name="LowPlatform" type="CSGBox3D" parent="." unique_id=1827749746]
@@ -78,3 +79,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5731297, 1.7642176, -3.6003
 use_collision = true
 size = Vector3(3, 0.32492676, 3)
 material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="Dummy" parent="." unique_id=1141339365 instance=ExtResource("2_kti05")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.615145, 0.35307217, -15.667676)

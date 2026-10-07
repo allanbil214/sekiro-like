@@ -272,6 +272,16 @@ func _on_action_update(delta: float) -> void:
 		machine.transition_to(&"Attack")
 
 
+## A charged thrust or iai hits harder (the stored charge multiplier).
+func _hit_damage_multiplier() -> float:
+	return damage_multiplier
+
+
+## No hits while waiting or charging a hold: the clock is parked at the start of the hit window.
+func _hit_is_active() -> bool:
+	return _phase == Phase.NORMAL and super._hit_is_active()
+
+
 ## Step 9 (lock-on) will return false here while locked on, so lock-on locks the steering.
 func _can_steer() -> bool:
 	return true
