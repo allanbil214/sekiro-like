@@ -28,7 +28,7 @@ environment = SubResource("Environment_wt5dk")
 [node name="Floor" type="CSGBox3D" parent="." unique_id=1387525308]
 transform = Transform3D(-0.5, 0, 0, 0, -0.5, 0, 0, 0, -0.5, 0, 0, 0)
 use_collision = true
-size = Vector3(10000, 1, 10000)
+size = Vector3(500, 1, 500)
 material = SubResource("StandardMaterial3D_v2xx4")
 
 [node name="LowPlatform" type="CSGBox3D" parent="." unique_id=1827749746]
@@ -75,10 +75,16 @@ shadow_enabled = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
 
 [node name="Gap" type="CSGBox3D" parent="." unique_id=187459232]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5731297, 3.278435, -3.6003382)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5731297, 2.0931957, -3.6003382)
 use_collision = true
 size = Vector3(3, 0.324927, 3)
 material = SubResource("StandardMaterial3D_lh4ft")
 
 [node name="Dummy" parent="." unique_id=1141339365 instance=ExtResource("2_kti05")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.615145, 0.35307217, -15.667676)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2741022, 0.35307217, -6.604761)
+
+[node name="Gap2" type="CSGBox3D" parent="." unique_id=1602716903]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.790889, 3.738432, -5.583893)
+use_collision = true
+size = Vector3(3, 0.324927, 3)
+material = SubResource("StandardMaterial3D_lh4ft")

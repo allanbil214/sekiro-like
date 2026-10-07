@@ -12,6 +12,10 @@ var _rise_end: Vector3
 var _target: Vector3
 
 
+func _allows_guard_cancel() -> bool:
+	return false
+
+
 func _on_action_enter(_previous: StringName) -> void:
 	_start = player.global_position
 	_target = player.ledge_stand_pos + Vector3.UP * 0.01

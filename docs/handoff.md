@@ -102,7 +102,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 | `interact` | E | Left Action (X / Square) |
 | `sheathe` | R | D-pad Down |
 
-  Move, look, jump, dodge, crouch, interact (ledge hang and climb), attack, and sheathe are wired up so far.
+  Move, look, jump, dodge, crouch, interact (ledge hang and climb), attack, and sheathe, and guard are wired up so far.
 
 ### 3.9 Crouch (built; full original text in the build log, Part 2)
 - **Toggle by default** (a setting switches to hold); Left Ctrl / left-stick click. Slower, with a shorter body capsule (set on the shape resource, changes instantly; the mesh eases over `crouch_transition_time`). No crouching in the air. A low ceiling keeps you crouched.
@@ -198,7 +198,7 @@ Moved. The numbers for **built** features live in the Player and SwordVisual exp
 
 ## 9. Open questions
 
-The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-steps.md`. Resolved ones are in the build log, Part 4. Ask the user before assuming.
+The unresolved ones (O1, O2, O4, O5, all about later steps; O3 was settled in Step 5) are in `docs/design-later-steps.md`. Resolved ones are in the build log, Part 4. Ask the user before assuming.
 
 ---
 
@@ -219,7 +219,7 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - [x] 3c-2. The charged iai (hold) and the sheathed helm splitter, plus the `_thrust_mirror` fix (see the build log, "Step 3c-2") **(done and tested by the user 2026-10-07)**
 - [x] 4a. Hitbox, hurtbox, `Combatant` (HP), dummy with a floating Sekiro-style bar, hitstop (see the build log, "Step 4a") **(done and tested by the user 2026-10-07)**
 - [x] 4b. Player hurtbox profiles (stand/crouch/air), the dummy swinging (high/mid/low), the player taking damage with a hit wobble, duck-under and jump-over whiffs (see the build log, "Step 4b") **(done and tested by the user 2026-10-07)**
-- [ ] 5. Guard, deflect, shrinking window, jump versions
+- [x] 5. Guard, deflect, shrinking window, jump versions, knockback (see the build log, "Step 5") **(done and tested by the user 2026-10-07)**
 - [ ] 6. Posture, deathblow, player stagger
 - [ ] 7. Enemy AI and perilous attacks
 - [ ] 8. Clash
@@ -227,7 +227,7 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Steps 1 to 4b are built and tested (all of Step 4). **Next: Step 5** (guard, deflect, shrinking window, jump versions). Start a **new chat** for each phase and paste the files listed at the top of this handoff, plus a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
+**Current state:** Steps 1 to 5 are built and tested. **Next: Step 6** (posture, posture break, deathblow, player stagger; plug into the `hit_guarded` and `hit_deflected` signals). Start a **new chat** for each phase and paste the files listed at the top of this handoff, plus a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
 
 ### What the finished steps built (details: `docs/archive/build-log.md`; each script's header comment describes its behavior)
 
@@ -239,6 +239,7 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - **3c-1 Sheathing:** `Player.sheathed` (spawns true), R and D-pad Down (`sheathe`), auto-sheathe (`auto_sheathe_time`, 5 s, counted only in Locomotion or Crouch), the draw slash (`WeaponData.draw_attack`; `try_start_variant()` swaps it in while sheathed; it counts as no combo step), the dodge attack (`DodgeState`), and the `SwordVisual` scabbard, pin, stretching arm, and draw and sheathe animations.
 - **4a Hits on a dummy:** `Hitbox` (Area3D under `SwordVisual`, moved to the hand every frame by `SwordVisual._apply()`) is swept each physics frame by `ActionState._update_hit()` while an ATTACK action with `damage` above 0 is inside `active_hit` (`AttackState` also requires phase NORMAL); one hit per `Hurtbox` per swing; damage = `action.damage` x `_hit_damage_multiplier()` (the charge multiplier). `ActionData.hitbox_length_scale` (1.5 on the helm splitters, draw slash, and charged iai) grows the box from the tip; `ActionData.hitstop` (0.06 s) feeds `Hitstop.request()` (whole-game slow scale 0.05, real-time timer) through `Player.on_hit_landed()`. Layers in `Layers` (1 world, 2 player hurtbox, 3 enemy hurtbox, 4 player hitbox, 5 enemy hitbox). `Hurtbox` passes hits to a sibling `Combatant` (HP, `damaged`/`died` signals) and ignores hits while dead or while its `is_invulnerable` Callable returns true. `scenes/enemy/dummy.tscn`: 500 HP, `EnemyBar` (red cut at once, yellow trail after 1 s, debug damage numbers at the top right), recoil wobble, vanishes at 0 and returns after 2 s.
 - **4b Player hurtbox, taking damage, dummy attacks:** the player has a `Hurtbox` (team Player, own capsule) and a `Combatant` (`Player.max_health` 100), both found in the scene or created in code with a warning. `Player._update_hurtbox()` resizes the capsule every frame from a `HurtboxProfile` (stand 1.8/0, crouch 1.1/0, air 1.1/0.7; air = not on the floor and not on a ledge state; crouch = `is_crouched`, which includes slide); the body capsule is untouched. The hurtbox ignores hits while `Player.invulnerable`. On damage: `notify_combat()`, `Hitstop.request()` with the hit's hitstop, `LedgeHangState.knock_off()` if hanging, and a **hit wobble** (`Visual` shifted 0.15 m and tilted 0.2 rad away from the attacker, 0.25 s, exports `hit_recoil_*`; `get_facing_direction()` now uses yaw only so the tilt never changes aim). No stun yet (Step 6); at 0 HP the player refills after `refill_delay` 1.5 s (temporary, Step 10). The debug overlay shows HP and the hurtbox posture. The dummy swings an arm (`SwingPivot/Hitbox`, an ENEMY `Hitbox` swept through a 120 degree arc) when the player is within 2.6 m: high 1.5 m, low 0.15 m, mid 0.9 m in turn, wind-up 0.6 s (the red arm is the telegraph), 0.25 s active, damage 20; `Dummy.attack_mode` can fix one height or turn it off. A stand-in for the Step 7 enemy.
+- **5 Guard and deflect:** `GuardState` (ground and air; forced walk via `Player.walk_only`; turns toward input) is entered by a fresh `guard` press (`InputBuffer` tracks it) from Locomotion, Crouch (stands you up if there is headroom), Air, Dash, and, through `ActionState._try_guard_cancel()`, from any action outside its hit window (not the ledge climb). The rules live in `Combatant`: `press_guard()` opens the deflect window (0.2 s, minus 0.04 s per rapid press, floor 0.05 s, full again at once when any other action starts, or after 1 s of neither guarding nor acting), and `take_hit()` decides HIT, GUARD, or DEFLECT from `guarding`, a 90 degree cone against `guard_facing`, and the hit's `guardable`/`deflectable` flags (`HitData`, copied from `ActionData`); a deflect or guard emits `hit_deflected` / `hit_guarded` (Step 6 hooks) and takes no damage. The window keeps running after the button is released (the state ends only when it has run out). Chip damage is off by default (`Combatant.chip_damage_enabled`, `chip_ratio` 0.15). `ActionData.knockback` (and `Dummy.attack_knockback`) pushes the player on every outcome, scaled by `Combatant.knockback_multiplier_hit/guard/deflect` (1.0, 1.0, 0.6); `Player.apply_knockback()` adds an easing push on top of the state's velocity. Guard from sheathed snaps the sword out into a guard-draw pose; `SwordVisual` also has the blade flick (`play_guard_hit`) and the white (deflect) or orange (guard) flash. `Player` creates a `Guard` state in code (with a warning) if the scene has none. The dummy has `attack_guardable`, `attack_deflectable`, and `attack_knockback` test exports. The debug overlay has a Guard line (next window size, press count, idle time toward the 1 s reset, open window, last result) and a white, outlined text; `Combatant.debug_log` (off by default; tick it in the Inspector when tuning) prints guard presses, spam resets, and outcomes to the Output panel.
 - **Jump tuning (after 4b, user-approved):** `Player.jump_velocity` 8.5 and `gravity_multiplier` 1.5 (were 7.0 and 2.0): the jump is about 2.5 m high (was 1.25 m), about 1.2 s in the air, about 7.5 m at run speed, with a fall that stays fairly snappy; the jump now reaches an enemy's head. Wall jumps scale with it (up = `jump_velocity` x `wall_jump_boost`). The helm splitter's dive and the half-gravity opening are multiples of the same gravity, so they follow. A 3x lower-gravity version felt floaty and was dropped. `test_arena.tscn`: the tops of LowPlatform, TightPlatform, HighPlatform, Pillar, Wall, Wall2, and Gap were raised to 2x their height above the floor (floor top y 0.25); horizontal spacing unchanged. An optional heavier fall (`fall_gravity_factor`) was offered, not built.
 - **3c-2 Charged iai and sheathed helm splitter:** the draw slash's `hold_action` is `draw_attack_charged.tres` (charge 0.6 s, x1.5 damage and x1.4 lunge stored for Step 4); `AttackState` charges it with `SwordVisual.update_charge_iai()` (blade half drawn, glow), never mirrored, standing you up when it fires from a crouch or slide. In the air, `AirAttackState` starts `HelmSplitterState` with `WeaponData.draw_helm_action` (`helm_splitter_draw.tres`, a 0.4 s raise); gravity is halved (`HelmSplitterState.opening_gravity_factor`) while holding in the draw wind-up and through the raise, then the usual dive. `_thrust_mirror` now resets on every new action.
 
@@ -253,6 +254,7 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - Timings in **seconds**, never frames.
 - **Never scale a `CollisionShape3D` node.** Set sizes on the shape resource itself (radius, height, size).
 - The player scene root is the `CharacterBody3D` itself (no wrapper node).
+- **No "create it in code if the scene lacks it" fallbacks for nodes.** New code expects its nodes to exist (list them as editor steps; a missing node is an error to see, not to hide).
 - States never call `move_and_slide()`; the Player does it once per frame. After `machine.transition_to(...)`, `return` immediately.
 - Suggested folder structure:
   ```
@@ -312,5 +314,6 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - [ ] Generic interact system (doors, chests, NPCs; nearest-in-front priority, on-screen prompt)
 
 - [ ] **Cleanup refactor (after ALL of Phase 1 is done and tested by the user):** move wall and ledge sensing out of `player.gd`, replace hard-coded state name strings with constants, give the states a shared base (not typed to `Player`) so the enemy can reuse `ActionState` and the `Combatant` rules
+- [ ] **Cleanup (Step 5 leftover):** `Player._ready()` and `_setup_hurtbox()` create a missing `Guard` state, `Hurtbox`, or `Combatant` in code (with a warning). The scene has all three now, so remove those fallbacks (they run once at startup and cost no FPS; this is only clutter)
 - [ ] Swing trail / smear effect for sword swings (a ribbon that follows the blade tip during the active window and fades; none exists yet; fits Step 11 polish or real animation VFX)
 - [ ] Real animation integration (Blender, glTF, `AnimationPlayer` following the action clock); notes in section 8 of `docs/step3-combat-spec.md`

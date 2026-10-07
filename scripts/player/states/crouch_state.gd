@@ -37,6 +37,12 @@ func physics_update(delta: float) -> void:
 			machine.transition_to(&"Dodge")
 			return
 		player.input_buffer.clear(&"dodge")
+	if player.input_buffer.has_pressed(&"guard"):
+		if headroom:
+			# Guard stands you up (exit() uncrouches); without headroom the press is ignored.
+			machine.transition_to(&"Guard")
+			return
+		player.input_buffer.clear(&"guard")
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
 		var attack := machine.get_node_or_null("Attack") as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.crouch_attack):

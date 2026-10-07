@@ -79,6 +79,27 @@ extends Node3D
 @export var sheathe_approach_time: float = 0.2
 @export var sheathe_slide_time: float = 0.25
 @export var sheathe_release_time: float = 0.15
+@export_group("Guard")
+## Clock pose the hand aims at while guarding (hour, radius, forward), like the swing poses.
+@export var guard_pose: Vector3 = Vector3(11.0, 0.2, 0.5)
+## Blade and edge directions in the guard (the player's local space, -Z forward): the blade held
+## across the front, the edge facing out.
+@export var guard_blade_direction: Vector3 = Vector3(-0.92, 0.25, -0.3)
+@export var guard_edge_direction: Vector3 = Vector3(0.0, 0.3, -1.0)
+## Seconds to raise the sword into the guard from a drawn sword.
+@export var guard_blend_time: float = 0.07
+## From the scabbard: the reach to the grip and the (fast) pull into the guard pose.
+@export var guard_draw_reach_time: float = 0.04
+@export var guard_draw_pull_time: float = 0.08
+## The blade flick on a hit (degrees), its length (s), and how far the hand is pushed back (m).
+@export var deflect_wobble_angle: float = 30.0
+@export var guard_wobble_angle: float = 12.0
+@export var wobble_time: float = 0.28
+@export var wobble_push: float = 0.08
+## Blade flash on a deflect (white) and on a plain guard (orange), and its length (s).
+@export var deflect_flash_color: Color = Color(1.0, 1.0, 1.0)
+@export var guard_flash_color: Color = Color(1.0, 0.5, 0.1)
+@export var flash_time: float = 0.18
 @export_group("Look and timing")
 @export var idle_color: Color = Color(0.8, 0.8, 0.85)
 @export var active_color: Color = Color(1.0, 0.15, 0.1)
@@ -125,7 +146,7 @@ var _is_active: bool = false
 var _charging_visual: bool = false
 var _returning: bool = false
 var _return_time: float = 0.0
-enum Anim { NONE, DRAW, SHEATHE }
+enum Anim { NONE, DRAW, SHEATHE, GUARD }
 var _weapon: WeaponData
 var _scabbard: Node3D
 ## Arm length (the arm stretches to reach the hip) and how much the blade root is pinned to the
@@ -139,6 +160,12 @@ var _sheath_blade: Vector3 = Vector3.BACK
 var _sheath_edge: Vector3 = Vector3.UP
 var _anim: Anim = Anim.NONE
 var _anim_time: float = 0.0
+var _guard_from_sheath: bool = false
+var _wobble_left: float = 0.0
+var _wobble_amp: float = 0.0
+var _wobble_side: float = 1.0
+var _flash: float = 0.0
+var _flash_color: Color = Color.WHITE
 
 
 ## Called by the Player in _ready. Builds the arm and blade and puts them at the rest pose.
@@ -262,6 +289,49 @@ func play_sheathe() -> void:
 	_start_anim(Anim.SHEATHE)
 
 
+## Guard pressed: the sword comes up across the front. From the scabbard it is a fast reach and
+## pull (the hand grips and the blade is out, held in front); from a drawn sword, a quick raise.
+func play_guard(from_sheath: bool) -> void:
+	if _hand == null:
+		return
+	_returning = false
+	_charging_visual = false
+	_remember_current()
+	_anim = Anim.GUARD
+	_anim_time = 0.0
+	_guard_from_sheath = from_sheath
+	_wobble_left = 0.0
+	_set_active(false)
+
+
+## A fresh guard press while already guarding: a small flick, so a re-press is visible.
+func play_guard_press() -> void:
+	_start_wobble(deg_to_rad(guard_wobble_angle) * 0.4, 1.0)
+
+
+## A hit met the guard: the blade flicks (more on a deflect, like Wolf's parry; a heavier shudder on
+## a plain guard) and flashes white (deflect) or orange (guard). side > 0 = the attacker is on the right.
+func play_guard_hit(deflect: bool, side: float) -> void:
+	_start_wobble(deg_to_rad(deflect_wobble_angle if deflect else guard_wobble_angle), side)
+	_flash = 1.0
+	_flash_color = deflect_flash_color if deflect else guard_flash_color
+	_refresh_color()
+
+
+func _start_wobble(amplitude: float, side: float) -> void:
+	_wobble_amp = amplitude
+	_wobble_side = 1.0 if side >= 0.0 else -1.0
+	_wobble_left = wobble_time
+
+
+## A decaying swing from the full flick: 1 at the start, ringing out to 0.
+func _wobble_value() -> float:
+	if _wobble_left <= 0.0:
+		return 0.0
+	var t := 1.0 - _wobble_left / maxf(wobble_time, 0.001)
+	return exp(-4.0 * t) * cos(TAU * 1.5 * t)
+
+
 func _start_anim(kind: Anim) -> void:
 	if _hand == null:
 		return
@@ -275,6 +345,7 @@ func _start_anim(kind: Anim) -> void:
 
 ## An attack starts (or chains): remember where the sword is now so the wind-up blends from it.
 func begin_action(_action: ActionData) -> void:
+	_wobble_left = 0.0
 	_anim = Anim.NONE
 	_returning = false
 	_charging_visual = false
@@ -342,6 +413,7 @@ func update_action(action: ActionData, time: float, mirror: bool = false) -> voi
 func end_combo() -> void:
 	if _hand == null:
 		return
+	_wobble_left = 0.0
 	_anim = Anim.NONE
 	_charging_visual = false
 	_remember_current()
@@ -351,6 +423,11 @@ func end_combo() -> void:
 
 
 func _process(delta: float) -> void:
+	if _wobble_left > 0.0:
+		_wobble_left = maxf(_wobble_left - delta, 0.0)
+	if _flash > 0.0:
+		_flash = maxf(_flash - delta / maxf(flash_time, 0.001), 0.0)
+		_refresh_color()
 	_update_crouch_drop(delta)
 	if _glow > 0.0 and not _charging_visual:
 		_glow = move_toward(_glow, 0.0, glow_fade_speed * delta)
@@ -579,6 +656,12 @@ func _set_active(active: bool) -> void:
 func _refresh_color() -> void:
 	if _material == null:
 		return
+	if _flash > 0.0:
+		_material.albedo_color = _flash_color
+		_material.emission = _flash_color
+		_material.emission_energy_multiplier = _flash * glow_energy
+		return
+	_material.emission = charge_color
 	if _is_active:
 		_material.albedo_color = active_color
 	else:
@@ -643,15 +726,27 @@ func _apply() -> void:
 	var arm_basis := Basis.looking_at(arm_dir, arm_up)
 	_arm.basis = Basis(arm_basis.x, arm_basis.y, arm_basis.z * (_arm_len / maxf(arm_reach, 0.001)))
 	var hand_end := _shoulder() + arm_dir * _arm_len
-	_hand.position = hand_end.lerp(_grip_pos(), _pin)
+	var blade_dir := _blade_dir
+	var edge_dir := _edge_dir
+	var shift := Vector3.ZERO
+	if _wobble_left > 0.0:
+		# The guard flick: the blade swings about the vertical (and a little about the side axis),
+		# and the hand is pushed back, then it rings out.
+		var w := _wobble_value()
+		var flick := Basis(Vector3.UP, w * _wobble_amp * _wobble_side) \
+				* Basis(Vector3.RIGHT, -w * _wobble_amp * 0.5)
+		blade_dir = flick * blade_dir
+		edge_dir = flick * edge_dir
+		shift = Vector3(0.0, 0.0, wobble_push * w)
+	_hand.position = hand_end.lerp(_grip_pos(), _pin) + shift
 	if _scabbard != null:
 		_scabbard.position.y = -_drop
-	var z := -_blade_dir
-	var x := _edge_dir - _blade_dir * _edge_dir.dot(_blade_dir)
+	var z := -blade_dir
+	var x := edge_dir - blade_dir * edge_dir.dot(blade_dir)
 	if x.length_squared() < 0.0001:
-		x = _blade_dir.cross(Vector3.UP)
+		x = blade_dir.cross(Vector3.UP)
 	if x.length_squared() < 0.0001:
-		x = _blade_dir.cross(Vector3.RIGHT)
+		x = blade_dir.cross(Vector3.RIGHT)
 	x = x.normalized()
 	var y := z.cross(x)
 	_hand.basis = Basis(x, y, z)
@@ -685,6 +780,10 @@ func _relaxed_aim() -> Vector3:
 ## Run the draw or sheathe animation (R, auto-sheathe).
 func _update_anim(delta: float) -> void:
 	_anim_time += delta
+	if _anim == Anim.GUARD:
+		_update_guard()
+		_apply()
+		return
 	if _anim == Anim.DRAW:
 		var reach_t := clampf(_anim_time / maxf(draw_reach_time, 0.001), 0.0, 1.0)
 		var pull_t := clampf((_anim_time - draw_reach_time) / maxf(draw_pull_time, 0.001), 0.0, 1.0)
@@ -702,6 +801,26 @@ func _update_anim(delta: float) -> void:
 		if release_t >= 1.0:
 			_anim = Anim.NONE
 	_apply()
+
+
+## The guard pose: from the scabbard a fast reach and pull into it, from a drawn sword a quick raise;
+## then it is held (and flicks on a hit) until the Guard state ends.
+func _update_guard() -> void:
+	var tip := pose_to_point(guard_pose)
+	var blade := guard_blade_direction.normalized()
+	var edge := guard_edge_direction.normalized()
+	if _guard_from_sheath:
+		var reach_t := clampf(_anim_time / maxf(guard_draw_reach_time, 0.001), 0.0, 1.0)
+		var pull_t := clampf((_anim_time - guard_draw_reach_time) / maxf(guard_draw_pull_time, 0.001), 0.0, 1.0)
+		_draw_pose(reach_t, pull_t, tip, blade, edge)
+		_twist = lerpf(_from_twist, 0.0, ease(pull_t, windup_ease))
+		return
+	var k := ease(clampf(_anim_time / maxf(guard_blend_time, 0.001), 0.0, 1.0), windup_ease)
+	_tip = _from_tip.lerp(tip, k)
+	_arm_len = lerpf(_from_arm_len, arm_reach, k)
+	_pin = lerpf(_from_pin, 0.0, k)
+	_twist = lerpf(_from_twist, 0.0, k)
+	_blend_orientation(_from_blade, _from_edge, blade, edge, k)
 
 
 ## Drawing, from the captured pose to a target pose. reach_t (0 to 1): the arm swings from where it

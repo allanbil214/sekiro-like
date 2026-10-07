@@ -676,3 +676,34 @@ Tested and approved by the user ("it finally feels like Sekiro"). Docs: handoff 
 **Noticed, not fixed**
 - None.
 
+
+### Step 5: guard, deflect, shrinking window, jump versions (2026-10-07)
+**Decisions (user)**
+- Spam shrink (O3) is linear: -0.04 s per rapid re-press, floor 0.05 s, reset after 1 s of neither guarding nor acting. Same in the air.
+- Chip damage is a toggle, off by default (the Sekiro default); 15% of the hit when on. Until Step 6, a plain guard therefore costs nothing.
+- Guard from sheathed snaps the sword out into a guard-draw pose; later presses are plain deflects. Only the right arm is modelled, so the left hand on the scabbard is not shown.
+- Knockback applies on a hit, a plain guard, and a deflect, scaled per outcome (1.0, 1.0, 0.6). It is an easing push, not a stun, so a re-deflect stays snappy.
+- The deflect window keeps running after the button is released (like Sekiro).
+- One step, not split into 5a and 5b.
+**Files:** new `scripts/player/states/guard_state.gd`. Changed `combatant.gd` (guard rules, signals), `hit_data.gd` (`Outcome`, guardable, deflectable, knockback), `action_data.gd` (`knockback`), `input_buffer.gd` (tracks guard), `player.gd`, `sword_visual.gd`, `action_state.gd`, `locomotion_state.gd`, `crouch_state.gd`, `air_state.gd`, `dash_state.gd`, `ledge_climb_state.gd`, `dummy.gd`, `debug_overlay.gd`. No `actions/guard.tres` was made (the numbers are exports on `Combatant`).
+**Rules not obvious from the code**
+- Guard cancels any action outside its own hit window; a press during the window stays buffered (0.15 s). Crouched actions under a low ceiling ignore it. The ledge climb and hang are excluded.
+- `GuardState` ends on release only after `deflect_left` is 0, so a quick tap keeps its whole window (and the cone guard for that tail).
+- Combatant outcome order: DEFLECT (guarding, in the cone, deflectable, window open), then GUARD (in the cone, guardable), else HIT. Behind you or unguardable = full hit.
+- Knockback is added to the velocity only for `move_and_slide()` and taken off again, so states never see it (not applied during the ledge climb).
+- `Player` creates a `Guard` state in code if the scene has none (a warning is logged); this runs once at startup, not per frame.
+**Not done:** posture and its effects (Step 6), enemy guard and deflect and grabs (Step 7), clash (Step 8), lock-on (Step 9), sparks, sound, shake (Step 11); the left hand of the guard-draw pose.
+**Noticed, not fixed**
+- None.
+
+### Step 5 follow-up: spam reset check (2026-10-07)
+- The user thought the shrinking window did not reset after an attack. By design (3.2: it resets after 1 s of neither guarding nor acting), acting holds the count and the 1 s starts once the action ends. The overlay also showed the last window opened, not the next one, so it looked stuck.
+- Added: the overlay shows the next window, the press count, and the idle time toward the 1 s reset; `Combatant.debug_log` prints presses, resets, and outcomes. Awaiting the user's result; if "acting resets it at once" is wanted instead, that is a one-line change in `Combatant.tick_guard()`.
+- Cleanup added to the backlog (remove the create-if-missing fallbacks in `player.gd`); rule added to the conventions and the work agreement: no node-creation fallbacks.
+
+### Step 5 follow-up 2: acting resets the spam count (2026-10-07)
+- The log showed attack, deflect, attack, deflect still shrinking the window to the 0.05 s floor (16 presses), because acting only held the count. Not spam, so it must not shrink.
+- `Combatant.tick_guard(delta, guard_up, acting)`: any action (every `ActionState`) resets the count at once; guarding holds it; 1 s of neither still resets it. Debug log line: `spam count reset by acting`.
+
+### Step 5 follow-up 3: log off by default (2026-10-07)
+- The user confirmed the spam reset works (attack resets the count; only back-to-back presses shrink the window). `Combatant.debug_log` now defaults to off; the on-screen overlay line is unchanged. Step 5 is closed.

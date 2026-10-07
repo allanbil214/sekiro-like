@@ -14,6 +14,10 @@ func physics_update(delta: float) -> void:
 	elif player.coyote_timer <= 0.0 and player.try_air_jump():
 		machine.transition_to(&"WallJump")
 		return
+	# Jump guard (and jump deflect): the same Guard state, with gravity.
+	if player.input_buffer.has_pressed(&"guard"):
+		machine.transition_to(&"Guard")
+		return
 	# Attack in the air starts the air tap loop. Close to the ground the press stays buffered,
 	# so landing turns it into a ground attack instead.
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack") \

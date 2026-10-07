@@ -14,6 +14,9 @@ func physics_update(delta: float) -> void:
 		player.start_jump()
 		machine.transition_to(&"Air")
 		return
+	if player.input_buffer.has_pressed(&"guard"):
+		machine.transition_to(&"Guard")
+		return
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
 		var attack := machine.get_node_or_null("Attack") as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.dash_attack):

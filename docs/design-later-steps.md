@@ -17,7 +17,7 @@
 
 ### 3.2 Guard and deflect
 - Deflect window is **time-based, 0.2s** (placeholder; the Sekiro value is 12 frames at 60 FPS).
-- **Spam penalty = shrinking window** (Sekiro style), **not a lockout** (Lies of P style). Each rapid re-press shrinks the window; it **resets after 1s of not guarding or acting**.
+- **Spam penalty = shrinking window** (Sekiro style), **not a lockout** (Lies of P style). Each rapid re-press shrinks the window; it **resets after 1s of not guarding or acting**, and **at once when any other action starts** (attack, dodge...; confirmed in Step 5 testing).
 - **Edge-triggered:** every deflect needs its own button press. Holding guard does **not** auto-deflect later attacks. Holding doesn't extend the window either; a new attempt means release and press again.
 - **Snappy re-deflect:** a fresh press always starts a new window, even mid-deflect animation or recovery. Deflect is cancellable into a new deflect. Use input buffering so a slightly-early press still counts.
 - Normal guard blocks but adds posture damage and chip damage; a successful deflect adds almost none (and damages the attacker's posture).
@@ -103,7 +103,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Parameter | Placeholder |
 |---|---|
 | Deflect window | 0.2s |
-| Deflect spam shrink per re-press | TBD (e.g. -0.04s, with a floor) |
+| Deflect spam shrink per re-press | -0.04s linear, floor 0.05s (built in Step 5) |
 | Deflect window reset | 1.0s of no guard/actions |
 | Clash overlap window | 0.1s |
 | Enemy reaction delay | 0.1-0.3s random |
@@ -123,6 +123,6 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 
 - **O1:** When a **non-final** health bar empties and the deathblow window is missed, what happens? (Sekiro: the enemy recovers. The user said the enemy "falls and dies" on a missed deathblow, which clearly applies to the final bar. Confirm the non-final behavior.)
 - **O2:** Exact posture numbers, spam-shrink amount, regen rates.
-- **O3:** Which deflect-spam shrink curve (linear or stepped)?
+- ~~O3~~ Resolved in Step 5: linear, -0.04 s per rapid re-press, floor 0.05 s.
 - **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
 - **O5:** Enemy grab damage amount and exact grab range/wind-up.

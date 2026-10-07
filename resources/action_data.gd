@@ -67,6 +67,9 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 @export var hitbox_length_scale: float = 1.0
 ## Seconds of hitstop (a brief near-freeze of the whole game) when this action's hit connects.
 @export var hitstop: float = 0.06
+## How far (m) a hit from this action pushes the target back (a heavy attack: 1 or more). 0 = none.
+## The target scales it by outcome (Combatant knockback multipliers: hit, guard, deflect).
+@export var knockback: float = 0.0
 @export var guardable: bool = true
 @export var deflectable: bool = true
 @export var pauses_posture_regen: bool = true

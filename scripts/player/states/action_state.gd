@@ -34,6 +34,8 @@ func exit(_next: StringName) -> void:
 
 
 func physics_update(delta: float) -> void:
+	if _try_guard_cancel():
+		return
 	action_time += delta * speed_scale
 	player.invulnerable = action.has_iframes(action_time)
 	if not player.is_on_floor():
@@ -45,6 +47,26 @@ func physics_update(delta: float) -> void:
 	_apply_action_movement(delta)
 	if action_time >= action.duration:
 		_on_action_finished()
+
+
+## Guard cancels any action except during its hit window (a press made then stays buffered and
+## fires once the window closes, if it is still fresh). A crouched action under a low ceiling
+## ignores it (guard stands you up).
+func _try_guard_cancel() -> bool:
+	if not _allows_guard_cancel() or not player.input_buffer.has_pressed(&"guard"):
+		return false
+	if _hit_is_active():
+		return false
+	if player.is_crouched and not player.can_stand():
+		player.input_buffer.clear(&"guard")
+		return false
+	machine.transition_to(&"Guard")
+	return true
+
+
+## Subclasses return false for actions guard must not interrupt (the ledge climb).
+func _allows_guard_cancel() -> bool:
+	return true
 
 
 func _apply_action_movement(delta: float) -> void:
@@ -75,6 +97,9 @@ func _update_hit() -> void:
 	template.damage = action.damage * _hit_damage_multiplier()
 	template.posture_damage = action.posture_damage
 	template.hitstop = action.hitstop
+	template.guardable = action.guardable
+	template.deflectable = action.deflectable
+	template.knockback = action.knockback
 	template.action = action
 	var landed := hitbox.sweep(template)
 	if not landed.is_empty():

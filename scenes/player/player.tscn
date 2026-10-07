@@ -26,6 +26,7 @@
 [ext_resource type="Script" uid="uid://socceebhysll" path="res://scripts/player/states/helm_splitter_state.gd" id="22_007i1"]
 [ext_resource type="Resource" uid="uid://deq0ib4qx1eyd" path="res://actions/helm_splitter_land.tres" id="23_6cv16"]
 [ext_resource type="Resource" uid="uid://bhemmwny60asf" path="res://actions/helm_splitter.tres" id="24_j4nxn"]
+[ext_resource type="Script" uid="uid://ckyykx3ke8fdi" path="res://scripts/player/states/guard_state.gd" id="26_uniwh"]
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="27_28m0y"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
 
@@ -138,6 +139,9 @@ script = ExtResource("21_yj68g")
 script = ExtResource("22_007i1")
 land_action = ExtResource("23_6cv16")
 action = ExtResource("24_j4nxn")
+
+[node name="Guard" type="Node" parent="StateMachine" unique_id=482233069]
+script = ExtResource("26_uniwh")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")

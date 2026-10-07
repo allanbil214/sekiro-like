@@ -15,6 +15,9 @@ func physics_update(delta: float) -> void:
 	if player.input_buffer.consume(&"dodge"):
 		machine.transition_to(&"Dodge")
 		return
+	if player.input_buffer.has_pressed(&"guard"):
+		machine.transition_to(&"Guard")
+		return
 	# Sheathed: the attack is the draw slash (iai).
 	if player.sheathed and player.input_buffer.has_pressed(&"attack"):
 		var attack := machine.get_node_or_null("Attack") as AttackState

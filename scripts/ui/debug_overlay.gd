@@ -22,6 +22,13 @@ func _ready() -> void:
 	_body = _player.get_node_or_null("Visual/Body") as MeshInstance3D
 	_label = Label.new()
 	_label.position = Vector2(16, 16)
+	# White text with a black outline and shadow, so it reads on any background.
+	_label.add_theme_color_override("font_color", Color.WHITE)
+	_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_label.add_theme_constant_override("outline_size", 6)
+	_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.6))
+	_label.add_theme_constant_override("shadow_offset_x", 1)
+	_label.add_theme_constant_override("shadow_offset_y", 1)
 	add_child(_label)
 	_tint_material = StandardMaterial3D.new()
 	_tint_material.albedo_color = tint_color
@@ -43,6 +50,15 @@ func _process(_delta: float) -> void:
 	if _player.combatant != null:
 		text += "\nHP: %d / %d   Hurtbox: %s" % [
 			_player.combatant.health, _player.combatant.max_health, _player.hurtbox_profile_name]
+	if _player.combatant != null:
+		var guard := _player.combatant
+		var last := "-"
+		if guard.last_outcome >= 0:
+			last = ["HIT", "GUARD", "DEFLECT"][guard.last_outcome]
+		text += "\nGuard: %s  next window %.2f s (presses %d, idle %.1f/%.1f s)  open %.2f  last: %s" % [
+			"UP" if guard.guarding else "down", guard.next_window(), guard.press_count,
+			guard.spam_idle(), guard.deflect_reset_time, guard.deflect_left, last,
+		]
 	text += "\nSword: %s" % ("sheathed" if _player.sheathed else "drawn")
 	if _player.sword_visual != null and _player.sword_visual.is_busy():
 		text += " (moving)"

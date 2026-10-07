@@ -100,12 +100,20 @@ var sheathed: bool = false
 @export var hit_recoil_distance: float = 0.15
 @export var hit_recoil_tilt: float = 0.2
 @export var hit_recoil_time: float = 0.25
+@export_group("Guard")
+## A guard or deflect uses this share of the hit's hitstop (the plain hit uses all of it).
+@export var guard_hitstop_factor: float = 0.5
+## The player wobble on a plain guard and on a deflect, as a share of the hit wobble.
+@export var guard_recoil_scale: float = 0.7
+@export var deflect_recoil_scale: float = 0.35
+## Knockback is a push that eases out over this many seconds (the distance comes from the hit).
+@export var knockback_time: float = 0.2
 ## Name of the hurtbox posture in use (debug overlay).
 var hurtbox_profile_name: String = "stand"
 
 ## Seconds since the last attack or dodge (counts only in Locomotion or Crouch).
 var sheathe_idle: float = 0.0
-## Guard will set this later to force walking.
+## Set by GuardState: forces walking.
 var walk_only: bool = false
 ## Set by actions during their i-frame window (read by the damage system in Step 4).
 var invulnerable: bool = false
@@ -139,6 +147,9 @@ var _headroom_shape: CapsuleShape3D
 var _hurt_shape: CollisionShape3D
 var _recoil: float = 0.0
 var _recoil_direction: Vector3 = Vector3.ZERO
+var _recoil_scale: float = 1.0
+var _knockback_velocity: Vector3 = Vector3.ZERO
+var _knockback_decel: float = 0.0
 var _visual_rest: Vector3 = Vector3.ZERO
 var _hurt_capsule: CapsuleShape3D
 var _nose_drop: float = 0.4
@@ -171,6 +182,11 @@ func _ready() -> void:
 	add_to_group("player")
 	_visual_rest = visual.position
 	_setup_hurtbox()
+	if state_machine.get_node_or_null("Guard") == null:
+		push_warning("Player: no Guard state under StateMachine; creating one in code (add a Node named Guard with guard_state.gd).")
+		var guard_state := GuardState.new()
+		guard_state.name = "Guard"
+		state_machine.add_child(guard_state)
 	state_machine.setup(self)
 	state_machine.start()
 
@@ -182,19 +198,32 @@ func _process(delta: float) -> void:
 		return
 	_recoil = maxf(0.0, _recoil - delta / maxf(hit_recoil_time, 0.001))
 	var k := ease(_recoil, 2.0)
-	visual.position = _visual_rest + _recoil_direction * hit_recoil_distance * k
+	visual.position = _visual_rest + _recoil_direction * hit_recoil_distance * _recoil_scale * k
 	# Tilt the top toward the push, in the Visual's own (yawed) frame.
 	var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * _recoil_direction
 	var axis := Vector3.UP.cross(local_dir)
-	visual.rotation.x = axis.x * hit_recoil_tilt * k
-	visual.rotation.z = axis.z * hit_recoil_tilt * k
+	visual.rotation.x = axis.x * hit_recoil_tilt * _recoil_scale * k
+	visual.rotation.z = axis.z * hit_recoil_tilt * _recoil_scale * k
 
 
 func _physics_process(delta: float) -> void:
 	input_buffer.tick(delta)
+	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
 	state_machine.physics_update(delta)
 	_update_auto_sheathe(delta)
+	# A knockback push is added on top of the state's own velocity for the move, then taken off
+	# again, so the states never see it (they set or ease the velocity themselves).
+	var push := _knockback_velocity
+	if push != Vector3.ZERO and not state_machine.current is LedgeClimbState:
+		velocity.x += push.x
+		velocity.z += push.z
+		_knockback_velocity = push.move_toward(Vector3.ZERO, _knockback_decel * delta)
+	else:
+		push = Vector3.ZERO
+		_knockback_velocity = Vector3.ZERO
 	move_and_slide()
+	velocity.x -= push.x
+	velocity.z -= push.z
 	_update_hurtbox()
 
 
@@ -398,7 +427,10 @@ func _setup_hurtbox() -> void:
 	_hurt_capsule = CapsuleShape3D.new()
 	_hurt_capsule.radius = (_collision_shape.shape as CapsuleShape3D).radius
 	_hurt_shape.shape = _hurt_capsule
+	combatant.guard_facing = get_facing_direction
 	combatant.damaged.connect(_on_damaged)
+	combatant.hit_guarded.connect(_on_guarded)
+	combatant.hit_deflected.connect(_on_deflected)
 	combatant.died.connect(_on_died)
 	_update_hurtbox()
 
@@ -427,12 +459,48 @@ func _update_hurtbox() -> void:
 ## and a hanging player is knocked off the ledge. No stun yet (Step 6).
 func _on_damaged(hit: HitData, _amount: float) -> void:
 	_recoil = 1.0
+	_recoil_scale = 1.0
 	_recoil_direction = hit.direction
+	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit)
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop)
 	var hang := state_machine.current as LedgeHangState
 	if hang != null:
 		hang.knock_off()
+
+
+## The guard blocked a hit (no health lost unless chip damage is on): a heavier wobble, an orange
+## blade flash, a shorter hitstop, and the knockback. Step 6 adds the posture damage here.
+func _on_guarded(hit: HitData, _chip: float) -> void:
+	_guard_reaction(hit, false)
+	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_guard)
+
+
+## A deflect: a lighter wobble, a white blade flash and the blade flick, and a softer knockback.
+func _on_deflected(hit: HitData) -> void:
+	_guard_reaction(hit, true)
+	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_deflect)
+
+
+func _guard_reaction(hit: HitData, deflect: bool) -> void:
+	notify_combat()
+	Hitstop.request(get_tree(), hit.hitstop * guard_hitstop_factor)
+	_recoil = 1.0
+	_recoil_scale = deflect_recoil_scale if deflect else guard_recoil_scale
+	_recoil_direction = hit.direction
+	if sword_visual != null:
+		# Which side of the player the attacker is on, in the Visual's own frame.
+		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
+		sword_visual.play_guard_hit(deflect, local_dir.x)
+
+
+## Push the player away along `direction` by about `distance` metres, easing out over knockback_time.
+func apply_knockback(direction: Vector3, distance: float) -> void:
+	var flat := Vector3(direction.x, 0.0, direction.z)
+	if distance <= 0.0 or knockback_time <= 0.0 or flat.length_squared() < 0.0001:
+		return
+	_knockback_velocity = flat.normalized() * (2.0 * distance / knockback_time)
+	_knockback_decel = _knockback_velocity.length() / knockback_time
 
 
 ## Temporary: refill after a moment so testing can go on. Death and retry are Step 10.

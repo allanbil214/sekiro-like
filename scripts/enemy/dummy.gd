@@ -37,6 +37,11 @@ const SWING_START: float = 0.3
 @export var pause_time: float = 1.2
 @export var attack_damage: float = 20.0
 @export var attack_hitstop: float = 0.08
+## Test hooks for Step 5: turn these off to try an unguardable or undeflectable swing.
+@export var attack_guardable: bool = true
+@export var attack_deflectable: bool = true
+## How far (m) a swing pushes the player back. 0 = light; try 1.5 for a heavy one.
+@export var attack_knockback: float = 0.0
 ## Height (m above the feet) of the arm for each swing.
 @export var high_height: float = 1.5
 @export var mid_height: float = 0.9
@@ -107,6 +112,9 @@ func _physics_process(delta: float) -> void:
 			template.attacker = self
 			template.damage = attack_damage
 			template.hitstop = attack_hitstop
+			template.guardable = attack_guardable
+			template.deflectable = attack_deflectable
+			template.knockback = attack_knockback
 			hitbox.sweep(template)
 			if _swing_time >= active_time:
 				hitbox.end_swing()
