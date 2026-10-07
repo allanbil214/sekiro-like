@@ -18,6 +18,11 @@ extends ActionState
 ## Sheathed (3c): the draw slash (Player.weapon.draw_attack) replaces every attack variant and the
 ## first ground attack. It counts as no combo step, so the next tap is attack 1 (after a crouched
 ## draw slash it is the crouch loop, since you stay crouched).
+## Charged iai (3c-2): the draw slash's Hold Action. Holding attack at the end of its wind-up charges
+## it (the blade half drawn, orange glow) and fires the charged draw slash on release or at full
+## charge. It replaces the ground thrust and the dash, dodge, crouch, and slide holds while sheathed.
+## From a crouch or slide it stands you up when it fires (no headroom: the hold is ignored). It is
+## never mirrored and counts as no combo step, so the next tap is attack 1.
 ## No hitboxes or damage yet (Step 4).
 
 enum Phase { NORMAL, WAITING, CHARGING }
@@ -67,6 +72,8 @@ var _freeze_time: float = 0.0
 var _lunge_scale: float = 1.0
 var _thrust_side_left: bool = false
 var _thrust_mirror: bool = false
+## The hold in progress (or fired) is the charged iai, not a thrust or the upward slash.
+var _iai_hold: bool = false
 
 
 func enter(previous: StringName) -> void:
@@ -189,6 +196,8 @@ func get_debug_text() -> String:
 		kind = "THRUST"
 	elif _is_variant:
 		kind = "DRAW" if action == player.weapon.draw_attack else "VARIANT"
+	if _iai_hold and _phase == Phase.NORMAL:
+		kind = "CHARGED IAI"
 	if _crouch_context:
 		kind += " (crouched)"
 	var text := "%s: %d/%d (%s)\nBuffer: %s  Chain: %s  Queued: %s" % [
@@ -199,8 +208,11 @@ func get_debug_text() -> String:
 	if _phase == Phase.WAITING:
 		text += "\nHold: deciding..."
 	elif _phase == Phase.CHARGING:
-		text += "\nCharge: %.2f / %.2f (%s next)" % [
-			_charge_time, _hold_action.charge_time, "left" if _thrust_mirror else "right"]
+		if _iai_hold:
+			text += "\nCHARGED IAI: %.2f / %.2f" % [_charge_time, _hold_action.charge_time]
+		else:
+			text += "\nCharge: %.2f / %.2f (%s next)" % [
+				_charge_time, _hold_action.charge_time, "left" if _thrust_mirror else "right"]
 	elif _is_thrust:
 		text += "\nThrust: %s, damage x%.2f, lunge x%.2f" % [
 			"left" if _thrust_mirror else "right", damage_multiplier, _lunge_scale]
@@ -218,6 +230,9 @@ func _on_action_enter(_previous: StringName) -> void:
 	_hold_action = null
 	_lunge_scale = 1.0
 	damage_multiplier = 1.0
+	_iai_hold = false
+	# A new action is never mirrored unless its own hold sets it (the old mirror stuck after a left thrust).
+	_thrust_mirror = false
 	_update_lunge_direction(true)
 	if player.sword_visual != null:
 		player.sword_visual.begin_action(action)
@@ -280,6 +295,7 @@ func _decide() -> void:
 	var target := _hold_target()
 	if target != null and not _released and Input.is_action_pressed("attack"):
 		_hold_action = target
+		_iai_hold = action == player.weapon.draw_attack
 		_hold_wait = 0.0
 		_freeze_time = action.active_hit.x - FREEZE_MARGIN
 		if hold_extra_time > 0.0:
@@ -294,7 +310,9 @@ func _decide() -> void:
 func _begin_hold() -> void:
 	# Thrusts are authored right-handed (mirrored to start left); a slash-style hold action
 	# (the crouch upward slash) is authored left-handed (mirrored to start right).
-	if _hold_action.blade_aims_at_end:
+	if _iai_hold:
+		_thrust_mirror = false
+	elif _hold_action.blade_aims_at_end:
 		_thrust_mirror = _thrust_side_left
 	else:
 		_thrust_mirror = not _thrust_side_left
@@ -330,7 +348,10 @@ func _update_hold(delta: float) -> void:
 	var thrust := _hold_action
 	var fraction := clampf(_charge_time / thrust.charge_time, 0.0, 1.0)
 	if player.sword_visual != null:
-		player.sword_visual.update_charge(thrust, _thrust_mirror, _charge_time, fraction)
+		if _iai_hold:
+			player.sword_visual.update_charge_iai(thrust, _charge_time, fraction)
+		else:
+			player.sword_visual.update_charge(thrust, _thrust_mirror, _charge_time, fraction)
 	if not held or fraction >= 1.0:
 		_fire_thrust(fraction)
 
@@ -345,11 +366,11 @@ func _fire_thrust(fraction: float) -> void:
 	action_time = 0.0
 	speed_scale = thrust.speed_scale
 	_phase = Phase.NORMAL
-	_is_thrust = true
+	_is_thrust = not _iai_hold
 	_decided = true
 	_queued = false
 	if _crouch_context:
-		# The upward slash out of a crouch: stand up now and carry on as a standing attack.
+		# The upward slash or the charged iai out of a crouch: stand up now and carry on standing.
 		_crouch_context = false
 		_rose = true
 		player.set_crouched(false)

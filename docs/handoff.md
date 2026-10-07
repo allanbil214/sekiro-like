@@ -182,7 +182,7 @@ Moved. The numbers for **built** features live in the Player and SwordVisual exp
    - **3a-1** ground 5-attack combo, **3a-2** hold and charged zigzag thrust. **(done)**
    - **3b-1 to 3b-4** dash attack, crouch and slide attacks, air tap loop, helm splitter. **(done)**
    - **3c-1** sheathing (visual only: scabbard, `sheathe` button R, auto-sheathe, animated hand reach), the draw slash (iai) replacing every attack while sheathed, and the dodge attack. **(done)**
-   - **3c-2** the charged iai (hold while sheathed; the shockwave and extra damage come in Step 4 and the polish) and the sheathed helm splitter (hold in the air while sheathed: reach, draw, then the dive). **(next)** Needs sheathed and drawn animation sets later.
+   - **3c-2** the charged iai (hold while sheathed; the shockwave and extra damage come in Step 4 and the polish) and the sheathed helm splitter (hold in the air while sheathed: the draw, a raised blade under half gravity, then the dive). **(done)** Needs sheathed and drawn animation sets later.
 4. Hitboxes, damage, hitstop on a dummy enemy; player hurtbox profiles (stand/crouch/air) and duck-under whiffs.
 5. Guard, deflect, shrinking window, jump versions.
 6. Posture, posture break, deathblow (+ player stagger rules).
@@ -216,7 +216,7 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - [x] 3b-3. Air tap loop (see the build log, "Step 3b-3") **(done and tested by the user)**
 - [x] 3b-4. Helm splitter, and the air tap loop sped up 1.5x (see the build log, "Step 3b-4") **(done and tested by the user)**
 - [x] 3c-1. Sheathing (visual), R, auto-sheathe, the animated reach, the draw slash replacing every attack while sheathed, and the dodge attack (see the build log, "Step 3c-1") **(done and tested by the user 2026-10-07)**
-- [ ] 3c-2. The charged iai (hold) and the sheathed helm splitter (design in the spec, section 7b)
+- [x] 3c-2. The charged iai (hold) and the sheathed helm splitter, plus the `_thrust_mirror` fix (see the build log, "Step 3c-2") **(done and tested by the user 2026-10-07)**
 - [ ] 4. Hitboxes, damage, hitstop
 - [ ] 5. Guard, deflect, shrinking window, jump versions
 - [ ] 6. Posture, deathblow, player stagger
@@ -226,7 +226,7 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish
 
-**Current state:** Steps 1 to 3c-1 are built and tested. **Next: 3c-2** (the charged iai and the sheathed helm splitter), then Step 4 (hitboxes, damage, hitstop). Start a **new chat** for each phase and paste the files listed at the top of this handoff, plus a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
+**Current state:** Steps 1 to 3c-2 are built and tested (all of Step 3). **Next: Step 4** (hitboxes, damage, hitstop). Start a **new chat** for each phase and paste the files listed at the top of this handoff, plus a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
 
 ### What the finished steps built (details: `docs/archive/build-log.md`; each script's header comment describes its behavior)
 
@@ -235,7 +235,8 @@ The unresolved ones (O1 to O5, all about later steps) are in `docs/design-later-
 - **2b to 2d Traversal:** `CrouchState`, `SlideState` (an `ActionState`), `WallJumpState` and the mid-air reach (`ReachArms`, debug-grade), `LedgeClimbState` and `LedgeHangState` (`knock_off()` is the hook for Step 4). Rules in 3.9 and 3.10.
 - **3a Ground combo and thrust:** `WeaponData` (the katana), `AttackState` (combo, chain, cancels, lunge with ledge stop, hold becomes the charged zigzag thrust), `SwordVisual` (the placeholder arm-swing sword: clock poses, edge-leading blade, body twist). Rules in the Step 3 spec.
 - **3b Variants:** other states hand over through `AttackState.try_start_variant()`; dash, crouch and slide attacks, `AirAttackState` (the air loop), `HelmSplitterState` (hold in the air). Variants count as combo step 1; `ActionData.hold_action` names what a hold selects.
-- **3c-1 Sheathing:** `Player.sheathed` (spawns true), R and D-pad Down (`sheathe`), auto-sheathe (`auto_sheathe_time`, 5 s, counted only in Locomotion or Crouch), the draw slash (`WeaponData.draw_attack`; `try_start_variant()` swaps it in while sheathed; it counts as no combo step), the dodge attack (`DodgeState`), and the `SwordVisual` scabbard, pin, stretching arm, and draw and sheathe animations. **Noticed, not fixed:** `AttackState._thrust_mirror` is never reset after a left-side thrust, so the next ground slash may draw mirrored (read from the code, not seen in play).
+- **3c-1 Sheathing:** `Player.sheathed` (spawns true), R and D-pad Down (`sheathe`), auto-sheathe (`auto_sheathe_time`, 5 s, counted only in Locomotion or Crouch), the draw slash (`WeaponData.draw_attack`; `try_start_variant()` swaps it in while sheathed; it counts as no combo step), the dodge attack (`DodgeState`), and the `SwordVisual` scabbard, pin, stretching arm, and draw and sheathe animations.
+- **3c-2 Charged iai and sheathed helm splitter:** the draw slash's `hold_action` is `draw_attack_charged.tres` (charge 0.6 s, x1.5 damage and x1.4 lunge stored for Step 4); `AttackState` charges it with `SwordVisual.update_charge_iai()` (blade half drawn, glow), never mirrored, standing you up when it fires from a crouch or slide. In the air, `AirAttackState` starts `HelmSplitterState` with `WeaponData.draw_helm_action` (`helm_splitter_draw.tres`, a 0.4 s raise); gravity is halved (`HelmSplitterState.opening_gravity_factor`) while holding in the draw wind-up and through the raise, then the usual dive. `_thrust_mirror` now resets on every new action.
 
 ---
 

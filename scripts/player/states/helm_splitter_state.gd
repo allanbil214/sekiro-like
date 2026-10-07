@@ -9,6 +9,9 @@ extends ActionState
 ## wind-down, so the blade lies low on the ground. It stands up when the state exits; with no
 ## headroom it ends in Crouch, and dodge, jump, and chain presses are ignored until there is room.
 ##
+## Sheathed (3c-2): the dive can start from the draw slash's hold (start(..., opening = true)). Its
+## longer wind-up then plays under reduced gravity (opening_gravity_factor), then the usual dive.
+##
 ## Once per airtime (Player.helm_used, cleared by reset_air_actions). No hover, no cancels during
 ## the dive, normal air control. No hitboxes or damage yet (Step 4): the dive action's active_hit
 ## is a placeholder, and the clock is held inside it for the whole fall.
@@ -19,6 +22,9 @@ enum Phase { DIVE, LAND }
 @export var land_action: ActionData
 ## Extra gravity while diving, as a multiple of the player's current gravity (2.5 = 2.5x).
 @export var dive_gravity_factor: float = 2.5
+## Gravity multiple (0.5 = half) while the sheathed helm splitter's wind-up plays, and while the
+## attack is held during the draw slash's wind-up in the air. Only used for the sheathed version.
+@export var opening_gravity_factor: float = 0.5
 
 ## Keeps the held clock just inside the active window so the pose stays at 6:00.
 const HOLD_MARGIN: float = 0.002
@@ -27,6 +33,9 @@ var _phase: Phase = Phase.DIVE
 var _queued: bool = false
 var _pending: ActionData
 var _dive_default: ActionData
+var _pending_opening: bool = false
+## True for the sheathed version: the wind-up is played under opening_gravity_factor.
+var _opening: bool = false
 
 
 func _ready() -> void:
@@ -34,10 +43,11 @@ func _ready() -> void:
 
 
 ## Called by AirAttackState when the hold is decided. Returns false if it cannot start.
-func start(dive: ActionData) -> bool:
+func start(dive: ActionData, opening: bool = false) -> bool:
 	if land_action == null or (dive == null and _dive_default == null):
 		return false
 	_pending = dive
+	_pending_opening = opening
 	machine.transition_to(&"HelmSplitter")
 	return true
 
@@ -46,6 +56,8 @@ func enter(previous: StringName) -> void:
 	_phase = Phase.DIVE
 	action = _pending if _pending != null else _dive_default
 	_pending = null
+	_opening = _pending_opening
+	_pending_opening = false
 	player.helm_used = true
 	player.set_crouched(true)
 	super.enter(previous)
@@ -85,8 +97,11 @@ func _on_action_update(delta: float) -> void:
 func _update_dive(delta: float) -> void:
 	# ActionState already applied normal gravity; add the rest of the dive's pull.
 	if not player.is_on_floor():
+		var factor := dive_gravity_factor
+		if _opening and action_time < action.active_hit.x:
+			factor = opening_gravity_factor
 		player.velocity += player.get_gravity() * player.gravity_multiplier \
-				* (dive_gravity_factor - 1.0) * delta
+				* (factor - 1.0) * delta
 	if action_time < action.active_hit.x:
 		player.face_input(delta)
 	# Hold the blade at the end of the stab until landing.

@@ -560,3 +560,36 @@ Thrust and hold (built later in 3a-2, see 7.8), all variants (3b), hitboxes and 
 
 ## Part 6: Entries added after the trim (newest last)
 
+### Step 3c-2: charged iai and sheathed helm splitter (2026-10-07)
+
+Tested and approved by the user ("cool"). Docs: handoff checklist and Step 3 spec updated.
+
+**Decisions (agreed with the user before building)**
+- The charged iai stands you up when it fires from a crouch or slide (the first design kept you crouched). No headroom: the hold is ignored and the plain draw slash plays.
+- The sheathed helm splitter gets half gravity as a deliberate exception to "no hover" (spec decision 7): option A, during the opening only. An air charge (option B) was not built.
+- The `_thrust_mirror` bug was fixed inside this step, because the iai depends on it.
+
+**What exists**
+- `draw_attack.tres` has `hold_action` = `draw_attack_charged.tres` (charge_time 0.6, damage x1.5, lunge x1.4, wind-up 0.1 s, slash 0.1 to 0.22). Every sheathed ground hold (standing, dash, dodge, crouch, slide) picks it up through `AttackState._hold_target()`, replacing the thrust and the other holds.
+- `AttackState`: `_iai_hold` marks the iai hold; its mirror is always false; `_is_thrust` stays false for it, so the next tap is attack 1 and a later thrust starts on the side where the iai ended (right). From a crouch, `_fire_thrust` reuses the upward slash's stand-up path (`_rose`).
+- `SwordVisual.update_charge_iai()`: eases to a half-drawn pose (hand at `_front_pos()`, blade along the scabbard line, body twist held) and glows with the charge. Firing blends from it to 8:00 through the charged action's own wind-up.
+- `WeaponData.draw_helm_action` (Sheath group) = `helm_splitter_draw.tres` (wind-up 12:00 over 0.4 s, active 0.4 to 0.65, then the usual dive and `helm_splitter_land.tres`).
+- `AirAttackState._try_helm_splitter()` uses `draw_helm_action` when the current action is the draw slash (its own `hold_action` is the ground iai). `_apply_hold_gravity()` halves gravity while holding before the decision point (sheathed, helm not used, `draw_helm_action` set).
+- `HelmSplitterState.start(dive, opening)`: for the sheathed version the wind-up (`action_time < active_hit.x`) uses `opening_gravity_factor` (export, 0.5) instead of the dive's 2.5x.
+- `_thrust_mirror` is reset to false in `AttackState._on_action_enter()` (it ran after the side logic in `enter()`, so the side rules still read the old value). A thrust or upward slash sets it again in `_begin_hold()`.
+
+**Rules not obvious from the code**
+- The reach and pull of the sheathed helm splitter are shown by the draw slash's wind-up (0.3 s), before the hold is decided; `helm_splitter_draw.tres` is only the longer raise. Hang time is the draw wind-up (while held) plus the raise, about 0.7 s at half gravity.
+- Releasing attack early in the air means no helm splitter: the draw slash plays as a normal air slash.
+- The iai charge has no lunge; the lunge starts when it fires (`move_speed` 9, scaled by charge).
+
+**Not done**
+- The shockwave and the extra damage (Step 4 and polish); `damage_multiplier` is stored only.
+- An air charge for the sheathed helm splitter.
+- Sheathed and drawn animation sets.
+- Tuning the new numbers (charge pose, 0.4 s raise, 0.5 gravity): the user may tune them in the Inspector.
+- No headless check was run (not asked); only the user's play test.
+
+**Noticed, not fixed**
+- None new.
+

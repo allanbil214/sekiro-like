@@ -1,6 +1,6 @@
 # Step 3 Spec: Attacks, Combos, and Variants (Godot 4)
 
-> Companion to `HANDOFF_sekiro_like_prototype.md` (the main handoff). Paste this together with the handoff and the work agreement when working on **Step 3**. All design below is **agreed by the user (2026-10-05); 3a-1, 3a-2, 3b-1, 3b-2, 3b-3, and 3b-4 are built (section 7), 3c is not**. Update the status table (section 1) at the end of each session.
+> Companion to `HANDOFF_sekiro_like_prototype.md` (the main handoff). Paste this together with the handoff and the work agreement when working on **Step 3**. All design below is **agreed by the user (2026-10-05); 3a-1, 3a-2, 3b-1, 3b-2, 3b-3, 3b-4, 3c-1, and 3c-2 are built (section 7), so all of Step 3 is done**. Update the status table (section 1) at the end of each session.
 
 ---
 
@@ -15,7 +15,7 @@
 | **3b-3** | Air tap loop (2:00 to 10:00, then 10:00 to 2:00, repeating) | **built and tested by the user** (section 7.11) |
 | **3b-4** | Helm splitter (hold in the air), plus the air tap loop sped up 1.5x | **built and tested by the user**; the dive is a slash-style swing with a crouched body (section 7.12) |
 | **3c-1** | Sheathing (visual only), R, auto-sheathe, the animated hand reach, the draw slash (iai) replacing every attack while sheathed, and the dodge attack | **built and tested by the user** (2026-10-07), see section 7b |
-| **3c-2** | The charged iai (hold while sheathed) and the sheathed helm splitter | designed (section 7b), not started |
+| **3c-2** | The charged iai (hold while sheathed) and the sheathed helm splitter | **built and tested by the user** (2026-10-07), see section 7b |
 
 Each phase is its own chat: paste handoff + work agreement + this spec + a fresh snapshot (`python pack_for_claude.py`). Confirm quickly with the user before building (the work agreement still applies).
 
@@ -128,7 +128,7 @@ The thrust's values are in `actions/thrust.tres`.
 
 ---
 
-## 7b. Sheathing and the draw slash (3c-1 built and tested 2026-10-07; 3c-2 designed, not built)
+## 7b. Sheathing and the draw slash (3c-1 and 3c-2 built and tested 2026-10-07)
 
 ### As built (3c-1), summary (full detail in the build log, Part 5)
 
@@ -139,10 +139,10 @@ The thrust's values are in `actions/thrust.tres`.
 - **Dodge attack:** an attack after a dodge's locked window starts the dash attack (the draw slash while sheathed).
 - **Data:** `WeaponData` Sheath group: `draw_attack`, `sheathed_grip` (a local position, not a clock pose), `sheathed_blade_direction`, `sheathed_edge_direction`.
 
-### Designed, not built (3c-2)
+### As built (3c-2)
 
-- **Charged iai:** while sheathed, **holding** attack in any ground context (replacing the ground thrust and the dash, dodge, crouch, and slide holds) charges the draw slash: the blade half drawn, the orange glow, auto-fire at full charge, and a stored damage multiplier, through a new hold action (`draw_attack_charged.tres`). The **shockwave and the extra damage come later** (Step 4 and the polish step). From crouch or slide it keeps you crouched.
-- **Sheathed helm splitter:** holding attack in the air while sheathed plays the helm splitter with the draw as its opening (the hand reaches the grip, pulls the blade, then the usual 12:00 to 6:00 dive). The current dive wind-up is too short to show the reach, so it needs its own longer action (`helm_splitter_draw.tres`). Once per airtime as usual.
+- **Charged iai:** while sheathed, **holding** attack in any ground context (replacing the ground thrust and the dash, dodge, crouch, and slide holds) charges the draw slash: the blade half drawn, the orange glow, auto-fire at full charge (0.6 s), and a stored damage multiplier, through the draw slash's Hold Action (`draw_attack_charged.tres`). It is never mirrored and counts as no combo step (the next tap is attack 1). The **shockwave and the extra damage come later** (Step 4 and the polish step). **From crouch or slide it stands you up when it fires** (changed from the first design; with no headroom the hold is ignored and the plain draw slash plays).
+- **Sheathed helm splitter:** holding attack in the air while sheathed plays the draw slash's wind-up (the reach and the pull), then the helm splitter through `WeaponData.draw_helm_action` (`helm_splitter_draw.tres`, a 0.4 s raise to 12:00), then the usual dive and landing. **Gravity is halved** (`HelmSplitterState.opening_gravity_factor`, 0.5) while holding during the draw wind-up and through the raise; this is a deliberate exception to the "no hover" decision, and only for the sheathed version. Once per airtime as usual. An air charge (hold longer) was not built.
 
 ### Animation later
 

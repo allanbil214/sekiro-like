@@ -33,6 +33,10 @@ extends Resource
 ## instead. It counts as no combo step, so the next tap is attack 1. Empty = no draw slash
 ## (an attack from the sheathed state just draws the sword and plays as normal).
 @export var draw_attack: ActionData
+## The dive played when the attack button is held in the air while sheathed (the helm splitter
+## with the draw as its opening). Empty = no sheathed helm splitter. The charged iai (hold on the
+## ground) is the Hold Action of the draw slash itself.
+@export var draw_helm_action: ActionData
 ## Where the hand grips the sword while it sits in the scabbard, in the player's local space
 ## (-Z is forward, -X is the left side). The scabbard is built along the blade from here.
 @export var sheathed_grip: Vector3 = Vector3(-0.46, 0.95, -0.18)

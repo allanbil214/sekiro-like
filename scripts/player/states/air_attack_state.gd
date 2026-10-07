@@ -13,6 +13,9 @@ extends ActionState
 ## damage yet (Step 4).
 ## Sheathed (3c): the draw slash replaces the first air attack, with no lunge like any air attack.
 ## It counts as no combo step: the next tap is the first air attack, or, if you landed, attack 1.
+## Sheathed hold (3c-2): holding at the end of the draw slash's wind-up starts the sheathed helm
+## splitter (Player.weapon.draw_helm_action); while the button is held before that, gravity is
+## reduced (HelmSplitterState.opening_gravity_factor). Once per airtime like the normal one.
 
 var _queued: bool = false
 var _decided: bool = false
@@ -81,6 +84,7 @@ func _on_action_update(delta: float) -> void:
 		player.reset_air_actions()
 	if not Input.is_action_pressed("attack"):
 		_released = true
+	_apply_hold_gravity(delta)
 	# Decision point (end of the wind-up): still holding = the helm splitter.
 	if not _decided and action_time >= action.active_hit.x:
 		_decided = true
@@ -126,10 +130,29 @@ func _chain() -> void:
 
 ## Hold at the decision point, in the air, once per airtime, with a Hold Action on the attack.
 func _try_helm_splitter() -> bool:
-	if _released or action.hold_action == null or player.helm_used or player.is_on_floor():
+	if _released or player.helm_used or player.is_on_floor():
+		return false
+	# Sheathed: the draw slash's own Hold Action is the charged iai (ground only), so the air uses
+	# the weapon's draw_helm_action instead.
+	var dive := player.weapon.draw_helm_action if _is_draw else action.hold_action
+	if dive == null:
 		return false
 	var helm := machine.get_node_or_null("HelmSplitter") as HelmSplitterState
-	return helm != null and helm.start(action.hold_action)
+	return helm != null and helm.start(dive, _is_draw)
+
+
+## Sheathed and holding attack before the decision point: gravity is reduced, so the opening has
+## time to show. Not used once the helm splitter was spent this airtime.
+func _apply_hold_gravity(delta: float) -> void:
+	if not _is_draw or _released or _decided or player.helm_used or player.is_on_floor():
+		return
+	if player.weapon.draw_helm_action == null:
+		return
+	var helm := machine.get_node_or_null("HelmSplitter") as HelmSplitterState
+	if helm == null:
+		return
+	player.velocity += player.get_gravity() * player.gravity_multiplier \
+			* (helm.opening_gravity_factor - 1.0) * delta
 
 
 func _can_draw() -> bool:

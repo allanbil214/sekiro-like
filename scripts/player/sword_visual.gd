@@ -437,6 +437,26 @@ func update_charge(thrust: ActionData, mirror: bool, charge_seconds: float, frac
 	_apply()
 
 
+## While charging the iai (the charged draw slash): the hand and blade ease from where they are
+## to the half-drawn pose (the blade slid out along the scabbard line, the hand at the front of the
+## grip), the body stays turned, and the glow grows as the charge fills. Firing is the charged
+## action's own short wind-up, which blends from this pose to 8:00 and then slashes.
+func update_charge_iai(_iai: ActionData, charge_seconds: float, fraction: float) -> void:
+	if _hand == null:
+		return
+	var front := _front_pos()
+	var t := clampf(charge_seconds / maxf(charge_blend_time, 0.001), 0.0, 1.0)
+	var k := ease(t, windup_ease)
+	_tip = _from_tip.lerp(front, k)
+	_arm_len = lerpf(_from_arm_len, (front - _shoulder()).length(), k)
+	_pin = lerpf(_from_pin, 0.0, k)
+	_twist = _from_twist
+	_blend_orientation(_from_blade, _from_edge, _sheath_blade, _sheath_edge, k)
+	_glow = fraction
+	_refresh_color()
+	_apply()
+
+
 ## A thrust: the hand moves from the wind-up pose to the end pose along a straight line, the
 ## blade always points at the end pose, and the edge faces down.
 func _update_thrust(action: ActionData, time: float, mirror: bool) -> void:

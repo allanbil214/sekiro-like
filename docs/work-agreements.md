@@ -81,7 +81,7 @@ Claude picks the lightest format that is safe:
 
 ---
 
-## 4. Verification (replaces linting and automated tests)
+## 4. Verification (replaces linting and automated tests) [DO NOT DO THIS UNLESS SPECIFICALLY ASKS BY USER!]
 
 Claude's sandbox can usually run **Godot 4.7.2 headless**: the exact build is downloaded from GitHub (needs network access to github.com). When it works, Claude parse-checks the scripts and runs scripted smoke tests (driving the player with inputs and checking states and values) **before delivering**, and says what was checked. This catches errors and logic slips, but **not how things look or feel**. If the download is blocked, Claude says so and the code counts as untested. So:
 - Every delivery ends with a short **"How to verify"**: what to press or do, and what you should see.
