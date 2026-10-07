@@ -40,6 +40,9 @@ func _process(_delta: float) -> void:
 	]
 	var ledge_recent := Time.get_ticks_msec() - _player.last_ledge_ms < 600
 	text += "\nLedge: %s" % ("found" if ledge_recent else "-")
+	if _player.combatant != null:
+		text += "\nHP: %d / %d   Hurtbox: %s" % [
+			_player.combatant.health, _player.combatant.max_health, _player.hurtbox_profile_name]
 	text += "\nSword: %s" % ("sheathed" if _player.sheathed else "drawn")
 	if _player.sword_visual != null and _player.sword_visual.is_busy():
 		text += " (moving)"

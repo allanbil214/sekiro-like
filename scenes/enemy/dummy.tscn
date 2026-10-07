@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/combat/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/combat/combatant.gd" id="3_combatant"]
 [ext_resource type="Script" path="res://scripts/ui/enemy_bar.gd" id="4_bar"]
+[ext_resource type="Script" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4
@@ -12,6 +13,9 @@ height = 1.8
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hurt"]
 radius = 0.45
 height = 1.8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_swing"]
+size = Vector3(0.3, 0.3, 1.7)
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
 radius = 0.4
@@ -49,3 +53,15 @@ max_health = 500.0
 [node name="Bar" type="Node3D" parent="."]
 position = Vector3(0, 2.3, 0)
 script = ExtResource("4_bar")
+
+[node name="SwingPivot" type="Node3D" parent="."]
+position = Vector3(0, 0.9, 0)
+
+[node name="Hitbox" type="Area3D" parent="SwingPivot"]
+script = ExtResource("5_hitbox")
+team = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SwingPivot/Hitbox"]
+shape = SubResource("BoxShape3D_swing")
+
+[node name="Arm" type="MeshInstance3D" parent="SwingPivot"]

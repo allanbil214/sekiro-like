@@ -26,6 +26,8 @@
 [ext_resource type="Script" uid="uid://socceebhysll" path="res://scripts/player/states/helm_splitter_state.gd" id="22_007i1"]
 [ext_resource type="Resource" uid="uid://deq0ib4qx1eyd" path="res://actions/helm_splitter_land.tres" id="23_6cv16"]
 [ext_resource type="Resource" uid="uid://bhemmwny60asf" path="res://actions/helm_splitter.tres" id="24_j4nxn"]
+[ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="27_28m0y"]
+[ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -43,9 +45,13 @@ size = Vector3(0.2, 0.2, 0.4)
 [sub_resource type="SphereShape3D" id="SphereShape3D_wynvb"]
 radius = 0.2
 
-[node name="Player" type="CharacterBody3D" unique_id=1991767212]
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_v2xx4"]
+
+[node name="Player" type="CharacterBody3D" unique_id=1991767212 node_paths=PackedStringArray("hurtbox", "combatant")]
 script = ExtResource("1_dovo2")
 weapon = ExtResource("2_3j4b4")
+hurtbox = NodePath("Hurtbox")
+combatant = NodePath("Combatant")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=290697870]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
@@ -135,3 +141,14 @@ action = ExtResource("24_j4nxn")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")
+
+[node name="Hurtbox" type="Area3D" parent="." unique_id=75634448]
+script = ExtResource("27_28m0y")
+metadata/_custom_type_script = "uid://ci1x2m5cjnqd7"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox" unique_id=1804744079]
+shape = SubResource("CapsuleShape3D_v2xx4")
+
+[node name="Combatant" type="Node" parent="." unique_id=1176548210]
+script = ExtResource("28_uniwh")
+metadata/_custom_type_script = "uid://bh8lwmou5enq6"

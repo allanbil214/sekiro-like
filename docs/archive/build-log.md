@@ -593,3 +593,86 @@ Tested and approved by the user ("cool"). Docs: handoff checklist and Step 3 spe
 **Noticed, not fixed**
 - None new.
 
+### Step 4a: hitboxes, damage, hitstop on a dummy (2026-10-07)
+
+Tested and approved by the user ("awesome, all works fine"). Docs: handoff updated (4a ticked, 4b added).
+
+**Decisions (agreed with the user before building)**
+- Split of Step 4 into 4a (this) and 4b (player hurtbox profiles, the dummy attacking, the player taking damage).
+- Enemy bars follow Sekiro: a floating bar above the enemy, damage cuts the red at once, a yellow segment shows the damage and drains after a delay. No white flash on enemies. Damage numbers exist only as a debug aid, at the top right of the bar.
+- The helm splitter, draw slash, and charged iai get a hitbox 1.5x the blade, grown from the tip (data: `hitbox_length_scale`).
+- The standard Godot way: the user adds the `Hitbox` node in the editor and names the layers; the scripts still set their own layers and fall back to code if the node is missing.
+
+**What exists**
+- `scripts/combat/`: `Layers` (team enum, layer bit values), `HitData` (damage, posture_damage, hitstop, attacker, action, direction, point), `Combatant` (HP, `take_hit`, `reset`, signals), `Hurtbox`, `Hitbox`, `Hitstop`.
+- `Hitbox.sweep()` tests the box with `intersect_shape` at steps (at most every 0.15 m of travel) between the last and current transform, so fast swings cannot skip a target. `begin_swing(scale)` clears the hit set; `end_swing()` hides the debug box.
+- `ActionState._update_hit()` runs every frame after `_on_action_update()`; `_hit_was_active` marks the swing; `exit()` closes it. Hook `_hit_damage_multiplier()` (overridden in `AttackState`).
+- `SwordVisual.hitbox` (export) follows `_hand.transform`; created in code with a warning if unset. `Player.on_hit_landed()` calls `notify_combat()` and `Hitstop.request()`.
+- Damage in the `.tres` files: attacks 1 to 4 = 10, attack 5 = 15, thrust = 15, dash slash = 10, dash thrust = 15, crouch loop = 8, upward slash = 12, air loop = 10, helm splitter (both) = 25, draw slash = 15, charged iai = 20. All placeholders.
+- Dummy: `scenes/enemy/dummy.tscn`, `scripts/enemy/dummy.gd`, `scripts/ui/enemy_bar.gd`.
+
+**Rules not obvious from the code**
+- While a hold is waiting or charging, the action clock is parked at the start of the hit window, so `AttackState._hit_is_active()` requires `_phase == NORMAL`.
+- The helm splitter dive keeps its clock inside the active window, so the box is open the whole dive and hits once; the landing action has damage 0 and does not hit.
+- Hitstop slows `Engine.time_scale` with a real-time timer; overlapping requests extend it (a token check restores the scale only after the last).
+- Godot rewrites some `.tres` files after saving (adds uids, drops properties equal to the default, such as `charge_damage_max`); that is not a gameplay change.
+
+**Not done**
+- The player's hurtbox and the player taking damage (4b); the dummy attacking (4b).
+- Posture and its bar (Step 6); sparks, sound, and camera shake (Step 11, hitstop is the hook).
+- The iai shockwave; sheathed and drawn animation sets.
+
+**Noticed, not fixed**
+- None.
+
+### Step 4b: player hurtbox profiles, taking damage, dummy attacks, hit wobble (2026-10-07)
+
+Tested and approved by the user. The player hit wobble was added afterwards at the user's request and documented here on the user's word that it works (not separately play-tested by Claude, and Godot was not run). Docs: handoff updated (4b ticked, Step 5 next).
+
+**Decisions (agreed with the user before building)**
+- The dummy attacks now (an exception to "does not fight back yet"), because duck-under cannot be tested otherwise; the real enemy is Step 7.
+- Stand 1.8/0, crouch 1.1/0, air 1.1/0.7 hurtbox profiles, as `HurtboxProfile` resources (`resources/hurtbox/`), set as defaults on the Player exports.
+- Taking a hit: HP loss, `notify_combat()`, hitstop, ledge knock-off, wobble; no stun (Step 6) and no death (Step 10).
+- The standard Godot way again: the user adds `Hurtbox` and `Combatant` nodes in `player.tscn` and fills the two Player slots; code creates them with a warning if missing.
+
+**What exists**
+- `Player`: `_setup_hurtbox()` (finds or creates the nodes, forces team and layer to Player, sets `hurtbox.is_invulnerable`, gives the hurtbox its own capsule with the body's radius), `_update_hurtbox()` (called after `move_and_slide()`), `_on_damaged()`, `_on_died()` (temporary refill), `_process()` (wobble), group `player`.
+- `Player.max_health` overrides the Combatant node's own value.
+- `Dummy`: phases IDLE, WINDUP, ACTIVE, RECOVER; `attack_mode` OFF, CYCLE (high, low, mid), HIGH, MID, LOW; exports for range (2.6), reach (2.0 from its center, the arm starts 0.3 m out), arc (120), timings (0.6 / 0.25 / 0.7, pause 1.2), damage 20, hitstop 0.08, heights, turn speed. It faces the player while idle only. Hits are passed through `Hitbox.sweep()`; the hitstop comes from the player's `_on_damaged`, so a hit never requests it twice.
+- Debug overlay line: HP and the hurtbox posture name.
+
+**Rules not obvious from the code**
+- While the player is invulnerable, a swing is not recorded as having hit: if the i-frames end while the arm still overlaps, the hit lands (the hit set only records real hits).
+- The air profile applies the moment the feet leave the floor (also during the helm splitter dive, wall jump and mid-air reach), so a low sweep clears a jumping player at once; hanging and climbing a ledge use the stand profile.
+- The wobble sets only `Visual.position` and the x and z rotation; the yaw (facing) stays with `face_direction()`.
+
+**Not done**
+- Stun and hit reactions (Step 6), death and retry (Step 10), guard and deflect (Step 5), posture (Step 6).
+- Real enemy attack data, danger symbols, and AI (Step 7); sparks, sound, and camera shake (Step 11).
+
+**Noticed, not fixed**
+- None.
+
+### Jump tuning, 2x (2026-10-07, after Step 4b)
+
+Tested and approved by the user ("it finally feels like Sekiro"). Docs: handoff updated.
+
+**Decisions**
+- The user first asked for a 3x jump distance. Option A (gravity to a third, same take-off speed) was built and felt floaty, so it was undone and redone at 2x with a middle option: faster take-off and a little less gravity.
+- The arena was restored from the user's snapshot before the 2x edit, so no 3x edits remain.
+
+**What exists**
+- `Player.jump_velocity` 8.5, `gravity_multiplier` 1.5 (were 7.0 and 2.0): about 2.5 m high, 1.2 s air time, 7.5 m run jump.
+- `test_arena.tscn`: tops above the floor doubled for LowPlatform (1.85), TightPlatform (2.40), HighPlatform (3.30), Pillar (8.11), Wall and Wall2 (6.36), Gap (3.44, a slab that moved up and kept its thickness). Bottoms and horizontal positions unchanged.
+
+**Rules not obvious from the code**
+- Wall jump up speed is `jump_velocity` x `wall_jump_boost` (1.2), so it rose too (about 3.5 m). The helm splitter dive (2.5x) and the half-gravity opening (0.5x) are multiples of `gravity_multiplier`, so they follow any change to it.
+- Jump height = speed squared over (2 x 9.8 x `gravity_multiplier`); air time grows with speed over gravity, so lowering gravity stretches the whole arc and is what made the 3x feel floaty.
+
+**Not done**
+- A heavier fall than rise (`fall_gravity_factor`, around 1.5) was offered and not built.
+- The horizontal gaps between platforms were not widened.
+
+**Noticed, not fixed**
+- None.
+

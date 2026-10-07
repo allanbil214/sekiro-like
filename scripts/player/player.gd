@@ -11,8 +11,9 @@ extends CharacterBody3D
 @export var turn_speed: float = 18.0
 
 @export_group("Jump")
-@export var jump_velocity: float = 7.0
-@export var gravity_multiplier: float = 2.0
+## 8.5 with gravity 1.5 = about 2x the original jump height (7.0 with 2.0), with a fall that stays fairly snappy.
+@export var jump_velocity: float = 8.5
+@export var gravity_multiplier: float = 1.5
 @export var coyote_time: float = 0.1
 
 @export_group("Crouch")
@@ -81,6 +82,27 @@ extends CharacterBody3D
 
 ## True while the sword is in its scabbard. Visual only: it changes no movement or rules.
 var sheathed: bool = false
+@export_group("Hurtbox and health")
+## The Area3D that takes hits (an Area3D with hurtbox.gd, Team = Player, and a CapsuleShape3D child).
+## Created in code if the scene has none.
+@export var hurtbox: Hurtbox
+## The player's health (a Node with combatant.gd). Created in code if the scene has none.
+@export var combatant: Combatant
+## Hurtbox shapes per posture (height / bottom offset). Crouched = crouch, in the air = air.
+@export var stand_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/stand.tres")
+@export var crouch_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/crouch.tres")
+@export var air_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/air.tres")
+@export var max_health: float = 100.0
+## Temporary (Step 10 replaces it): seconds at 0 HP before health refills.
+@export var refill_delay: float = 1.5
+## Hit wobble (cosmetic): the whole Visual shifts this far (m) away from the attacker, tilts this far
+## (radians), and eases back over this many seconds.
+@export var hit_recoil_distance: float = 0.15
+@export var hit_recoil_tilt: float = 0.2
+@export var hit_recoil_time: float = 0.25
+## Name of the hurtbox posture in use (debug overlay).
+var hurtbox_profile_name: String = "stand"
+
 ## Seconds since the last attack or dodge (counts only in Locomotion or Crouch).
 var sheathe_idle: float = 0.0
 ## Guard will set this later to force walking.
@@ -114,6 +136,11 @@ var ledge_block_until_ms: int = 0
 var wall_jump_forced_away: bool = false
 
 var _headroom_shape: CapsuleShape3D
+var _hurt_shape: CollisionShape3D
+var _recoil: float = 0.0
+var _recoil_direction: Vector3 = Vector3.ZERO
+var _visual_rest: Vector3 = Vector3.ZERO
+var _hurt_capsule: CapsuleShape3D
 var _nose_drop: float = 0.4
 var _visual_tween: Tween
 var _reach_arms: ReachArms
@@ -141,8 +168,26 @@ func _ready() -> void:
 	_headroom_shape = CapsuleShape3D.new()
 	_headroom_shape.radius = 0.38
 	_headroom_shape.height = stand_height - 0.07
+	add_to_group("player")
+	_visual_rest = visual.position
+	_setup_hurtbox()
 	state_machine.setup(self)
 	state_machine.start()
+
+
+## The hit wobble: shift and tilt the Visual away from the hit, then ease back. The yaw (facing) is
+## left alone; only the position and the tilt are set here.
+func _process(delta: float) -> void:
+	if _recoil <= 0.0:
+		return
+	_recoil = maxf(0.0, _recoil - delta / maxf(hit_recoil_time, 0.001))
+	var k := ease(_recoil, 2.0)
+	visual.position = _visual_rest + _recoil_direction * hit_recoil_distance * k
+	# Tilt the top toward the push, in the Visual's own (yawed) frame.
+	var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * _recoil_direction
+	var axis := Vector3.UP.cross(local_dir)
+	visual.rotation.x = axis.x * hit_recoil_tilt * k
+	visual.rotation.z = axis.z * hit_recoil_tilt * k
 
 
 func _physics_process(delta: float) -> void:
@@ -150,6 +195,7 @@ func _physics_process(delta: float) -> void:
 	state_machine.physics_update(delta)
 	_update_auto_sheathe(delta)
 	move_and_slide()
+	_update_hurtbox()
 
 
 ## Movement input in world space, relative to the camera. Length 0 to 1.
@@ -164,7 +210,8 @@ func get_move_speed() -> float:
 
 
 func get_facing_direction() -> Vector3:
-	return -visual.global_transform.basis.z
+	# Yaw only, so the hit wobble's tilt never changes where attacks aim.
+	return Basis(Vector3.UP, visual.global_rotation.y) * Vector3.FORWARD
 
 
 func apply_gravity(delta: float) -> void:
@@ -315,6 +362,83 @@ func set_sheathed(value: bool) -> void:
 ## Combat just happened: restart the auto-sheathe timer. Step 4 also calls this when hit.
 func notify_combat() -> void:
 	sheathe_idle = 0.0
+
+
+## Find or create the Hurtbox and Combatant, and connect them (i-frames, damage, death).
+func _setup_hurtbox() -> void:
+	if combatant == null:
+		combatant = get_node_or_null("Combatant") as Combatant
+	if combatant == null:
+		push_warning("Player: no Combatant set; creating one in code (add a Node with combatant.gd).")
+		combatant = Combatant.new()
+		combatant.name = "Combatant"
+		add_child(combatant)
+	combatant.max_health = max_health
+	combatant.health = max_health
+	if hurtbox == null:
+		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
+	if hurtbox == null:
+		push_warning("Player: no Hurtbox set; creating one in code (add an Area3D with hurtbox.gd).")
+		hurtbox = Hurtbox.new()
+		hurtbox.name = "Hurtbox"
+		hurtbox.team = Layers.Team.PLAYER
+		add_child(hurtbox)
+	hurtbox.team = Layers.Team.PLAYER
+	hurtbox.collision_layer = Layers.hurtbox_layer(Layers.Team.PLAYER)
+	hurtbox.combatant = combatant
+	hurtbox.is_invulnerable = func() -> bool: return invulnerable
+	for child: Node in hurtbox.get_children():
+		if child is CollisionShape3D:
+			_hurt_shape = child as CollisionShape3D
+			break
+	if _hurt_shape == null:
+		_hurt_shape = CollisionShape3D.new()
+		hurtbox.add_child(_hurt_shape)
+	# This hurtbox owns its capsule (the height changes with the posture).
+	_hurt_capsule = CapsuleShape3D.new()
+	_hurt_capsule.radius = (_collision_shape.shape as CapsuleShape3D).radius
+	_hurt_shape.shape = _hurt_capsule
+	combatant.damaged.connect(_on_damaged)
+	combatant.died.connect(_on_died)
+	_update_hurtbox()
+
+
+## Resize the hurtbox for the current posture: crouched, in the air (not while hanging or climbing a
+## ledge), or standing. The body capsule is not touched.
+func _update_hurtbox() -> void:
+	if _hurt_capsule == null:
+		return
+	var profile := stand_hurtbox
+	var profile_name := "stand"
+	var on_ledge := state_machine.current is LedgeHangState or state_machine.current is LedgeClimbState
+	if is_crouched:
+		profile = crouch_hurtbox
+		profile_name = "crouch"
+	elif not is_on_floor() and not on_ledge:
+		profile = air_hurtbox
+		profile_name = "air"
+	var height := maxf(profile.height, _hurt_capsule.radius * 2.0)
+	_hurt_capsule.height = height
+	_hurt_shape.position.y = profile.bottom_offset + height * 0.5
+	hurtbox_profile_name = profile_name
+
+
+## Took a hit (the Combatant already lost the health): the combat timer restarts, the hitstop plays,
+## and a hanging player is knocked off the ledge. No stun yet (Step 6).
+func _on_damaged(hit: HitData, _amount: float) -> void:
+	_recoil = 1.0
+	_recoil_direction = hit.direction
+	notify_combat()
+	Hitstop.request(get_tree(), hit.hitstop)
+	var hang := state_machine.current as LedgeHangState
+	if hang != null:
+		hang.knock_off()
+
+
+## Temporary: refill after a moment so testing can go on. Death and retry are Step 10.
+func _on_died() -> void:
+	await get_tree().create_timer(refill_delay).timeout
+	combatant.reset()
 
 
 ## One of the player's attacks connected: restart the auto-sheathe timer and request the hitstop.
