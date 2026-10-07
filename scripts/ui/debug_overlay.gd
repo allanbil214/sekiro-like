@@ -40,6 +40,11 @@ func _process(_delta: float) -> void:
 	]
 	var ledge_recent := Time.get_ticks_msec() - _player.last_ledge_ms < 600
 	text += "\nLedge: %s" % ("found" if ledge_recent else "-")
+	text += "\nSword: %s" % ("sheathed" if _player.sheathed else "drawn")
+	if _player.sword_visual != null and _player.sword_visual.is_busy():
+		text += " (moving)"
+	elif not _player.sheathed and _player.auto_sheathe_time > 0.0:
+		text += " (auto-sheathe in %.1f s)" % maxf(_player.auto_sheathe_time - _player.sheathe_idle, 0.0)
 	if _ledge_marker != null:
 		_ledge_marker.visible = ledge_recent
 		_ledge_marker.global_position = _player.last_ledge_point

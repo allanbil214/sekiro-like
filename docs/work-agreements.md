@@ -50,7 +50,7 @@ Claude picks the lightest format that is safe:
 
 ### Delivery notes
 - The reply that accompanies a delivery is **short**: what's included, editor steps to do, how to verify, files to delete (a zip can't delete).
-- Claude states plainly that code is **untested** (it can't run Godot).
+- Claude states plainly what was checked headlessly (section 4), or that the code is **untested** if Godot could not run, and that the look and feel are yours to test.
 
 ---
 
@@ -66,8 +66,10 @@ Claude picks the lightest format that is safe:
 - Claude delivers a `.tscn` file **only for trivial scenes**. Hand-editing scene files is fragile.
 
 ### Resources (`.tres`)
-- Claude delivers an `ActionData` / `EnemyAIData` `.tres` **only the first time** it is created.
-- After that, Claude **never overwrites** tuned resources. Value changes come as "change X to Y".
+- Claude delivers a new `.tres` (`ActionData`, `EnemyAIData`, weapon data, ...) the first time it is created.
+- **Changing an existing, possibly tuned `.tres`:** if Claude has the **latest snapshot** (or a current copy you pasted), it **may edit the real file and deliver it**, changing only the requested lines on top of your tuned values. Claude diffs it against the snapshot to confirm nothing else changed, and says so in the reply. Your tuned numbers are never reset.
+- Without the latest snapshot, or if you tuned the file after sending it, Claude does **not** ship the file: the change comes as "change X to Y" (or "set field Z to file W" for a reference).
+- If you tune a `.tres` after sending a snapshot, tell Claude before the next delivery that touches it.
 
 ### `project.godot`
 - **Never sent whole** (it would overwrite your settings).
@@ -81,7 +83,7 @@ Claude picks the lightest format that is safe:
 
 ## 4. Verification (replaces linting and automated tests)
 
-Claude can't run Godot or lint GDScript here, so:
+Claude's sandbox can usually run **Godot 4.7.2 headless**: the exact build is downloaded from GitHub (needs network access to github.com). When it works, Claude parse-checks the scripts and runs scripted smoke tests (driving the player with inputs and checking states and values) **before delivering**, and says what was checked. This catches errors and logic slips, but **not how things look or feel**. If the download is blocked, Claude says so and the code counts as untested. So:
 - Every delivery ends with a short **"How to verify"**: what to press or do, and what you should see.
 - You run it and **report back** (what happened vs. expected, plus error text from the Output/Debugger panel, and your Godot version: 4.7.2).
 - On request, Claude does an **optional read-through** of code for syntax and logic errors.
@@ -105,5 +107,17 @@ Request  ->  Check (tiered)  ->  "go"  ->  Build  ->  Delivery + short reply + h
 
 - One build-order step at a time; confirm it works before moving on.
 - Keep replies concise; no long preambles.
-- Start a **new chat per step or topic**, and re-send the handoff doc, this agreement, and the relevant scripts.
+- Start a **new chat per step or topic**, and re-send the files listed at the top of the handoff, plus the relevant scripts or a fresh snapshot.
 - At the end of each session, update the **progress checklist** in the handoff doc.
+
+---
+
+## 7. Docs and the build log
+
+- **Paste set per chat:** `docs/handoff.md`, this agreement, the spec of the current step (Step 3: `docs/step3-combat-spec.md`), and a fresh snapshot. Add `docs/design-later-steps.md` when starting Step 4 or later.
+- **`docs/archive/build-log.md` and `docs/design-later-steps.md` are not read by default.** Claude opens them only when (a) you ask, or (b) the task needs the history or the design of one specific part. Even then Claude searches for and reads only that section, never the whole file. `design-later-steps.md` is read normally once you start a step that needs it.
+- **After a step is done and you have tested it**, Claude **appends** a new entry at the **end** of `docs/archive/build-log.md` **without reading the file**: it adds the text with a shell append on the snapshot's copy, and ships the complete file in the docs zip. If the file is missing from the snapshot, Claude creates it with the header and says so.
+  - Entry format: `### Step <id>: what exists (<date>)`, then the decisions, the files, the rules that are not obvious from the code, what was not done, and anything noticed but not fixed.
+  - In the same docs zip Claude updates the handoff (progress checklist, current state, and 2 to 4 lines for the step under "What the finished steps built") and the spec's status row if there is one.
+- **Design changes for a later step** go into `docs/design-later-steps.md`: Claude finds the relevant section, edits only that, and says so.
+- Docs keep their **CRLF line endings**; code files stay LF.

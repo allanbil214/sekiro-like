@@ -2,7 +2,8 @@ class_name DodgeState
 extends ActionState
 ## Dodge: a burst of movement with i-frames. Direction follows the movement input;
 ## with no input it is a backstep. Holding the dodge button after the locked window
-## ends turns it into a dash.
+## ends turns it into a dash. Pressing attack after the locked window starts the weapon's
+## dash attack (the draw slash instead, while sheathed).
 
 @export var backstep_speed_multiplier: float = 0.7
 
@@ -27,6 +28,11 @@ func _on_action_update(_delta: float) -> void:
 		player.start_jump()
 		machine.transition_to(&"Air")
 		return
+	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
+		var attack := machine.get_node_or_null("Attack") as AttackState
+		if attack != null and attack.try_start_variant(player.weapon.dash_attack):
+			player.input_buffer.consume(&"attack")
+			return
 	if player.input_buffer.consume(&"dodge"):
 		machine.transition_to(&"Dodge")
 		return

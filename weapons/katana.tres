@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="WeaponData" format=3 uid="uid://cndijq62ntfbn"]
 
 [ext_resource type="Script" uid="uid://dybqcsqdnsrui" path="res://resources/weapon_data.gd" id="1_weapon"]
-[ext_resource type="Resource" path="res://actions/air_attack_a.tres" id="1_x3f0d"]
+[ext_resource type="Resource" uid="uid://b1u7o4drah4vc" path="res://actions/air_attack_a.tres" id="1_x3f0d"]
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://resources/action_data.gd" id="2_actiondata"]
 [ext_resource type="Resource" uid="uid://dhr72b80pfaj7" path="res://actions/attack_1.tres" id="3_attack1"]
 [ext_resource type="Resource" uid="uid://2bubulmsx1sn" path="res://actions/attack_2.tres" id="4_attack2"]
@@ -11,6 +11,7 @@
 [ext_resource type="Resource" path="res://actions/crouch_attack_a.tres" id="7_q40jy"]
 [ext_resource type="Resource" uid="uid://d1cknvhhe60ni" path="res://actions/dash_attack.tres" id="7_rn1fk"]
 [ext_resource type="Resource" uid="uid://caox7hwm3mdoh" path="res://actions/thrust.tres" id="8_bduk1"]
+[ext_resource type="Resource" path="res://actions/draw_attack.tres" id="9_draw"]
 
 [resource]
 script = ExtResource("1_weapon")
@@ -20,3 +21,4 @@ dash_attack = ExtResource("7_rn1fk")
 crouch_attack = ExtResource("7_q40jy")
 air_attack = ExtResource("1_x3f0d")
 rest_pose = Vector3(4, 0.9, 0.3)
+draw_attack = ExtResource("9_draw")

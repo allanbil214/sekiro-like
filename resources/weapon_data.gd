@@ -27,3 +27,16 @@ extends Resource
 @export_group("Poses")
 ## Sword at rest, same format as the swing poses in ActionData: (clock hour, radius, forward).
 @export var rest_pose: Vector3 = Vector3(5.0, 0.8, 0.0)
+
+@export_group("Sheath")
+## The draw slash: attack pressed while the sword is sheathed (in any context) plays this
+## instead. It counts as no combo step, so the next tap is attack 1. Empty = no draw slash
+## (an attack from the sheathed state just draws the sword and plays as normal).
+@export var draw_attack: ActionData
+## Where the hand grips the sword while it sits in the scabbard, in the player's local space
+## (-Z is forward, -X is the left side). The scabbard is built along the blade from here.
+@export var sheathed_grip: Vector3 = Vector3(-0.46, 0.95, -0.18)
+## Direction the blade points from the grip while sheathed (back and slightly down).
+@export var sheathed_blade_direction: Vector3 = Vector3(-0.05, -0.25, 1.0)
+## Which way the cutting edge faces while sheathed (up).
+@export var sheathed_edge_direction: Vector3 = Vector3(0.0, 1.0, 0.0)

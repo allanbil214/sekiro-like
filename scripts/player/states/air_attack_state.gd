@@ -11,26 +11,38 @@ extends ActionState
 ## at attack 2 (an air attack counts as combo step 1). Holding attack at the end of the wind-up
 ## hands over to the helm splitter (the action's Hold Action; once per airtime). No hitboxes or
 ## damage yet (Step 4).
+## Sheathed (3c): the draw slash replaces the first air attack, with no lunge like any air attack.
+## It counts as no combo step: the next tap is the first air attack, or, if you landed, attack 1.
 
 var _queued: bool = false
 var _decided: bool = false
 ## True once attack was up at any time since this action began (rapid taps never read as a hold).
 var _released: bool = false
+## The current action is the draw slash (iai) played in the air.
+var _is_draw: bool = false
 
 
 ## Called by the Air state when attack is pressed in the air. Returns false if the weapon has
 ## no air attack.
 func start() -> bool:
-	if player.weapon == null or player.weapon.air_attack == null:
+	if player.weapon == null:
+		return false
+	if player.weapon.air_attack == null and not _can_draw():
 		return false
 	machine.transition_to(&"AirAttack")
 	return true
 
 
 func enter(previous: StringName) -> void:
-	var next := player.air_loop_next
-	action = next if next != null else player.weapon.air_attack
-	player.air_loop_next = action.combo_next
+	_is_draw = _can_draw()
+	if _is_draw:
+		# The draw slash is not part of the loop: the next tap is the first air attack.
+		action = player.weapon.draw_attack
+		player.air_loop_next = null
+	else:
+		var next := player.air_loop_next
+		action = next if next != null else player.weapon.air_attack
+		player.air_loop_next = action.combo_next
 	super.enter(previous)
 
 
@@ -106,7 +118,8 @@ func _on_action_finished() -> void:
 func _chain() -> void:
 	if player.is_on_floor():
 		var attack := machine.get_node_or_null("Attack") as AttackState
-		if attack != null and attack.try_continue_combo(1):
+		# An air attack counts as combo step 1 (next is attack 2); the draw slash counts as none.
+		if attack != null and attack.try_continue_combo(0 if _is_draw else 1):
 			return
 	machine.transition_to(&"AirAttack")
 
@@ -117,6 +130,10 @@ func _try_helm_splitter() -> bool:
 		return false
 	var helm := machine.get_node_or_null("HelmSplitter") as HelmSplitterState
 	return helm != null and helm.start(action.hold_action)
+
+
+func _can_draw() -> bool:
+	return player.sheathed and player.weapon != null and player.weapon.draw_attack != null
 
 
 func _try_cancel() -> bool:

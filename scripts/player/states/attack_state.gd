@@ -15,6 +15,9 @@ extends ActionState
 ## attack 2. The crouch variant is a left/right loop (ActionData.combo_next, the second one
 ## loops back to the first) that keeps you crouched and ends back in Crouch; holding at the end
 ## of a wind-up swaps in the upward slash, which stands you up and chains on into attack 1.
+## Sheathed (3c): the draw slash (Player.weapon.draw_attack) replaces every attack variant and the
+## first ground attack. It counts as no combo step, so the next tap is attack 1 (after a crouched
+## draw slash it is the crouch loop, since you stay crouched).
 ## No hitboxes or damage yet (Step 4).
 
 enum Phase { NORMAL, WAITING, CHARGING }
@@ -41,6 +44,8 @@ var damage_multiplier: float = 1.0
 
 var _queued: bool = false
 var _pending_variant: ActionData
+## The pending variant is the draw slash: it counts as no combo step (the next tap is attack 1).
+var _pending_uncounted: bool = false
 ## Set by try_continue_combo(): start the ground combo at this zero-based step (-1 = none).
 var _pending_index: int = -1
 var _is_variant: bool = false
@@ -75,7 +80,9 @@ func enter(previous: StringName) -> void:
 		_is_variant = true
 		_rose = false
 		_thrust_side_left = false
-		combo_index = 0
+		# The draw slash counts as no step (index -1), so a chained tap is attack 1.
+		combo_index = -1 if _pending_uncounted else 0
+		_pending_uncounted = false
 	elif _pending_index >= 0:
 		# Handed over from an air attack that landed: carry on with the ground combo.
 		combo_index = clampi(_pending_index, 0, combo.size() - 1)
@@ -91,6 +98,13 @@ func enter(previous: StringName) -> void:
 		_thrust_side_left = false
 		combo_index = 0
 		action = combo[0]
+	elif previous == &"Attack" and _is_variant and _crouch_context \
+			and _variant_root == player.weapon.draw_attack and player.weapon.crouch_attack != null:
+		# A crouched draw slash: the next tap is the crouch loop (you stay crouched).
+		_thrust_side_left = _side_left_after_previous()
+		_variant_root = player.weapon.crouch_attack
+		action = _variant_root
+		combo_index = 0
 	elif previous == &"Attack" and _is_variant and _variant_root != null \
 			and _variant_root.combo_next != null:
 		# A variant loop (the crouch attacks): follow combo_next, then back to the first.
@@ -114,12 +128,27 @@ func enter(previous: StringName) -> void:
 	super.enter(previous)
 
 
-## Another state (Dash, Crouch, Slide) asks to start a variant attack. Returns false if the
-## weapon has none. The state calls this instead of transitioning itself.
+## Another state (Dash, Dodge, Crouch, Slide) asks to start a variant attack. Returns false if
+## the weapon has none. The state calls this instead of transitioning itself. While sheathed
+## the draw slash replaces the variant.
 func try_start_variant(variant: ActionData) -> bool:
+	if try_start_draw():
+		return true
 	if variant == null:
 		return false
 	_pending_variant = variant
+	_pending_uncounted = false
+	machine.transition_to(&"Attack")
+	return true
+
+
+## Attack pressed while sheathed: start the draw slash (iai). Returns false if the sword is
+## drawn or the weapon has no draw slash. It counts as no combo step.
+func try_start_draw() -> bool:
+	if not player.sheathed or player.weapon == null or player.weapon.draw_attack == null:
+		return false
+	_pending_variant = player.weapon.draw_attack
+	_pending_uncounted = true
 	machine.transition_to(&"Attack")
 	return true
 
@@ -159,7 +188,7 @@ func get_debug_text() -> String:
 	if _is_thrust:
 		kind = "THRUST"
 	elif _is_variant:
-		kind = "VARIANT"
+		kind = "DRAW" if action == player.weapon.draw_attack else "VARIANT"
 	if _crouch_context:
 		kind += " (crouched)"
 	var text := "%s: %d/%d (%s)\nBuffer: %s  Chain: %s  Queued: %s" % [

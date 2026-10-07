@@ -72,6 +72,17 @@ extends CharacterBody3D
 ## The equipped weapon: its combo, blade size, and rest pose.
 @export var weapon: WeaponData
 
+@export_group("Sheath")
+## The sword starts sheathed (in the scabbard at the left hip).
+@export var start_sheathed: bool = true
+## Seconds without an attack or dodge (counted only while in Locomotion or Crouch) before a
+## drawn sword sheathes itself. 0 = never.
+@export var auto_sheathe_time: float = 5.0
+
+## True while the sword is in its scabbard. Visual only: it changes no movement or rules.
+var sheathed: bool = false
+## Seconds since the last attack or dodge (counts only in Locomotion or Crouch).
+var sheathe_idle: float = 0.0
 ## Guard will set this later to force walking.
 var walk_only: bool = false
 ## Set by actions during their i-frame window (read by the damage system in Step 4).
@@ -124,6 +135,9 @@ func _ready() -> void:
 	sword_visual = get_node_or_null("Visual/SwordVisual") as SwordVisual
 	if sword_visual != null and weapon != null:
 		sword_visual.setup(weapon)
+	sheathed = start_sheathed and weapon != null
+	if sheathed and sword_visual != null:
+		sword_visual.snap_sheathed()
 	_headroom_shape = CapsuleShape3D.new()
 	_headroom_shape.radius = 0.38
 	_headroom_shape.height = stand_height - 0.07
@@ -134,6 +148,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	input_buffer.tick(delta)
 	state_machine.physics_update(delta)
+	_update_auto_sheathe(delta)
 	move_and_slide()
 
 
@@ -276,6 +291,53 @@ func stop_slide_arms() -> void:
 
 
 ## True if the equipped weapon has at least one combo attack.
+## R: draw the sword (without attacking) or sheathe it. Ignored while it is still moving.
+func toggle_sheathe() -> void:
+	if weapon == null or (sword_visual != null and sword_visual.is_busy()):
+		return
+	set_sheathed(not sheathed)
+
+
+## Switch between sheathed and drawn (plays the arm animation). Changes no rules.
+func set_sheathed(value: bool) -> void:
+	if weapon == null or sheathed == value:
+		return
+	sheathed = value
+	sheathe_idle = 0.0
+	if sword_visual == null:
+		return
+	if sheathed:
+		sword_visual.play_sheathe()
+	else:
+		sword_visual.play_draw()
+
+
+## Combat just happened: restart the auto-sheathe timer. Step 4 also calls this when hit.
+func notify_combat() -> void:
+	sheathe_idle = 0.0
+
+
+## Called by ActionState when any action starts. Attacks leave the sword drawn; attacks and
+## dodges restart the auto-sheathe timer.
+func on_action_started(kind: ActionData.Kind) -> void:
+	if kind == ActionData.Kind.ATTACK:
+		sheathed = false
+		notify_combat()
+	elif kind == ActionData.Kind.DODGE:
+		notify_combat()
+
+
+func _update_auto_sheathe(delta: float) -> void:
+	if sheathed or weapon == null or auto_sheathe_time <= 0.0:
+		return
+	var current := state_machine.get_current_name()
+	if current != &"Locomotion" and current != &"Crouch":
+		return
+	sheathe_idle += delta
+	if sheathe_idle >= auto_sheathe_time:
+		set_sheathed(true)
+
+
 func has_combo() -> bool:
 	return weapon != null and not weapon.combo.is_empty()
 

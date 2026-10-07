@@ -18,6 +18,7 @@ func enter(previous: StringName) -> void:
 	speed_scale = action.speed_scale
 	_move_dir = Vector3.ZERO
 	_move_speed_multiplier = 1.0
+	player.on_action_started(action.kind)
 	_on_action_enter(previous)
 
 

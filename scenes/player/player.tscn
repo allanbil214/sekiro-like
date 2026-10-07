@@ -23,8 +23,8 @@
 [ext_resource type="Script" uid="uid://lildwbaa2uws" path="res://scripts/player/states/attack_state.gd" id="19_3j4b4"]
 [ext_resource type="Script" uid="uid://dqdrrj1rqs24h" path="res://scripts/player/states/air_attack_state.gd" id="21_yj68g"]
 [ext_resource type="Script" uid="uid://socceebhysll" path="res://scripts/player/states/helm_splitter_state.gd" id="22_007i1"]
-[ext_resource type="Resource" path="res://actions/helm_splitter_land.tres" id="23_6cv16"]
-[ext_resource type="Resource" path="res://actions/helm_splitter.tres" id="24_j4nxn"]
+[ext_resource type="Resource" uid="uid://deq0ib4qx1eyd" path="res://actions/helm_splitter_land.tres" id="23_6cv16"]
+[ext_resource type="Resource" uid="uid://bhemmwny60asf" path="res://actions/helm_splitter.tres" id="24_j4nxn"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4

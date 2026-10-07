@@ -21,6 +21,8 @@ func physics_update(delta: float) -> void:
 		player.coyote_timer = player.coyote_time
 		machine.transition_to(&"Air")
 		return
+	if Input.is_action_just_pressed("sheathe"):
+		player.toggle_sheathe()
 	var headroom := player.can_stand()
 	if player.input_buffer.has_pressed(&"jump"):
 		if headroom:
