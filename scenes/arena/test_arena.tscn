@@ -33,7 +33,7 @@ shadow_enabled = true
 [node name="Floor" type="CSGBox3D" parent="." unique_id=1387525308]
 transform = Transform3D(-0.5, 0, 0, 0, -0.5, 0, 0, 0, -0.5, 0, 0, 0)
 use_collision = true
-size = Vector3(500, 1, 500)
+size = Vector3(100, 1, 100)
 material = SubResource("StandardMaterial3D_v2xx4")
 
 [node name="LowPlatform" type="CSGBox3D" parent="." unique_id=1827749746]
@@ -91,7 +91,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2741022, 0.35307217, 10.986627)
 
 [node name="Enemy" parent="." unique_id=1794124896 instance=ExtResource("3_wt5dk")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13450336, 0.25, -9.79158)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1643076, 0.25, -6.682973)
 
 [node name="Stairs" type="CSGBox3D" parent="." unique_id=1260047309]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.429325, 0.41362858, 12.701134)
@@ -99,8 +99,14 @@ use_collision = true
 size = Vector3(3, 0.33640435, 0.64642334)
 material = SubResource("StandardMaterial3D_lh4ft")
 
-[node name="Stairs" type="CSGBox3D" parent="Stairs" unique_id=240623596]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0031356812, 0.18296015, 0.65011406)
+[node name="Step1" type="CSGBox3D" parent="Stairs" unique_id=240623596]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0031356812, 0.16480148, 0.65011406)
 use_collision = true
-size = Vector3(3, 0.6823623, 0.64642334)
+size = Vector3(3, 0.64690894, 0.64642334)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="Step2" type="CSGBox3D" parent="Stairs" unique_id=920512271]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0031356812, 0.3244261, 1.3081608)
+use_collision = true
+size = Vector3(3, 0.97335684, 0.64642334)
 material = SubResource("StandardMaterial3D_lh4ft")

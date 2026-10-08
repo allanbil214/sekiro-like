@@ -529,7 +529,7 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	_recoil = 1.0
 	_recoil_scale = 1.0
 	_recoil_direction = hit.direction
-	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit)
+	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop)
 	var hang := state_machine.current as LedgeHangState
@@ -541,13 +541,13 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 ## blade flash, a shorter hitstop, and the knockback. (The posture damage is added by the Combatant.)
 func _on_guarded(hit: HitData, _chip: float) -> void:
 	_guard_reaction(hit, false)
-	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_guard)
+	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_guard, hit.knockback_time)
 
 
 ## A deflect: a lighter wobble, a white blade flash and the blade flick, and a softer knockback.
 func _on_deflected(hit: HitData) -> void:
 	_guard_reaction(hit, true)
-	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_deflect)
+	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_deflect, hit.knockback_time)
 
 
 func _guard_reaction(hit: HitData, deflect: bool) -> void:
@@ -559,7 +559,10 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 	if sword_visual != null:
 		# Which side of the player the attacker is on, in the Visual's own frame.
 		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
-		sword_visual.play_guard_hit(deflect, local_dir.x)
+		if deflect:
+			sword_visual.play_deflect(hit, local_dir.x)
+		else:
+			sword_visual.play_guard_hit(false, local_dir.x)
 
 
 ## One of the player's hits was repulsed by an enemy (Step 7b): bounced back and the swing is cut
@@ -704,13 +707,15 @@ func _try_deathblow() -> void:
 	state_machine.transition_to(&"Deathblow")
 
 
-## Push the player away along `direction` by about `distance` metres, easing out over knockback_time.
-func apply_knockback(direction: Vector3, distance: float) -> void:
+## Push the player away along `direction` by about `distance` metres, easing out over `time` seconds
+## (a heavy hit can ask for a longer one; 0 or less = knockback_time).
+func apply_knockback(direction: Vector3, distance: float, time: float = -1.0) -> void:
 	var flat := Vector3(direction.x, 0.0, direction.z)
-	if distance <= 0.0 or knockback_time <= 0.0 or flat.length_squared() < 0.0001:
+	var duration := time if time > 0.0 else knockback_time
+	if distance <= 0.0 or duration <= 0.0 or flat.length_squared() < 0.0001:
 		return
-	_knockback_velocity = flat.normalized() * (2.0 * distance / knockback_time)
-	_knockback_decel = _knockback_velocity.length() / knockback_time
+	_knockback_velocity = flat.normalized() * (2.0 * distance / duration)
+	_knockback_decel = _knockback_velocity.length() / duration
 
 
 ## Temporary: refill after a moment so testing can go on. Death and retry are Step 10.

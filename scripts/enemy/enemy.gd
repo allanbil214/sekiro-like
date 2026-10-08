@@ -772,6 +772,9 @@ func _update_hit() -> void:
 		template.guardable = false
 		template.deflectable = _peril_kind == Peril.THRUST
 		template.deflect_within = ai.perilous_deflect_window
+		if _peril_kind == Peril.THRUST:
+			template.knockback = ai.perilous_thrust_knockback
+			template.knockback_time = ai.perilous_knockback_time
 	hitbox.sweep(template)
 
 
@@ -1093,7 +1096,10 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 	_recoil_scale = deflect_recoil_scale if deflect else guard_recoil_scale
 	_recoil_direction = hit.direction
 	var local_dir := global_transform.basis.inverse() * -hit.direction
-	sword_visual.play_guard_hit(deflect, local_dir.x)
+	if deflect:
+		sword_visual.play_deflect(hit, local_dir.x)
+	else:
+		sword_visual.play_guard_hit(false, local_dir.x)
 
 
 ## Stunned (empty bar or posture break): drop any swing, guard, and pose, and turn pale.

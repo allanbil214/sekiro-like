@@ -18,7 +18,7 @@
 
 ### 3.2 Guard and deflect
 - Deflect window is **time-based, 0.2s** (placeholder; the Sekiro value is 12 frames at 60 FPS).
-- **Spam penalty = shrinking window** (Sekiro style), **not a lockout** (Lies of P style). Each rapid re-press shrinks the window; it **resets after 1s of not guarding or acting**, and **at once when any other action starts** (attack, dodge...; confirmed in Step 5 testing).
+- **Spam penalty = shrinking window** (Sekiro style), **not a lockout** (Lies of P style). A press shrinks the window only when it is a rapid tap (under 0.35 s after the previous press) or the 4th press or later of the run (so slow tapping is free for the first 3 presses); it **resets after 1s of not guarding or acting**, after **3s of holding the guard** since the last press, **at once when any other action starts** (attack, dodge...; confirmed in Step 5 testing), and on a **deflect** or an **unguarded hit** (a plain guard does not reset it; changed after 7d).
 - **Edge-triggered:** every deflect needs its own button press. Holding guard does **not** auto-deflect later attacks. Holding doesn't extend the window either; a new attempt means release and press again.
 - **Snappy re-deflect:** a fresh press always starts a new window, even mid-deflect animation or recovery. Deflect is cancellable into a new deflect. Use input buffering so a slightly-early press still counts.
 - Normal guard blocks but adds posture damage and chip damage; a successful deflect adds almost none (and damages the attacker's posture).
@@ -105,7 +105,7 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 | Parameter | Placeholder |
 |---|---|
 | Deflect window | 0.2s |
-| Deflect spam shrink per re-press | -0.04s linear, floor 0.05s (built in Step 5) |
+| Deflect spam shrink per shrinking press | -0.04s linear, floor 0.05s (Step 5); only rapid taps (< 0.35s apart) or presses after the 3rd shrink |
 | Deflect window reset | 1.0s of no guard/actions |
 | Clash overlap window | 0.1s |
 | Enemy reaction delay | 0.1-0.3s random |

@@ -23,6 +23,8 @@ var deflectable: bool = true
 var deflect_within: float = -1.0
 ## How far (m) the hit pushes the target back, before the target's own multipliers.
 var knockback: float = 0.0
+## How long (s) the push eases out over. -1 = the target's own default (the player's knockback_time).
+var knockback_time: float = -1.0
 ## Filled in by the target's Combatant: an Outcome value.
 var outcome: int = Outcome.HIT
 ## Where it connected (the middle of the hitbox), for sparks and sounds later.
@@ -40,6 +42,7 @@ func copy() -> HitData:
 	other.deflectable = deflectable
 	other.deflect_within = deflect_within
 	other.knockback = knockback
+	other.knockback_time = knockback_time
 	other.outcome = outcome
 	other.direction = direction
 	other.point = point

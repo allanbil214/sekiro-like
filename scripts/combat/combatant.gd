@@ -83,11 +83,18 @@ signal deathblow_closed(executed: bool, killed: bool)
 @export_group("Guard")
 ## The deflect window (s) opened by a fresh guard press.
 @export var deflect_window: float = 0.2
-## Each rapid re-press shortens the window by this much (s), down to deflect_floor.
+## A press shortens the window by this much (s), down to deflect_floor, when it is a rapid tap (less
+## than deflect_rapid_interval s after the previous press) or comes after deflect_free_presses presses
+## in the same run (so slow tapping is free for the first few presses, then shrinks too).
 @export var deflect_shrink: float = 0.04
 @export var deflect_floor: float = 0.05
-## Seconds of neither guarding nor acting after which the window is full size again.
+@export var deflect_rapid_interval: float = 0.35
+@export var deflect_free_presses: int = 3
+## The run resets (a full window again): after this many seconds of neither guarding nor acting, after
+## holding the guard this long since the last press, at once when the owner acts, deflects a hit, or
+## takes an unguarded hit. A plain guard does not reset it.
 @export var deflect_reset_time: float = 1.0
+@export var deflect_hold_reset_time: float = 3.0
 ## Total width of the guarded cone in front (degrees).
 @export var guard_cone_degrees: float = 90.0
 ## Off (the Sekiro default): a plain guard costs no health. On: it costs chip_ratio of the damage.
@@ -127,10 +134,14 @@ var deflect_left: float = 0.0
 ## Size (s) of the last window opened, and the rapid-press count behind it (debug overlay).
 var current_window: float = 0.0
 var press_count: int = 0
+## How many shrink steps the current run has (each takes deflect_shrink off the window).
+var shrink_steps: int = 0
 ## The last outcome (HitData.Outcome), or -1 before any hit.
 var last_outcome: int = -1
 
 var _spam_idle: float = 0.0
+var _since_press: float = 999.0
+var _hold_time: float = 0.0
 var _since_posture_hit: float = 0.0
 ## The current deflect window was opened as a repulse (press_guard(true)).
 var _window_repulse: bool = false
@@ -155,26 +166,43 @@ func _physics_process(delta: float) -> void:
 ## count is held; after deflect_reset_time of neither it resets too.
 func tick_guard(delta: float, guard_up: bool, acting: bool) -> void:
 	deflect_left = maxf(deflect_left - delta, 0.0)
+	_since_press += delta
 	if acting:
-		if press_count > 0:
-			if debug_log:
-				print("[Guard] spam count reset by acting (was %d presses)" % press_count)
-			press_count = 0
+		_reset_spam("acting")
 		_spam_idle = 0.0
+		_hold_time = 0.0
 		return
 	if guard_up:
 		_spam_idle = 0.0
+		_hold_time += delta
+		if _hold_time >= deflect_hold_reset_time:
+			_reset_spam("a long hold")
 		return
+	_hold_time = 0.0
 	_spam_idle += delta
-	if _spam_idle >= deflect_reset_time and press_count > 0:
-		if debug_log:
-			print("[Guard] spam count reset after %.1f s idle (was %d presses)" % [_spam_idle, press_count])
-		press_count = 0
+	if _spam_idle >= deflect_reset_time:
+		_reset_spam("%.1f s idle" % _spam_idle)
+
+
+## Start a fresh run: the next press opens a full window.
+func _reset_spam(reason: String) -> void:
+	if press_count <= 0 and shrink_steps <= 0:
+		return
+	if debug_log:
+		print("[Guard] spam run reset by %s (was %d presses, %d steps)" % [reason, press_count, shrink_steps])
+	press_count = 0
+	shrink_steps = 0
+
+
+## Would the next press shrink the window: a rapid tap, or past the free presses of this run.
+func _next_press_shrinks() -> bool:
+	return press_count > 0 and (_since_press < deflect_rapid_interval or press_count >= deflect_free_presses)
 
 
 ## The size (s) the next press would open: what the spam count currently allows.
 func next_window() -> float:
-	return maxf(deflect_window - deflect_shrink * float(press_count), deflect_floor)
+	var steps := shrink_steps + (1 if _next_press_shrinks() else 0)
+	return maxf(deflect_window - deflect_shrink * float(steps), deflect_floor)
 
 
 ## Seconds of neither guarding nor acting so far (the spam count resets at deflect_reset_time).
@@ -186,8 +214,12 @@ func spam_idle() -> float:
 ## `repulse`: a deflect inside this window is a repulse (see repulse_knockback).
 func press_guard(repulse: bool = false) -> float:
 	var window := next_window()
+	if _next_press_shrinks():
+		shrink_steps += 1
 	_window_repulse = repulse
 	press_count += 1
+	_since_press = 0.0
+	_hold_time = 0.0
 	current_window = window
 	deflect_left = window
 	_spam_idle = 0.0
@@ -206,6 +238,7 @@ func take_hit(hit: HitData) -> float:
 	if debug_log and guarding:
 		print("[Guard] hit -> %s (window left %.2f s)" % [["HIT", "GUARD", "DEFLECT"][outcome], deflect_left])
 	if outcome == HitData.Outcome.DEFLECT:
+		_reset_spam("a deflect")
 		hit_deflected.emit(hit)
 		add_posture(hit.posture_damage * posture_factor_deflect)
 		var attacker := Combatant.of(hit.attacker)
@@ -223,6 +256,7 @@ func take_hit(hit: HitData) -> float:
 		_lose_health(chip)
 		add_posture(hit.posture_damage * posture_factor_guard)
 		return chip
+	_reset_spam("taking a hit")
 	var multiplier := staggered_damage_multiplier if vulnerable else 1.0
 	var amount := minf(hit.damage * multiplier * health_taken_multiplier, health)
 	health -= amount

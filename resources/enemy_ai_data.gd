@@ -157,6 +157,11 @@ extends Resource
 ## The perilous thrust (not the sweep) can still be deflected, but only by a guard press this recent (s)
 ## when it hits: a much tighter window than a normal attack's. A late press or a plain guard just takes the hit.
 @export var perilous_deflect_window: float = 0.1
+## The perilous thrust is the heaviest attack: it pushes the player back this far (m), easing out
+## over this long (s), whether it lands or is deflected (a deflect pushes the player's own deflect
+## share of it, 0.6 by default).
+@export var perilous_thrust_knockback: float = 3.0
+@export var perilous_knockback_time: float = 0.4
 ## The danger symbol shows this long (s) before the hit window opens, and stays until it closes.
 @export var perilous_symbol_lead: float = 0.5
 ## How far (m) the sweep lowers the whole swing so the hitbox travels near the floor.
