@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bwl4ivdc22duh"]
 
 [ext_resource type="Script" uid="uid://ciinp05kct374" path="res://scripts/enemy/enemy.gd" id="1_enemy"]
-[ext_resource type="Resource" path="res://ai/enemy_duelist.tres" id="2_13gj6"]
+[ext_resource type="Resource" path="res://ai/enemy_monk.tres" id="2_13gj6"]
 [ext_resource type="Resource" uid="uid://cndijq62ntfbn" path="res://weapons/katana.tres" id="3_weapon"]
 [ext_resource type="Script" uid="uid://dgdgib1jc4f4g" path="res://scripts/player/sword_visual.gd" id="4_sword"]
 [ext_resource type="Script" uid="uid://ccpsk46sfaf3q" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]

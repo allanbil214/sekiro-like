@@ -4,7 +4,8 @@ extends State
 ## take Combatant.staggered_damage_multiplier x damage (the Combatant's `vulnerable` flag).
 ## Dodge is locked for the first dodge_locked_time seconds, then a dodge cancels the stagger. If
 ## you do nothing it lasts the full duration. Posture is back to 0 when it ends (any way).
-## Placeholder visual: the body leans forward (Player.set_stagger_lean).
+## Placeholder visual: the body leans forward, sinks to a knee, and sways (Player.set_stagger_lean,
+## Player.set_stagger_kneel).
 
 @export var duration: float = 6.0
 @export var dodge_locked_time: float = 2.0
@@ -22,12 +23,14 @@ func enter(_previous: StringName) -> void:
 	if player.sword_visual != null:
 		player.sword_visual.end_combo()
 	player.set_stagger_lean(player.stagger_lean)
+	player.set_stagger_kneel(true)
 
 
 func exit(_next: StringName) -> void:
 	player.combatant.vulnerable = false
 	player.combatant.reset_posture()
 	player.set_stagger_lean(0.0)
+	player.set_stagger_kneel(false)
 
 
 func physics_update(delta: float) -> void:

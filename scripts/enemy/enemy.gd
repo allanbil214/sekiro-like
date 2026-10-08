@@ -3,7 +3,15 @@ extends CharacterBody3D
 ## The first real enemy (Step 7a, defense added in 7b). It chases the player, circles at a distance,
 ## and attacks in bursts with the player's own ground combo (the weapon's attack_1 to attack_5
 ## ActionData and the same arm-swing SwordVisual, so its wind-up is the telegraph). Damage and
-## posture damage are scaled by EnemyAIData. The perilous attacks come in 7c.
+## posture damage are scaled by EnemyAIData.
+##
+## Perilous attacks (7c-1): instead of a burst it may start the weapon's charged thrust or a low
+## sweep (EnemyAIData: chance, cooldown, range; Debug Force Perilous forces one for testing). They
+## cannot be guarded or deflected, and in the PERILOUS phase it has super armor (no flinch, no
+## guard; your hits still do damage and posture). A red danger symbol shows above the player 0.5 s
+## before the hit window. Counters: mikiri (the player dodges toward it during a thrust) and the
+## jump-over (the player is in the air during a sweep) cut the attack, add posture, and leave it
+## stunned (COUNTERED: no guard, no flinch). The grab comes in 7c-2.
 ##
 ## Loop: IDLE (nobody near) > CHASE (run in, then start a burst) > ATTACK (2 to 4 combo hits, each
 ## chained at the earliest cancel point) > RECOVER (stands still: the player's opening) > YIELD
@@ -31,7 +39,8 @@ extends CharacterBody3D
 ## bar or a posture break stuns it (pale, frozen) until the deathblow window closes.
 ## Needs the nodes listed in the Step 7 instructions (a missing one is an error on purpose).
 
-enum Phase { IDLE, CHASE, ATTACK, RECOVER, YIELD, STUNNED, FLINCH, POSE }
+enum Phase { IDLE, CHASE, ATTACK, RECOVER, YIELD, STUNNED, FLINCH, POSE, PERILOUS, COUNTERED }
+enum Peril { NONE, THRUST, SWEEP, GRAB }
 
 ## The hit streak (see EnemyAIData.hit_streak_limit) resets after this long (s) without a hit.
 const STREAK_RESET_TIME: float = 3.0
@@ -55,9 +64,24 @@ const PRESS_JITTER: float = 0.03
 ## The recoil is lighter when its guard or deflect takes the hit.
 @export var guard_recoil_scale: float = 0.6
 @export var deflect_recoil_scale: float = 0.3
+@export_group("Bobble (head wobble)")
+## A bobblehead flinch: the whole body pivots at the feet, so the top swings most. After a jump-over:
+## tilt (radians), length (s), and how many swings fit in it. The mikiri uses a shorter, sharper one.
+@export var bobble_tilt: float = 0.5
+@export var bobble_time: float = 0.8
+@export var bobble_cycles: float = 3.0
+## While stunned for a deathblow: a slow, heavy sway (tilt in radians, one swing in this many
+## seconds) and a constant forward droop of the head (radians).
+@export var stun_bobble_tilt: float = 0.3
+@export var stun_bobble_period: float = 1.6
+@export var stun_droop: float = 0.25
 @export_group("Debug")
 ## Print phase changes, attacks, and defense decisions to the Output panel.
 @export var debug_log: bool = false
+## Testing aid: every time it would start an attack burst it does this perilous attack instead
+## (ignoring chance, cooldown, and the preset's switches; the attack itself must exist: the weapon's
+## thrust, or `sweep_action` on the AI data). Grab does nothing until 7c-2.
+@export_enum("None", "Thrust", "Sweep", "Grab") var debug_force_perilous: int = 0
 
 @onready var combatant: Combatant = $Combatant
 @onready var visual: Node3D = $Visual
@@ -120,6 +144,26 @@ var _riposte_timer: float = 0.0
 var _pose_timer: float = 0.0
 var _pose_cooldown: float = 0.0
 var _base_posture_regen: float = 15.0
+# Perilous attack state (7c).
+var _peril_kind: int = Peril.NONE
+var _peril_charging: bool = false
+var _peril_time: float = 0.0
+var _peril_cooldown: float = 0.0
+var _peril_history: Array[int] = []
+var _symbol: DangerSymbol
+var _symbol_shown: bool = false
+var _symbol_missing_warned: bool = false
+var _chain_rolled: bool = false
+var _head_bounce_time: float = 0.0
+# Bobble (visual only): a damped swing, or a loop while it is stunned for a deathblow.
+var _bobble_tilt: float = 0.0
+var _bobble_length: float = 0.0
+var _bobble_period: float = 1.0
+var _bobble_clock: float = 0.0
+var _bobble_loop: bool = false
+var _bobble_droop: float = 0.0
+var _bobble_sign: float = 1.0
+var _visual_dirty: bool = false
 
 
 func _ready() -> void:
@@ -166,7 +210,15 @@ func _ready() -> void:
 	combatant.deathblow_opened.connect(_on_deathblow_opened)
 	combatant.deathblow_closed.connect(_on_deathblow_closed)
 	sword_visual.hitbox.team = Layers.Team.ENEMY
-	sword_visual.setup(weapon)
+	# Per-type look: a copy of the weapon with a scaled blade (the weapon file stays as it is).
+	var look_weapon := weapon
+	if not is_equal_approx(ai.blade_length_scale, 1.0) or not is_equal_approx(ai.blade_thickness_scale, 1.0):
+		look_weapon = weapon.duplicate() as WeaponData
+		look_weapon.blade_length = weapon.blade_length * ai.blade_length_scale
+		look_weapon.blade_thickness = weapon.blade_thickness * ai.blade_thickness_scale
+	if ai.blade_color.a > 0.0:
+		sword_visual.idle_color = Color(ai.blade_color, 1.0)
+	sword_visual.setup(look_weapon, ai.blade_back_length)
 	_think_timer = 0.5
 	_roll_break_threshold()
 
@@ -185,8 +237,11 @@ func _physics_process(delta: float) -> void:
 		_break_armed = false
 		_reset_guard_streak()
 	_pose_cooldown = maxf(_pose_cooldown - delta, 0.0)
-	combatant.tick_posture(delta, phase == Phase.ATTACK)
-	combatant.tick_guard(delta, _guarding, phase == Phase.ATTACK)
+	_peril_cooldown = maxf(_peril_cooldown - delta, 0.0)
+	_head_bounce_time = maxf(_head_bounce_time - delta, 0.0)
+	var acting := phase == Phase.ATTACK or phase == Phase.PERILOUS
+	combatant.tick_posture(delta, acting)
+	combatant.tick_guard(delta, _guarding, acting)
 	_apply_gravity(delta)
 	if combatant.deathblow_open:
 		# Stunned: no swings, no turning, until the window closes.
@@ -226,20 +281,96 @@ func _physics_process(delta: float) -> void:
 				_set_phase(Phase.CHASE)
 		Phase.POSE:
 			_update_pose(delta, to_player)
+		Phase.PERILOUS:
+			_update_perilous(delta, to_player, distance, has_target)
+		Phase.COUNTERED:
+			_decelerate(delta)
+			_phase_timer -= delta
+			if _phase_timer <= 0.0:
+				_think_timer = 0.3
+				_set_phase(Phase.CHASE)
 	move_and_slide()
 
 
 func _process(delta: float) -> void:
-	if _recoil <= 0.0:
+	var bobbing := _bobble_loop or _bobble_clock < _bobble_length
+	if _recoil <= 0.0 and not bobbing:
+		if _visual_dirty:
+			_visual_dirty = false
+			visual.position = Vector3.ZERO
+			visual.basis = Basis.IDENTITY
 		return
-	_recoil = maxf(0.0, _recoil - delta / maxf(recoil_time, 0.001))
-	var k := ease(_recoil, 2.0) * _recoil_scale
-	var local_dir := global_transform.basis.inverse() * _recoil_direction
-	local_dir.y = 0.0
-	visual.position = local_dir * recoil_distance * k
-	var axis := Vector3.UP.cross(local_dir)
-	if axis.length_squared() > 0.0001:
-		visual.basis = Basis(axis.normalized(), recoil_tilt * k)
+	_visual_dirty = true
+	var offset := Vector3.ZERO
+	var tilt := Basis.IDENTITY
+	if _recoil > 0.0:
+		_recoil = maxf(0.0, _recoil - delta / maxf(recoil_time, 0.001))
+		var k := ease(_recoil, 2.0) * _recoil_scale
+		var local_dir := global_transform.basis.inverse() * _recoil_direction
+		local_dir.y = 0.0
+		offset = local_dir * recoil_distance * k
+		var axis := Vector3.UP.cross(local_dir)
+		if axis.length_squared() > 0.0001:
+			tilt = Basis(axis.normalized(), recoil_tilt * k)
+	var bobble := Basis.IDENTITY
+	if bobbing:
+		_bobble_clock += delta
+		var envelope := 1.0
+		if not _bobble_loop:
+			envelope = pow(clampf(1.0 - _bobble_clock / maxf(_bobble_length, 0.001), 0.0, 1.0), 2.0)
+		var swing := TAU * _bobble_clock / maxf(_bobble_period, 0.001)
+		# Pitch (nodding forward and back; negative = forward) and a smaller side roll a quarter swing later.
+		var pitch := -_bobble_droop * (1.0 if _bobble_loop else envelope) + _bobble_tilt * envelope * sin(swing)
+		var roll := _bobble_sign * _bobble_tilt * 0.6 * envelope * cos(swing)
+		bobble = Basis(Vector3.RIGHT, pitch) * Basis(Vector3.FORWARD, roll)
+	visual.position = offset
+	visual.basis = bobble * tilt
+
+
+## Start a damped bobble (visual only): `tilt` radians, over `length` seconds, `cycles` swings.
+func _start_bobble(tilt: float, length: float, cycles: float) -> void:
+	_bobble_tilt = tilt
+	_bobble_length = length
+	_bobble_period = length / maxf(cycles, 0.1)
+	_bobble_clock = 0.0
+	_bobble_loop = false
+	_bobble_droop = 0.0
+	_bobble_sign = 1.0 if randf() < 0.5 else -1.0
+
+
+## The deathblow stun: a slow heavy sway with a drooping head, until the window closes.
+func _start_stun_bobble() -> void:
+	_bobble_tilt = stun_bobble_tilt
+	_bobble_length = 0.0
+	_bobble_period = stun_bobble_period
+	_bobble_clock = 0.0
+	_bobble_loop = true
+	_bobble_droop = stun_droop
+	_bobble_sign = 1.0 if randf() < 0.5 else -1.0
+
+
+## Stop the loop: the sway and droop fade out over a short last swing.
+func _end_stun_bobble() -> void:
+	if not _bobble_loop:
+		return
+	_bobble_loop = false
+	_bobble_droop = 0.0
+	_bobble_length = 0.4
+	_bobble_period = 0.4
+	_bobble_clock = 0.0
+	_bobble_tilt = stun_bobble_tilt * 0.5
+
+
+## The player lands on this enemy's head. If a jump-over armed it (the player was in the air while the
+## sweep's symbol showed, within head_bounce_window), that is the counter: the sweep is cut, posture is
+## added, the enemy is stunned, and this returns true so the player bounces. Otherwise false.
+func on_stomped() -> bool:
+	if _head_bounce_time <= 0.0:
+		return false
+	_head_bounce_time = 0.0
+	if not combatant.deathblow_open:
+		_countered(ai.jump_over_posture, ai.jump_over_stun, "jump-over", true)
+	return true
 
 
 # --- Phases -----------------------------------------------------------------------------------
@@ -255,7 +386,11 @@ func _update_chase(delta: float, to_player: Vector3, distance: float, has_target
 		return
 	_decelerate(delta)
 	if _think_timer <= 0.0 and not _guarding:
-		_start_burst(ai.attack_burst_count)
+		var kind := _pick_perilous(distance, ai.perilous_chance)
+		if kind != Peril.NONE:
+			_start_perilous(kind)
+		else:
+			_start_burst(ai.attack_burst_count)
 
 
 func _update_yield(delta: float, to_player: Vector3, distance: float, has_target: bool) -> void:
@@ -319,6 +454,11 @@ func _should_flinch() -> bool:
 				return ai.flinch_in_windup
 			return ai.flinch_in_recovery
 		Phase.RECOVER:
+			return ai.flinch_in_recovery
+		Phase.PERILOUS:
+			# Super armor until its hit window ends; after that it follows the recovery rule.
+			if _peril_charging or _action_time < _action.active_hit.x or _hit_is_active():
+				return false
 			return ai.flinch_in_recovery
 		Phase.IDLE, Phase.CHASE, Phase.YIELD, Phase.POSE:
 			return ai.flinch_in_neutral
@@ -530,6 +670,7 @@ func _start_burst(counts: Vector2i, armored: bool = false) -> void:
 
 func _begin_attack(index: int) -> void:
 	_end_hit()
+	_chain_rolled = false
 	_combo_index = index
 	_action = weapon.combo[index]
 	_action_time = 0.0
@@ -554,6 +695,15 @@ func _update_attack(delta: float, to_player: Vector3, distance: float) -> void:
 	_apply_lunge(delta, distance)
 	if _hit_is_active():
 		return
+	# At the chain point it may continue into a perilous attack instead of the next hit (or the end).
+	if not _chain_rolled and _action_time >= _chain_time() + _chain_wait:
+		_chain_rolled = true
+		var kind := _pick_perilous(distance, ai.perilous_chain_chance)
+		if kind != Peril.NONE:
+			_burst_armored = false
+			_end_hit()
+			_start_perilous(kind)
+			return
 	var next := _combo_index + 1
 	if next < _burst_total and _action_time >= _chain_time() + _chain_wait:
 		_begin_attack(next)
@@ -614,6 +764,14 @@ func _update_hit() -> void:
 	template.deflectable = _action.deflectable
 	template.knockback = _action.knockback
 	template.action = _action
+	if _peril_kind != Peril.NONE:
+		# Perilous: its own numbers. A guard does nothing; only the thrust can be deflected, and only by a
+		# press this recent (the sweep is answered by the jump-over).
+		template.damage = ai.perilous_damage
+		template.posture_damage = ai.perilous_posture
+		template.guardable = false
+		template.deflectable = _peril_kind == Peril.THRUST
+		template.deflect_within = ai.perilous_deflect_window
 	hitbox.sweep(template)
 
 
@@ -628,8 +786,216 @@ func _end_hit() -> void:
 func _abort_attack() -> void:
 	_burst_armored = false
 	_end_hit()
+	_cancel_perilous()
 	if phase == Phase.ATTACK:
 		sword_visual.end_combo()
+
+
+# --- Perilous attacks (7c-1: thrust and sweep) ----------------------------------------------------
+
+## Which perilous attack (if any) to start now instead of a burst. Debug Force Perilous wins.
+func _pick_perilous(distance: float, chance: float) -> int:
+	if debug_force_perilous != Peril.NONE:
+		if debug_force_perilous == Peril.GRAB:
+			push_warning("Enemy: the grab comes in 7c-2; Debug Force Perilous = Grab does nothing yet.")
+			return Peril.NONE
+		return debug_force_perilous if _peril_available(debug_force_perilous, true) else Peril.NONE
+	if _peril_cooldown > 0.0 or distance > ai.perilous_range or randf() >= chance:
+		return Peril.NONE
+	var options: Array[int] = []
+	for kind: int in [Peril.THRUST, Peril.SWEEP]:
+		if _peril_available(kind, false) and not _peril_repeated(kind):
+			options.append(kind)
+	if options.is_empty():
+		return Peril.NONE
+	return options[randi() % options.size()]
+
+
+func _peril_available(kind: int, ignore_switch: bool) -> bool:
+	match kind:
+		Peril.THRUST:
+			return weapon.thrust != null and (ignore_switch or ai.perilous_thrust)
+		Peril.SWEEP:
+			return ai.sweep_action != null and (ignore_switch or ai.perilous_sweep)
+	return false
+
+
+## Would this be the same attack more than perilous_repeat_limit times in a row (and is there another)?
+func _peril_repeated(kind: int) -> bool:
+	if ai.perilous_repeat_limit <= 0 or _peril_history.size() < ai.perilous_repeat_limit:
+		return false
+	var other := Peril.SWEEP if kind == Peril.THRUST else Peril.THRUST
+	if not _peril_available(other, false):
+		return false
+	for i in range(_peril_history.size() - ai.perilous_repeat_limit, _peril_history.size()):
+		if _peril_history[i] != kind:
+			return false
+	return true
+
+
+func _start_perilous(kind: int) -> void:
+	_drop_guard()
+	_riposte_pending = false
+	_reset_guard_streak()
+	_peril_kind = kind
+	_peril_time = 0.0
+	_peril_history.append(kind)
+	if _peril_history.size() > 4:
+		_peril_history.pop_front()
+	_set_phase(Phase.PERILOUS)
+	if debug_log:
+		print("[Enemy] perilous %s" % Peril.keys()[kind])
+	if kind == Peril.THRUST:
+		# The telegraph is the player's own charge: the pull back and the orange glow.
+		_peril_charging = true
+		_action = weapon.thrust
+		_action_time = 0.0
+		sword_visual.begin_charge()
+	else:
+		_peril_charging = false
+		_action = ai.sweep_action
+		_action_time = 0.0
+		_lunge_dir = _flat_to_player().normalized()
+		sword_visual.begin_action(_action)
+		sword_visual.set_drop_target(ai.sweep_drop)
+
+
+func _update_perilous(delta: float, to_player: Vector3, distance: float, has_target: bool) -> void:
+	if _peril_kind == Peril.NONE:
+		_set_phase(Phase.CHASE)
+		return
+	var thrust_charge := _peril_kind == Peril.THRUST and _peril_charging
+	var time_to_hit: float
+	if thrust_charge:
+		_peril_time += delta
+		_decelerate(delta)
+		_face(to_player, delta, ai.attack_turn_speed)
+		var fraction := clampf(_peril_time / maxf(weapon.thrust.charge_time, 0.001), 0.0, 1.0)
+		sword_visual.update_charge(weapon.thrust, false, _peril_time, fraction)
+		time_to_hit = (weapon.thrust.charge_time - _peril_time) + weapon.thrust.active_hit.x
+		if fraction >= 1.0:
+			_fire_perilous_thrust(to_player)
+	else:
+		_action_time += delta
+		if _action_time < _action.active_hit.x:
+			_face(to_player, delta, ai.attack_turn_speed)
+			if to_player.length_squared() > 0.0001:
+				_lunge_dir = to_player.normalized()
+		sword_visual.update_action(_action, _action_time, false)
+		_update_hit()
+		_apply_lunge(delta, distance)
+		time_to_hit = _action.active_hit.x - _action_time
+	var window_closed := not thrust_charge and _action_time >= _action.active_hit.y
+	if has_target:
+		if window_closed:
+			_hide_symbol()
+		elif time_to_hit <= ai.perilous_symbol_lead:
+			_show_symbol()
+			if _check_counter(distance):
+				return
+	if not thrust_charge and _action_time >= _action.duration:
+		_end_perilous()
+
+
+## Charge full: fire the thrust (the weapon's thrust action, authored right-handed).
+func _fire_perilous_thrust(to_player: Vector3) -> void:
+	_peril_charging = false
+	_action = weapon.thrust
+	_action_time = 0.0
+	_lunge_dir = to_player.normalized() if to_player.length_squared() > 0.0001 else -global_transform.basis.z
+	sword_visual.begin_action(_action)
+
+
+## Mikiri (thrust) or the jump-over (sweep): true if the player answered it and the attack was cut.
+func _check_counter(distance: float) -> bool:
+	var player_node := _player as Player
+	if player_node == null or player_node.state_machine == null or distance > ai.mikiri_range:
+		return false
+	if _peril_kind == Peril.THRUST:
+		var dodge := player_node.state_machine.current as DodgeState
+		if dodge == null:
+			return false
+		var dir := dodge.get_move_direction()
+		var to_enemy := global_position - player_node.global_position
+		to_enemy.y = 0.0
+		if dir.length_squared() < 0.0001 or to_enemy.length_squared() < 0.0001:
+			return false
+		if rad_to_deg(dir.angle_to(to_enemy)) > ai.mikiri_angle:
+			return false
+		_countered(ai.mikiri_posture, ai.mikiri_stun, "mikiri", false)
+		return true
+	if _peril_kind == Peril.SWEEP and not player_node.is_on_floor():
+		# Jumping only arms the counter: the sweep goes on under the player, and landing on this head
+		# (on_stomped) is the parry.
+		_head_bounce_time = ai.head_bounce_window
+	return false
+
+
+## The attack is cut: posture added, then a stun with no guard and no flinch. A posture break opens
+## the deathblow window instead (the usual stun).
+func _countered(posture: float, stun: float, label: String, jump_over: bool) -> void:
+	if debug_log:
+		print("[Enemy] %s! +%.0f posture, stun %.1f s" % [label, posture, stun])
+	_abort_attack()
+	sword_visual.end_combo()
+	if _player != null:
+		var away := global_position - _player.global_position
+		away.y = 0.0
+		if away.length_squared() > 0.0001:
+			_recoil = 1.0
+			_recoil_scale = 1.5
+			_recoil_direction = away.normalized()
+	# The bobblehead flinch (a posture break below replaces it with the heavy stun sway).
+	if jump_over:
+		_start_bobble(bobble_tilt, bobble_time, bobble_cycles)
+	else:
+		_start_bobble(bobble_tilt * 0.7, bobble_time * 0.6, bobble_cycles * 0.7)
+	combatant.add_posture(posture)
+	if combatant.deathblow_open:
+		return
+	_phase_timer = stun
+	_set_phase(Phase.COUNTERED)
+
+
+func _end_perilous() -> void:
+	_end_hit()
+	_cancel_perilous()
+	sword_visual.end_combo()
+	_start_recover()
+
+
+## Forget the perilous attack (it ended, was cut, or was interrupted): symbol off, swing back up.
+func _cancel_perilous() -> void:
+	if _peril_kind == Peril.NONE and not _symbol_shown:
+		return
+	if _peril_kind != Peril.NONE:
+		_peril_cooldown = ai.perilous_cooldown
+	_peril_kind = Peril.NONE
+	_peril_charging = false
+	_hide_symbol()
+	sword_visual.set_drop_target(0.0)
+
+
+func _show_symbol() -> void:
+	if _symbol_shown:
+		return
+	if _symbol == null or not is_instance_valid(_symbol):
+		_symbol = get_tree().get_first_node_in_group(&"danger_symbol") as DangerSymbol
+	if _symbol == null:
+		if not _symbol_missing_warned:
+			_symbol_missing_warned = true
+			push_error("Enemy: no DangerSymbol found (add the Label3D with danger_symbol.gd under the Player).")
+		return
+	_symbol_shown = true
+	_symbol.show_danger(self, Color(1.0, 0.1, 0.1))
+
+
+func _hide_symbol() -> void:
+	if not _symbol_shown:
+		return
+	_symbol_shown = false
+	if _symbol != null and is_instance_valid(_symbol):
+		_symbol.hide_danger(self)
 
 
 # --- Movement helpers ---------------------------------------------------------------------------
@@ -738,11 +1104,13 @@ func _on_deathblow_opened() -> void:
 	_end_pose()
 	_set_phase(Phase.STUNNED)
 	body.material_override = _stun_material
+	_start_stun_bobble()
 
 
 ## The window closed: back to normal. A landed deathblow also makes it recoil from the player.
 func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 	body.material_override = _base_material
+	_end_stun_bobble()
 	if phase == Phase.STUNNED:
 		_start_recover()
 	if executed and _player != null:
@@ -759,6 +1127,7 @@ func _on_died() -> void:
 	_drop_guard()
 	_riposte_pending = false
 	_end_pose()
+	_end_stun_bobble()
 	body.material_override = _base_material
 	visual.visible = false
 	bar.visible = false
@@ -777,5 +1146,8 @@ func _on_died() -> void:
 	_burst_armored = false
 	_reset_guard_streak()
 	_since_player_attack = 999.0
+	_peril_cooldown = 0.0
+	_head_bounce_time = 0.0
+	_peril_history.clear()
 	_think_timer = 0.5
 	_set_phase(Phase.IDLE)

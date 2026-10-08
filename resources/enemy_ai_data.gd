@@ -121,3 +121,58 @@ extends Resource
 @export var pose_max_time: float = 3.0
 ## Wait (s) before it may pose again.
 @export var pose_cooldown: float = 3.0
+
+@export_group("Look (optional, per enemy type)")
+## Multiplies the weapon's blade length and thickness for this enemy only (the weapon file is not
+## changed). The hitbox grows with the blade, so a longer blade really reaches farther.
+@export var blade_length_scale: float = 1.0
+@export var blade_thickness_scale: float = 1.0
+## Extra length (m) behind the hand, like the handle end of a spear. It has a visible shaft and
+## its hitbox is part of the weapon's damage box (it can hit too). 0 = none.
+@export var blade_back_length: float = 0.0
+## Blade color. Alpha 0 = keep the default color.
+@export var blade_color: Color = Color(0.0, 0.0, 0.0, 0.0)
+
+@export_group("Perilous attacks (Step 7c)")
+## Which perilous attacks this enemy has. The thrust is the weapon's charged thrust (orange glow).
+@export var perilous_thrust: bool = false
+## The sweep needs `sweep_action` (actions/enemy_sweep.tres).
+@export var perilous_sweep: bool = false
+@export var sweep_action: ActionData
+## Chance it starts a perilous attack (instead of a normal burst) each time it would start a burst,
+## the wait (s) after one ends before another is possible, and how close the player must be (m).
+@export_range(0.0, 1.0) var perilous_chance: float = 0.35
+@export var perilous_cooldown: float = 6.0
+@export var perilous_range: float = 3.2
+## Chance it continues a combo into a perilous attack: rolled once at each chain point of a burst
+## (after the hit's cancel window opens, including after the last hit). Needs the same switches,
+## range, and cooldown as above. 0 = bursts never turn perilous.
+@export_range(0.0, 1.0) var perilous_chain_chance: float = 0.0
+## It never picks the same perilous attack more than this many times in a row (when it has another).
+@export var perilous_repeat_limit: int = 2
+## Damage and posture damage of a perilous attack (they replace the action's own numbers and are
+## not scaled by damage_scale). It cannot be guarded or deflected.
+@export var perilous_damage: float = 35.0
+@export var perilous_posture: float = 40.0
+## The perilous thrust (not the sweep) can still be deflected, but only by a guard press this recent (s)
+## when it hits: a much tighter window than a normal attack's. A late press or a plain guard just takes the hit.
+@export var perilous_deflect_window: float = 0.1
+## The danger symbol shows this long (s) before the hit window opens, and stays until it closes.
+@export var perilous_symbol_lead: float = 0.5
+## How far (m) the sweep lowers the whole swing so the hitbox travels near the floor.
+@export var sweep_drop: float = 1.0
+
+@export_group("Counters (Step 7c)")
+## Mikiri (against the thrust): the player is dodging toward the enemy (inside this angle, degrees,
+## from the line to it) within this distance (m) at any moment from the symbol to the end of the hit window.
+@export var mikiri_range: float = 3.5
+@export_range(0.0, 180.0) var mikiri_angle: float = 70.0
+## What a mikiri does: posture added to the enemy and how long (s) it is stunned (no guard, no flinch).
+@export var mikiri_posture: float = 50.0
+@export var mikiri_stun: float = 1.0
+## The jump-over (against the sweep): the player is in the air within mikiri_range in the same span.
+@export var jump_over_posture: float = 30.0
+@export var jump_over_stun: float = 0.6
+## After a jump-over (jumping while the sweep's symbol shows), landing on this enemy's head within this
+## long (s) is the counter: the sweep is cut, posture added, the enemy stunned, and the player bounces.
+@export var head_bounce_window: float = 1.5

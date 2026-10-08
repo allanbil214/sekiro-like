@@ -18,6 +18,9 @@ var direction: Vector3 = Vector3.FORWARD
 ## A grab (Step 7) sets both to false.
 var guardable: bool = true
 var deflectable: bool = true
+## If 0 or more: a deflect only counts when the hit lands within this many seconds of the guard press
+## (a tight window, e.g. the perilous thrust). -1 = the whole deflect window counts.
+var deflect_within: float = -1.0
 ## How far (m) the hit pushes the target back, before the target's own multipliers.
 var knockback: float = 0.0
 ## Filled in by the target's Combatant: an Outcome value.
@@ -35,6 +38,7 @@ func copy() -> HitData:
 	other.action = action
 	other.guardable = guardable
 	other.deflectable = deflectable
+	other.deflect_within = deflect_within
 	other.knockback = knockback
 	other.outcome = outcome
 	other.direction = direction

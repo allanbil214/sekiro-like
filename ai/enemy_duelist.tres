@@ -1,22 +1,19 @@
-[gd_resource type="Resource" script_class="EnemyAIData" format=3]
+[gd_resource type="Resource" script_class="EnemyAIData" format=3 uid="uid://clw70htnbxgei"]
 
-[ext_resource type="Script" path="res://resources/enemy_ai_data.gd" id="1_ai"]
+[ext_resource type="Script" uid="uid://ey2sisai4rox" path="res://resources/enemy_ai_data.gd" id="1_ai"]
 
 [resource]
 script = ExtResource("1_ai")
+recovery_time = 0.5
+yield_time = Vector2(0.8, 1.8)
+aggression = 0.85
 neutral_guard_chance = 0.98
 neutral_deflect_chance = 0.61
 pressured_guard_chance = 1.0
 pressured_deflect_chance = 0.75
-repulse_chance = 0.0
-riposte_chance = 0.7
-flinch_in_windup = true
-flinch_in_recovery = true
-flinch_in_neutral = false
 hit_stun_time = 0.3
-aggression = 0.85
-yield_time = Vector2(0.8, 1.8)
-recovery_time = 0.5
+flinch_in_neutral = false
 riposte_armor = true
 pressure_break_hits = 4
-pressure_break_early_chance = 0.3
+perilous_thrust = true
+perilous_chain_chance = 0.25

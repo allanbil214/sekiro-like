@@ -5,8 +5,9 @@ extends Node3D
 ## drains after a short delay. Damage numbers are a debug aid (Sekiro shows none): they appear at
 ## the top right of the bar.
 ##
-## Step 6: small pips at the top left show the health bars left (shown when there are 2 or more),
-## and a posture bar sits under the health bar. It fills from both ends toward the middle: white,
+## Step 6: small round dots show the health bars left (shown when there are 2 or more). They sit in a
+## dark strip attached to the left end of the health bar (red with a maroon outline; a lost bar's dot
+## is hidden), and a posture bar sits under the health bar. It fills from both ends toward the middle: white,
 ## turning orange as it nears full, red while full (a posture break or an open deathblow window).
 ## While a deathblow window is open a big deathblow marker shows on the enemy's body: a white-reddish
 ## dot with a thick dark-red outline and a soft red glow, pulsing gently (the texture is drawn in code).
@@ -23,9 +24,12 @@ extends Node3D
 @export var yellow_color: Color = Color(0.95, 0.8, 0.15)
 @export var posture_height: float = 0.05
 @export var posture_gap: float = 0.04
-@export var pip_size: float = 0.07
-@export var pip_color: Color = Color(0.95, 0.95, 0.95)
-@export var pip_lost_color: Color = Color(0.2, 0.2, 0.2, 0.8)
+@export var pip_size: float = 0.055
+@export var pip_gap: float = 0.02
+@export var pip_color: Color = Color(0.85, 0.08, 0.08)
+@export var pip_outline_color: Color = Color(0.32, 0.02, 0.04)
+## Outline thickness as a share of the dot's radius (0 = none).
+@export_range(0.0, 0.5) var pip_outline_ratio: float = 0.28
 @export_group("Deathblow marker")
 ## Width (m) of the whole marker including the glow (the dot itself is about 55% of it).
 @export var marker_size: float = 0.65
@@ -56,6 +60,7 @@ var _posture_right: MeshInstance3D
 var _posture_fraction: float = 0.0
 var _posture_full: bool = false
 var _pips: Array[MeshInstance3D] = []
+var _pip_strip: MeshInstance3D
 var _marker: Sprite3D
 var _marker_time: float = 0.0
 
@@ -181,25 +186,51 @@ func _on_posture_changed(current: float, maximum: float) -> void:
 	_set_posture(fraction, fraction >= 0.999)
 
 
+## A lost health bar's dot is hidden.
 func _on_bars_changed(left: int, _total: int) -> void:
 	for i in _pips.size():
-		var material := _pips[i].material_override as StandardMaterial3D
-		material.albedo_color = pip_color if i < left else pip_lost_color
+		_pips[i].visible = i < left
 
 
-## One small pip per health bar, above the top left of the bar (only when there are 2 or more).
+## One round dot per health bar (only when there are 2 or more), in a dark strip that is attached
+## to the left end of the health bar and as tall as it.
 func _build_pips(total: int) -> void:
 	for pip in _pips:
 		pip.queue_free()
 	_pips.clear()
+	if _pip_strip != null:
+		_pip_strip.queue_free()
+		_pip_strip = null
 	if total < 2:
 		return
+	var strip_width := float(total) * (pip_size + pip_gap) + pip_gap
+	_pip_strip = _make_quad(back_color, 0)
+	(_pip_strip.mesh as QuadMesh).size = Vector2(strip_width, bar_height + 0.03)
+	_pip_strip.position.x = -(bar_width + 0.03) * 0.5 - strip_width * 0.5
+	var texture := _build_pip_texture()
 	for i in total:
-		var pip := _make_quad(pip_color, 4)
+		var pip := _make_quad(Color.WHITE, 4)
+		(pip.material_override as StandardMaterial3D).albedo_texture = texture
 		(pip.mesh as QuadMesh).size = Vector2(pip_size, pip_size)
-		pip.position = Vector3(-bar_width * 0.5 + pip_size * 0.5 + float(i) * (pip_size + 0.03),
-				bar_height * 0.5 + pip_size * 0.5 + 0.03, 0.0)
+		pip.position.x = _pip_strip.position.x - strip_width * 0.5 + pip_gap + pip_size * 0.5 \
+				+ float(i) * (pip_size + pip_gap)
 		_pips.append(pip)
+
+
+## A round dot: red inside, a maroon ring, smooth edge (drawn once in code).
+func _build_pip_texture() -> ImageTexture:
+	var size := 48
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var radius := float(size) * 0.5 - 1.0
+	var inner := radius * (1.0 - pip_outline_ratio)
+	for y in size:
+		for x in size:
+			var d := Vector2(float(x) + 0.5 - float(size) * 0.5, float(y) + 0.5 - float(size) * 0.5).length()
+			var edge := clampf(radius - d + 0.5, 0.0, 1.0)
+			var core := clampf(inner - d + 0.5, 0.0, 1.0)
+			var rgb := pip_outline_color.lerp(pip_color, core)
+			image.set_pixel(x, y, Color(rgb.r, rgb.g, rgb.b, edge))
+	return ImageTexture.create_from_image(image)
 
 
 ## Fill the posture bar from both ends toward the middle.

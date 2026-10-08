@@ -49,6 +49,7 @@
 | Grab | **Yellow** symbol (deliberately different, for readability) | **Dodge.** Unguardable. If it connects, deals **HP damage** |
 
 - The symbol appears **above the player's head**, as in Sekiro.
+- **Built in 7c-1 (thrust and sweep; the grab is 7c-2):** the thrust and the sweep are also unguardable and undeflectable (user-approved default). The symbol shows 0.5 s before the hit window and stays until it closes. The jump-over counter is "in the air while the symbol shows" to arm it, and landing on the enemy's head is the parry (posture, stun, the bobblehead flinch) that also bounces the player up so a helm splitter can follow; any other landing on a head slides the player off. The thrust (not the sweep) can still be deflected, but only within a 0.1 s window after the guard press. In the air the player keeps its momentum and the move keys only steer it. Mikiri: +50 posture and a 1 s stun; jump-over: +30 posture and a 0.6 s stun (placeholders). A perilous attack can start a burst or continue a combo (chain chance per preset).
 - **No body flashing** on the character (explicitly disliked as unimmersive).
 
 ### 3.6 Heal and resurrection

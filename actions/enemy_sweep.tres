@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ActionData" format=3]
+
+[ext_resource type="Script" path="res://resources/action_data.gd" id="1_actiondata"]
+
+[resource]
+script = ExtResource("1_actiondata")
+animation = &"enemy_sweep"
+duration = 1.7
+locked_until = 1.15
+cancel_window = Vector2(1.15, 1.7)
+active_hit = Vector2(0.9, 1.1)
+swing_windup = Vector3(3, 1, -0.4)
+swing_end = Vector3(9, 1, 0.9)
+swing_follow = Vector3(9.5, 0.8, -0.3)
+damage = 1.0
+posture_damage = 1.0
+hitstop = 0.1
+knockback = 1.5
+guardable = false
+deflectable = false

@@ -31,6 +31,7 @@
 [ext_resource type="Script" uid="uid://c3t1jclb0bed4" path="res://scripts/player/states/stagger_state.gd" id="27_tffgl"]
 [ext_resource type="Script" uid="uid://2gky22glbhj6" path="res://scripts/player/states/deathblow_state.gd" id="28_pk8ii"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
+[ext_resource type="Script" uid="uid://c6tupl6mk6o4b" path="res://scripts/ui/danger_symbol.gd" id="32_pk8ii"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -165,3 +166,7 @@ shape = SubResource("CapsuleShape3D_v2xx4")
 [node name="Combatant" type="Node" parent="." unique_id=1176548210]
 script = ExtResource("28_uniwh")
 metadata/_custom_type_script = "uid://bh8lwmou5enq6"
+
+[node name="DangerSymbol" type="Label3D" parent="." unique_id=1705645299]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+script = ExtResource("32_pk8ii")

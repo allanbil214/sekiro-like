@@ -24,6 +24,8 @@ var _shape_node: CollisionShape3D
 var _box: BoxShape3D
 var _debug_mesh: MeshInstance3D
 var _length: float = 1.1
+## Extra box behind the hand (m): the handle end of a spear. 0 = none.
+var _back: float = 0.0
 var _active: bool = false
 var _hit_set: Array[Hurtbox] = []
 var _last_transform: Transform3D = Transform3D.IDENTITY
@@ -62,9 +64,11 @@ func _ready() -> void:
 	_apply_size(1.0)
 
 
-## Set the blade length (m) the box is built on. Called by SwordVisual in setup.
-func configure(blade_length: float) -> void:
+## Set the blade length (m) the box is built on, and how far it reaches behind the hand
+## (back_length, 0 = nothing behind). Called by SwordVisual in setup.
+func configure(blade_length: float, back_length: float = 0.0) -> void:
 	_length = blade_length
+	_back = maxf(back_length, 0.0)
 	_apply_size(1.0)
 
 
@@ -127,9 +131,10 @@ func sweep(template: HitData) -> Array[HitData]:
 	return landed
 
 
-## Box length = blade length x scale, from the hand (root) out past the tip.
+## Box length = blade length x scale, from the hand (root) out past the tip, plus the back
+## length behind the hand (the box stays one piece: it spans from the handle end to the tip).
 func _apply_size(length_scale: float) -> void:
 	var length := _length * maxf(length_scale, 0.01)
-	_box.size = Vector3(width, width, length)
-	_shape_node.position = Vector3(0.0, 0.0, -length * 0.5)
+	_box.size = Vector3(width, width, length + _back)
+	_shape_node.position = Vector3(0.0, 0.0, (_back - length) * 0.5)
 	(_debug_mesh.mesh as BoxMesh).size = _box.size

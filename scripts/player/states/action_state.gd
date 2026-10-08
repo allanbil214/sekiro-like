@@ -126,6 +126,12 @@ func _hit_is_active() -> bool:
 			and action.is_hit_active(action_time)
 
 
+## The horizontal direction this action is moving the player in (the dodge's direction), or
+## Vector3.ZERO. Read-only: the enemy's mikiri check uses it.
+func get_move_direction() -> Vector3:
+	return _move_dir
+
+
 ## Hooks for subclasses.
 func _on_action_enter(_previous: StringName) -> void:
 	pass

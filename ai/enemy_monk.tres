@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="EnemyAIData" format=3 uid="uid://bw24ehgay8ov3"]
+
+[ext_resource type="Script" uid="uid://ey2sisai4rox" path="res://resources/enemy_ai_data.gd" id="1_ai"]
+[ext_resource type="Resource" path="res://actions/enemy_sweep.tres" id="2_sweep"]
+
+[resource]
+script = ExtResource("1_ai")
+engage_distance = 3.0
+attack_burst_count = Vector2i(1, 2)
+recovery_time = 0.5
+yield_time = Vector2(0.8, 1.6)
+aggression = 0.8
+threat_range = 4.2
+neutral_guard_chance = 0.9
+neutral_deflect_chance = 0.4
+pressured_guard_chance = 0.9
+flinch_in_windup = false
+flinch_in_neutral = false
+blade_length_scale = 2.0
+blade_back_length = 0.8
+perilous_thrust = true
+perilous_sweep = true
+sweep_action = ExtResource("2_sweep")
+perilous_chance = 0.7
+perilous_cooldown = 3.0
+perilous_range = 4.0
+perilous_chain_chance = 0.5
+mikiri_range = 4.5

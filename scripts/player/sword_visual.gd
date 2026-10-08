@@ -105,6 +105,11 @@ extends Node3D
 @export var active_color: Color = Color(1.0, 0.15, 0.1)
 @export var edge_color: Color = Color(1.0, 0.9, 0.3)
 @export var arm_color: Color = Color(0.45, 0.5, 0.6)
+## Color of the handle end behind the hand (only built when setup() gets a back length above 0).
+@export var tail_color: Color = Color(0.35, 0.22, 0.12)
+## Enemies only (no Player above this node): how fast (m/s) the whole swing lowers or rises to
+## the height set by set_drop_target(), like the player's crouch drop.
+@export var external_drop_speed: float = 5.0
 ## Thrust charge: the blade blends toward this color and glows as the charge fills.
 @export var charge_color: Color = Color(1.0, 0.55, 0.1)
 @export var glow_energy: float = 2.0
@@ -142,6 +147,7 @@ var _nose_twisted: bool = false
 var _glow: float = 0.0
 var _player: Player
 var _drop: float = 0.0
+var _external_drop: float = 0.0
 var _is_active: bool = false
 var _charging_visual: bool = false
 var _returning: bool = false
@@ -170,7 +176,7 @@ var _flash_color: Color = Color.WHITE
 
 ## Called by the Player in _ready. Builds the arm and blade and puts them at the rest pose.
 ## The weapon's blade_thickness is used as the blade's width (edge to spine).
-func setup(weapon: WeaponData) -> void:
+func setup(weapon: WeaponData, back_length: float = 0.0) -> void:
 	if _hand != null:
 		_hand.queue_free()
 	if _arm != null:
@@ -201,6 +207,17 @@ func setup(weapon: WeaponData) -> void:
 	_hand = Node3D.new()
 	_hand.add_child(blade)
 	_hand.add_child(strip)
+	if back_length > 0.0:
+		# The handle end: a plain shaft behind the hand (+Z is backward along the blade line).
+		var tail_material := StandardMaterial3D.new()
+		tail_material.albedo_color = tail_color
+		var tail := MeshInstance3D.new()
+		var tail_mesh := BoxMesh.new()
+		tail_mesh.size = Vector3(width * 0.45, width * 0.45, back_length)
+		tail.mesh = tail_mesh
+		tail.material_override = tail_material
+		tail.position = Vector3(0.0, 0.0, back_length * 0.5)
+		_hand.add_child(tail)
 	add_child(_hand)
 	# The arm pivots at the shoulder and points toward the hand.
 	var arm_material := StandardMaterial3D.new()
@@ -244,7 +261,7 @@ func setup(weapon: WeaponData) -> void:
 		hitbox = Hitbox.new()
 		hitbox.name = "Hitbox"
 		add_child(hitbox)
-	hitbox.configure(weapon.blade_length)
+	hitbox.configure(weapon.blade_length, back_length)
 	_apply()
 
 
@@ -672,13 +689,16 @@ func _refresh_color() -> void:
 ## The whole arm swing lowers with the body while crouched, easing like the body does. The
 ## stored aim points shift by the same amount so nothing jumps.
 func _update_crouch_drop(delta: float) -> void:
-	if _player == null or _hand == null:
+	if _hand == null:
 		return
-	var full_drop := _player.stand_height - _player.crouch_height
-	var target := full_drop if _player.is_crouched else 0.0
+	var target := _external_drop
+	var speed := external_drop_speed
+	if _player != null:
+		var full_drop := _player.stand_height - _player.crouch_height
+		target = full_drop if _player.is_crouched else 0.0
+		speed = full_drop / maxf(_player.crouch_transition_time, 0.001)
 	if is_equal_approx(_drop, target):
 		return
-	var speed := full_drop / maxf(_player.crouch_transition_time, 0.001)
 	var new_drop := move_toward(_drop, target, speed * delta)
 	var shift := new_drop - _drop
 	_tip.y -= shift
@@ -686,6 +706,12 @@ func _update_crouch_drop(delta: float) -> void:
 	_rest_tip.y -= shift
 	_drop = new_drop
 	_apply()
+
+
+## Enemies: lower the whole swing by `amount` (m) (the sweep), or 0 to rise back. Eases at
+## external_drop_speed. The player's own sword ignores this (it follows its crouch).
+func set_drop_target(amount: float) -> void:
+	_external_drop = maxf(amount, 0.0)
 
 
 ## Torso twist for a clock pose: positive = twisted to the right, negative = to the left.

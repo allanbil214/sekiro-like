@@ -15,6 +15,10 @@ extends CharacterBody3D
 @export var jump_velocity: float = 8.5
 @export var gravity_multiplier: float = 1.5
 @export var coyote_time: float = 0.1
+## In the air your horizontal speed is kept; the move keys only add a push this strong (m/s^2) that can
+## steer it or fight it (holding back slows you, left and right curve it) but never takes you above
+## your run speed (or your current speed, if faster). Not used by the wall jump or air attacks.
+@export var air_steer_acceleration: float = 8.0
 
 @export_group("Crouch")
 ## Placeholder speed while crouched (m/s).
@@ -107,6 +111,19 @@ var sheathed: bool = false
 @export var deathblow_facing_degrees: float = 120.0
 ## How far (radians) the body leans forward while staggered.
 @export var stagger_lean: float = 0.5
+## While staggered the body also sinks to a knee (visual only: how far, m, and how fast, per second),
+## and sways side to side (radians, and speed in radians per second).
+@export var stagger_kneel_drop: float = 0.45
+@export var stagger_kneel_speed: float = 3.0
+@export var stagger_sway_angle: float = 0.12
+@export var stagger_sway_speed: float = 2.0
+@export_group("Enemy heads")
+## Landing on an enemy's head right after a jump-over (a sweep dodged in the air) bounces you up at
+## this speed (m/s), so you can dive with a helm splitter. Any other landing on a head slides you off
+## at head_slide_speed (m/s). It counts as a head when your feet are this far (m) above the enemy's origin.
+@export var head_bounce_velocity: float = 6.5
+@export var head_slide_speed: float = 4.0
+@export var head_min_height: float = 1.2
 @export_group("Guard")
 ## A guard or deflect uses this share of the hit's hitstop (the plain hit uses all of it).
 @export var guard_hitstop_factor: float = 0.5
@@ -170,6 +187,9 @@ var deathblow_target: Node3D
 var _stagger_pending: bool = false
 var _lean_current: float = 0.0
 var _lean_target: float = 0.0
+var _kneeling: bool = false
+var _kneel_current: float = 0.0
+var _sway_time: float = 0.0
 ## The placeholder sword (found in _ready). Null if the scene has no SwordVisual.
 var sword_visual: SwordVisual
 
@@ -210,17 +230,26 @@ func _ready() -> void:
 ## left alone; only the position and the tilt are set here.
 func _process(delta: float) -> void:
 	var leaning := not is_zero_approx(_lean_current) or not is_zero_approx(_lean_target)
+	var kneeling := _kneeling or not is_zero_approx(_kneel_current)
 	_lean_current = move_toward(_lean_current, _lean_target, delta * 4.0)
-	if _recoil <= 0.0 and not leaning:
+	_kneel_current = move_toward(_kneel_current, 1.0 if _kneeling else 0.0, delta * stagger_kneel_speed)
+	if _kneeling:
+		_sway_time += delta
+	if _recoil <= 0.0 and not leaning and not kneeling:
 		return
 	_recoil = maxf(0.0, _recoil - delta / maxf(hit_recoil_time, 0.001))
 	var k := ease(_recoil, 2.0)
-	visual.position = _visual_rest + _recoil_direction * hit_recoil_distance * _recoil_scale * k
+	var kneel := ease(_kneel_current, -2.0)
+	visual.position = _visual_rest + _recoil_direction * hit_recoil_distance * _recoil_scale * k \
+			+ Vector3.DOWN * stagger_kneel_drop * kneel
 	# Tilt the top toward the push, in the Visual's own (yawed) frame.
 	var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * _recoil_direction
 	var axis := Vector3.UP.cross(local_dir)
-	visual.rotation.x = axis.x * hit_recoil_tilt * _recoil_scale * k - _lean_current
-	visual.rotation.z = axis.z * hit_recoil_tilt * _recoil_scale * k
+	# The weary sway while kneeling: a side roll and a slower nod of the head.
+	var sway := sin(_sway_time * stagger_sway_speed) * stagger_sway_angle * kneel
+	var nod := sin(_sway_time * stagger_sway_speed * 0.6) * stagger_sway_angle * 0.5 * kneel
+	visual.rotation.x = axis.x * hit_recoil_tilt * _recoil_scale * k - _lean_current + nod
+	visual.rotation.z = axis.z * hit_recoil_tilt * _recoil_scale * k + sway
 
 
 func _physics_process(delta: float) -> void:
@@ -245,6 +274,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	velocity.x -= push.x
 	velocity.z -= push.z
+	_update_enemy_head()
 	_update_hurtbox()
 
 
@@ -266,6 +296,20 @@ func get_facing_direction() -> Vector3:
 
 func apply_gravity(delta: float) -> void:
 	velocity += get_gravity() * gravity_multiplier * delta
+
+
+## Air control for a normal jump or fall: momentum stays, the move input only steers it.
+func apply_air_steering(delta: float) -> void:
+	var move_dir := get_move_input()
+	if move_dir.length_squared() < 0.0001:
+		return
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var cap := maxf(get_move_speed(), horizontal.length())
+	horizontal += move_dir * air_steer_acceleration * delta
+	if horizontal.length() > cap:
+		horizontal = horizontal.normalized() * cap
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
 
 
 func start_jump() -> void:
@@ -571,6 +615,38 @@ func _update_stagger() -> void:
 ## Lean the body forward (radians; 0 = upright). Eases in and out. Used by the stagger.
 func set_stagger_lean(angle: float) -> void:
 	_lean_target = angle
+
+
+## Sink to a knee and sway (visual only; the capsules and the hurtbox are not touched). Used by the stagger.
+func set_stagger_kneel(on: bool) -> void:
+	if on and not _kneeling:
+		_sway_time = 0.0
+	_kneeling = on
+
+
+## Standing on an enemy's head: after a jump-over the landing is the counter and bounces you up (a
+## helm splitter from there), otherwise you are pushed off sideways. Uses the same easing push as knockback.
+func _update_enemy_head() -> void:
+	for i in get_slide_collision_count():
+		var collision := get_slide_collision(i)
+		var body := collision.get_collider() as Node3D
+		if body == null or not body.is_in_group(&"enemy") or collision.get_normal().y < 0.35:
+			continue
+		if global_position.y < body.global_position.y + head_min_height:
+			continue
+		var enemy := body as Enemy
+		if enemy != null and state_machine.current is AirState and velocity.y <= 0.0 \
+				and enemy.on_stomped():
+			velocity.y = head_bounce_velocity
+			return
+		var away := global_position - body.global_position
+		away.y = 0.0
+		if away.length_squared() < 0.0001:
+			away = -get_facing_direction()
+		away.y = 0.0
+		_knockback_velocity = away.normalized() * head_slide_speed
+		_knockback_decel = head_slide_speed / 0.15
+		return
 
 
 ## Posture does not regenerate while attacking, dashing, or dodging.

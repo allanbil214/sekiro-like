@@ -371,7 +371,8 @@ func _deathblow_missed() -> void:
 func _resolve(hit: HitData) -> int:
 	if not guarding or not _in_cone(hit):
 		return HitData.Outcome.HIT
-	if hit.deflectable and deflect_left > 0.0:
+	if hit.deflectable and deflect_left > 0.0 \
+			and (hit.deflect_within < 0.0 or current_window - deflect_left <= hit.deflect_within):
 		return HitData.Outcome.DEFLECT
 	if hit.guardable:
 		return HitData.Outcome.GUARD

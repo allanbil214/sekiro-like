@@ -21,3 +21,5 @@ recovery_time = 0.6
 riposte_armor = true
 pressure_break_hits = 3
 pressure_break_early_chance = 0.3
+perilous_thrust = true
+perilous_chain_chance = 0.25
