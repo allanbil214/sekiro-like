@@ -128,6 +128,16 @@ extends Node3D
 @export var deflect_thrust_pose: Vector3 = Vector3(1.0, 0.25, 1.0)
 @export var deflect_thrust_blade: Vector3 = Vector3(-0.8, 0.1, -0.6)
 @export var deflect_thrust_edge: Vector3 = Vector3(0.0, 0.3, -1.0)
+@export_group("Guard break")
+## A perilous attack through the guard knocks the sword aside: snap into this pose, hold, ease back.
+## Authored for an attacker on the right (mirrored for the left).
+@export var break_pose: Vector3 = Vector3(3.5, 0.8, 0.2)
+@export var break_blade: Vector3 = Vector3(0.9, -0.35, -0.25)
+@export var break_edge: Vector3 = Vector3(0.0, 0.3, -1.0)
+@export var break_snap_time: float = 0.06
+@export var break_hold_time: float = 0.25
+@export var break_return_time: float = 0.3
+@export var break_flash_color: Color = Color(0.9, 0.1, 0.05)
 @export_group("Look and timing")
 @export var idle_color: Color = Color(0.8, 0.8, 0.85)
 @export var active_color: Color = Color(1.0, 0.15, 0.1)
@@ -203,6 +213,10 @@ var _deflect_time: float = 0.0
 var _deflect_tip: Vector3 = Vector3.ZERO
 var _deflect_blade: Vector3 = Vector3.ZERO
 var _deflect_edge: Vector3 = Vector3.ZERO
+var _break_time: float = -1.0
+var _break_tip: Vector3 = Vector3.ZERO
+var _break_blade: Vector3 = Vector3.ZERO
+var _break_edge: Vector3 = Vector3.ZERO
 var _wobble_amp: float = 0.0
 var _wobble_side: float = 1.0
 var _flash: float = 0.0
@@ -346,6 +360,7 @@ func play_sheathe() -> void:
 func play_guard(from_sheath: bool) -> void:
 	if _hand == null:
 		return
+	_break_time = -1.0
 	_returning = false
 	_charging_visual = false
 	_remember_current()
@@ -370,6 +385,53 @@ func play_guard_hit(deflect: bool, side: float) -> void:
 	_flash = 1.0
 	_flash_color = deflect_flash_color if deflect else guard_flash_color
 	_refresh_color()
+
+
+## The guard broke (a perilous attack hit through it): the sword is knocked aside and eases back to
+## the rest pose. Call it after the Guard state has ended. side > 0 = the attacker is on the right.
+func play_guard_break(side: float) -> void:
+	if _hand == null:
+		return
+	var mirror := side < 0.0
+	var blade := break_blade
+	var edge := break_edge
+	if mirror:
+		blade.x = -blade.x
+		edge.x = -edge.x
+	_deflect_kind = -1
+	_charging_visual = false
+	_anim = Anim.NONE
+	_remember_current()
+	_return_time = 0.0
+	_returning = true
+	_set_active(false)
+	_break_time = 0.0
+	_break_tip = pose_to_point(break_pose, mirror)
+	_break_blade = blade.normalized()
+	_break_edge = edge.normalized()
+	_start_wobble(deg_to_rad(deflect_wobble_angle) * 1.2, side)
+	_flash = 1.0
+	_flash_color = break_flash_color
+	_refresh_color()
+
+
+## Blend the current pose toward the knocked-aside pose (snap in, hold, ease out).
+func _apply_break_overlay(delta: float) -> void:
+	if _break_time < 0.0:
+		return
+	_break_time += delta
+	var total := break_snap_time + break_hold_time + break_return_time
+	if _break_time >= total:
+		_break_time = -1.0
+		return
+	var w := 1.0
+	if _break_time < break_snap_time:
+		w = ease(clampf(_break_time / maxf(break_snap_time, 0.001), 0.0, 1.0), windup_ease)
+	elif _break_time > break_snap_time + break_hold_time:
+		w = 1.0 - ease(clampf((_break_time - break_snap_time - break_hold_time) / maxf(break_return_time, 0.001),
+				0.0, 1.0), windup_ease)
+	_tip = _tip.lerp(_break_tip, w)
+	_blend_orientation(_blade_dir, _edge_dir, _break_blade, _break_edge, w)
 
 
 ## A deflect met the attack: snap from the guard into a pose picked from the attack (side, high, low, or
@@ -486,6 +548,7 @@ func _start_anim(kind: Anim) -> void:
 ## An attack starts (or chains): remember where the sword is now so the wind-up blends from it.
 func begin_action(_action: ActionData) -> void:
 	_wobble_left = 0.0
+	_break_time = -1.0
 	_deflect_kind = -1
 	_anim = Anim.NONE
 	_returning = false
@@ -586,8 +649,9 @@ func _process(delta: float) -> void:
 	_pin = lerpf(_from_pin, 0.0, k)
 	_twist = lerpf(_from_twist, 0.0, k)
 	_blend_orientation(_from_blade, _from_edge, _rest_blade, _rest_edge, k)
+	_apply_break_overlay(delta)
 	_apply()
-	if t >= 1.0:
+	if t >= 1.0 and _break_time < 0.0:
 		_returning = false
 
 

@@ -76,6 +76,10 @@ extends CharacterBody3D
 @export_group("Combat")
 ## The equipped weapon: its combo, blade size, and rest pose.
 @export var weapon: WeaponData
+## Clock speed inside a normal slash's hit window (ground combo, crouch, air, dash, and draw
+## attacks; not the thrusts, helm splitters, or deathblow). Below 1 the swing is slower, so it does
+## not look instant: the hit window and the attack are longer by duration x (1/speed - 1).
+@export_range(0.2, 1.0, 0.05) var slash_active_speed: float = 0.7
 
 @export_group("Sheath")
 ## The sword starts sheathed (in the scabbard at the left hip).
@@ -130,10 +134,16 @@ var sheathed: bool = false
 ## The player wobble on a plain guard and on a deflect, as a share of the hit wobble.
 @export var guard_recoil_scale: float = 0.7
 @export var deflect_recoil_scale: float = 0.35
+## Guard break: a perilous attack that hits you while you guard drops the guard. The body wobble is
+## this many times a plain hit's, and guard presses are ignored for the lockout (s; 0 = none).
+@export var guard_break_recoil_scale: float = 1.6
+@export var guard_break_lockout: float = 0.0
 ## Knockback is a push that eases out over this many seconds (the distance comes from the hit).
 @export var knockback_time: float = 0.2
 ## Name of the hurtbox posture in use (debug overlay).
 var hurtbox_profile_name: String = "stand"
+## Seconds left in which guard presses are ignored (after a guard break).
+var _guard_lockout: float = 0.0
 
 ## Seconds since the last attack or dodge (counts only in Locomotion or Crouch).
 var sheathe_idle: float = 0.0
@@ -254,6 +264,9 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	input_buffer.tick(delta)
+	if _guard_lockout > 0.0:
+		_guard_lockout -= delta
+		input_buffer.clear(&"guard")
 	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
 	combatant.tick_posture(delta, _posture_regen_paused())
 	_update_stagger()
@@ -497,6 +510,7 @@ func _setup_hurtbox() -> void:
 	combatant.damaged.connect(_on_damaged)
 	combatant.hit_guarded.connect(_on_guarded)
 	combatant.hit_deflected.connect(_on_deflected)
+	combatant.guard_broken.connect(_on_guard_broken)
 	combatant.repulsed.connect(_on_repulsed)
 	combatant.posture_broken.connect(_on_posture_broken)
 	combatant.died.connect(_on_died)
@@ -542,6 +556,19 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 func _on_guarded(hit: HitData, _chip: float) -> void:
 	_guard_reaction(hit, false)
 	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_guard, hit.knockback_time)
+
+
+## A perilous attack hit through the guard: the guard drops (back to Locomotion or Air) and the sword
+## is knocked aside (SwordVisual.play_guard_break). The damage and the knockback are the plain hit's
+## (_on_damaged ran just before this).
+func _on_guard_broken(hit: HitData) -> void:
+	_recoil_scale = guard_break_recoil_scale
+	if state_machine.current is GuardState:
+		state_machine.transition_to(&"Locomotion" if is_on_floor() else &"Air")
+	_guard_lockout = guard_break_lockout
+	if sword_visual != null:
+		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
+		sword_visual.play_guard_break(local_dir.x)
 
 
 ## A deflect: a lighter wobble, a white blade flash and the blade flick, and a softer knockback.

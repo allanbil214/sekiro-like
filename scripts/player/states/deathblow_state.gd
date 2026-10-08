@@ -26,6 +26,10 @@ func _ready() -> void:
 		action = DEFAULT_ACTION
 
 
+func _slows_active_window() -> bool:
+	return false
+
+
 func _on_action_enter(_previous: StringName) -> void:
 	_executed = false
 	_target = player.deathblow_target

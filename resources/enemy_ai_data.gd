@@ -30,6 +30,13 @@ extends Resource
 ## Random time (s) between changes of strafe side.
 @export var strafe_switch_time: Vector2 = Vector2(0.6, 1.4)
 
+@export_group("Attack tempo (combo attacks)")
+## Speed of the attack clock before the hit window opens (1 = the action's own timing). Lower =
+## a longer wind-up, so each hit in a combo gives more warning.
+@export_range(0.2, 1.5, 0.05) var windup_speed: float = 0.65
+## Speed of the attack clock inside the hit window. Lower = a slower, more readable slash.
+@export_range(0.2, 1.5, 0.05) var active_speed: float = 0.7
+
 @export_group("Attack bursts")
 ## How many combo attacks in a row (random, inclusive). Capped by the weapon's combo length.
 @export var attack_burst_count: Vector2i = Vector2i(2, 4)

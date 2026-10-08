@@ -6,7 +6,7 @@ extends Node3D
 ## the top right of the bar.
 ##
 ## Step 6: small round dots show the health bars left (shown when there are 2 or more). They sit in a
-## dark strip attached to the left end of the health bar (red with a maroon outline; a lost bar's dot
+## row above the left end of the health bar, spaced apart (red with a maroon outline; a lost bar's dot
 ## is hidden), and a posture bar sits under the health bar. It fills from both ends toward the middle: white,
 ## turning orange as it nears full, red while full (a posture break or an open deathblow window).
 ## While a deathblow window is open a big deathblow marker shows on the enemy's body: a white-reddish
@@ -25,7 +25,10 @@ extends Node3D
 @export var posture_height: float = 0.05
 @export var posture_gap: float = 0.04
 @export var pip_size: float = 0.055
-@export var pip_gap: float = 0.02
+## Space between neighboring dots (m).
+@export var pip_gap: float = 0.06
+## Space between the dot row and the top of the health bar (m).
+@export var pip_lift: float = 0.03
 @export var pip_color: Color = Color(0.85, 0.08, 0.08)
 @export var pip_outline_color: Color = Color(0.32, 0.02, 0.04)
 ## Outline thickness as a share of the dot's radius (0 = none).
@@ -60,7 +63,6 @@ var _posture_right: MeshInstance3D
 var _posture_fraction: float = 0.0
 var _posture_full: bool = false
 var _pips: Array[MeshInstance3D] = []
-var _pip_strip: MeshInstance3D
 var _marker: Sprite3D
 var _marker_time: float = 0.0
 
@@ -73,14 +75,11 @@ func _ready() -> void:
 	back_mesh.size = Vector2(bar_width + 0.03, bar_height + 0.03)
 	_set_fill(_yellow, 1.0)
 	_set_fill(_red, 1.0)
-	var posture_y := -(bar_height * 0.5 + posture_gap + posture_height * 0.5)
 	_posture_back = _make_quad(back_color, 0)
-	_posture_back.position.y = posture_y
 	(_posture_back.mesh as QuadMesh).size = Vector2(bar_width + 0.03, posture_height + 0.03)
+	(_posture_back.mesh as QuadMesh).center_offset = Vector3(0.0, _posture_y(), 0.0)
 	_posture_left = _make_quad(Color.WHITE, 3)
 	_posture_right = _make_quad(Color.WHITE, 3)
-	_posture_left.position.y = posture_y
-	_posture_right.position.y = posture_y
 	_set_posture(0.0, false)
 	_marker = Sprite3D.new()
 	var marker_texture := _build_marker_texture()
@@ -93,6 +92,11 @@ func _ready() -> void:
 	_marker.position = marker_offset
 	_marker.visible = false
 	add_child(_marker)
+
+
+## Where the posture bar sits below the health bar, in the bar's own (camera-facing) plane.
+func _posture_y() -> float:
+	return -(bar_height * 0.5 + posture_gap + posture_height * 0.5)
 
 
 ## Follow a Combatant's health.
@@ -192,28 +196,25 @@ func _on_bars_changed(left: int, _total: int) -> void:
 		_pips[i].visible = i < left
 
 
-## One round dot per health bar (only when there are 2 or more), in a dark strip that is attached
-## to the left end of the health bar and as tall as it.
+## One round dot per health bar (only when there are 2 or more), in a row above the health bar,
+## starting at its left edge, with pip_gap between the dots.
 func _build_pips(total: int) -> void:
 	for pip in _pips:
 		pip.queue_free()
 	_pips.clear()
-	if _pip_strip != null:
-		_pip_strip.queue_free()
-		_pip_strip = null
 	if total < 2:
 		return
-	var strip_width := float(total) * (pip_size + pip_gap) + pip_gap
-	_pip_strip = _make_quad(back_color, 0)
-	(_pip_strip.mesh as QuadMesh).size = Vector2(strip_width, bar_height + 0.03)
-	_pip_strip.position.x = -(bar_width + 0.03) * 0.5 - strip_width * 0.5
 	var texture := _build_pip_texture()
+	# Layout offsets go on the mesh (center_offset), which turns with the camera-facing quad; a node
+	# position would stay in the enemy's own axes and drift away as the enemy or the camera turns.
+	var left_edge := -(bar_width + 0.03) * 0.5
+	var row_y := (bar_height + 0.03) * 0.5 + pip_lift + pip_size * 0.5
 	for i in total:
 		var pip := _make_quad(Color.WHITE, 4)
 		(pip.material_override as StandardMaterial3D).albedo_texture = texture
 		(pip.mesh as QuadMesh).size = Vector2(pip_size, pip_size)
-		pip.position.x = _pip_strip.position.x - strip_width * 0.5 + pip_gap + pip_size * 0.5 \
-				+ float(i) * (pip_size + pip_gap)
+		var pip_x := left_edge + pip_size * 0.5 + float(i) * (pip_size + pip_gap)
+		(pip.mesh as QuadMesh).center_offset = Vector3(pip_x, row_y, 0.0)
 		_pips.append(pip)
 
 
@@ -245,7 +246,7 @@ func _set_posture(fraction: float, full: bool) -> void:
 		var instance := _posture_left if side < 0.0 else _posture_right
 		var quad := instance.mesh as QuadMesh
 		quad.size = Vector2(maxf(half_width, 0.0001), posture_height)
-		quad.center_offset = Vector3(side * (bar_width * 0.5 - half_width * 0.5), 0.0, 0.0)
+		quad.center_offset = Vector3(side * (bar_width * 0.5 - half_width * 0.5), _posture_y(), 0.0)
 		instance.visible = _posture_fraction > 0.0005
 		(instance.material_override as StandardMaterial3D).albedo_color = color
 

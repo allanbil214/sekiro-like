@@ -221,6 +221,11 @@ func get_debug_text() -> String:
 	return text
 
 
+## The charged thrust keeps its own speed; every slash (the charged iai too) is slowed.
+func _slows_active_window() -> bool:
+	return not _is_thrust
+
+
 func _on_action_enter(_previous: StringName) -> void:
 	_queued = false
 	_phase = Phase.NORMAL

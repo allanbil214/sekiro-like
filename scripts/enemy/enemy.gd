@@ -87,7 +87,7 @@ const PRESS_JITTER: float = 0.03
 @onready var visual: Node3D = $Visual
 @onready var body: MeshInstance3D = $Visual/Body
 @onready var sword_visual: SwordVisual = $Visual/SwordVisual
-@onready var bar: EnemyBar = $Bar
+@onready var bar: EnemyBar = $Visual/Bar
 @onready var body_shape: CollisionShape3D = $CollisionShape3D
 @onready var aura: MeshInstance3D = $Aura
 
@@ -683,7 +683,7 @@ func _begin_attack(index: int) -> void:
 
 
 func _update_attack(delta: float, to_player: Vector3, distance: float) -> void:
-	_action_time += delta
+	_action_time += delta * _attack_speed()
 	# Steering: during the wind-up it turns toward the player and aims the lunge; both lock
 	# when the hit window opens (like the player's attacks).
 	if _action_time < _action.active_hit.x:
@@ -710,6 +710,15 @@ func _update_attack(delta: float, to_player: Vector3, distance: float) -> void:
 		return
 	if _action_time >= _action.duration:
 		_end_burst()
+
+
+## Clock speed of the current combo attack: slower in the wind-up and in the hit window (EnemyAIData).
+func _attack_speed() -> float:
+	if _action_time < _action.active_hit.x:
+		return ai.windup_speed
+	if _action_time < _action.active_hit.y:
+		return ai.active_speed
+	return 1.0
 
 
 ## Earliest time the next attack may start: where the cancel window opens (as for the player).
@@ -770,6 +779,7 @@ func _update_hit() -> void:
 		template.damage = ai.perilous_damage
 		template.posture_damage = ai.perilous_posture
 		template.guardable = false
+		template.perilous = true
 		template.deflectable = _peril_kind == Peril.THRUST
 		template.deflect_within = ai.perilous_deflect_window
 		if _peril_kind == Peril.THRUST:

@@ -36,7 +36,7 @@ func exit(_next: StringName) -> void:
 func physics_update(delta: float) -> void:
 	if _try_guard_cancel():
 		return
-	action_time += delta * speed_scale
+	action_time += delta * speed_scale * _active_speed_factor()
 	player.invulnerable = action.has_iframes(action_time)
 	if not player.is_on_floor():
 		player.apply_gravity(delta)
@@ -61,6 +61,20 @@ func _try_guard_cancel() -> bool:
 		player.input_buffer.clear(&"guard")
 		return false
 	machine.transition_to(&"Guard")
+	return true
+
+
+## Slows the clock inside a normal slash's hit window (Player.slash_active_speed), so the swing
+## itself does not look instant. The wind-up and everything after the window run at full speed.
+func _active_speed_factor() -> float:
+	if not _slows_active_window() or not _hit_is_active():
+		return 1.0
+	return player.slash_active_speed
+
+
+## Subclasses return false for actions that keep their own speed (thrusts, helm splitters, the
+## deathblow).
+func _slows_active_window() -> bool:
 	return true
 
 

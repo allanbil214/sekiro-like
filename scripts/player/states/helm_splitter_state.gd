@@ -81,6 +81,10 @@ func get_debug_text() -> String:
 	]
 
 
+func _slows_active_window() -> bool:
+	return false
+
+
 func _on_action_enter(_previous: StringName) -> void:
 	_queued = false
 	if player.sword_visual != null:
