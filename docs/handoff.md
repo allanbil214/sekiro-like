@@ -61,7 +61,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 - Posture (both sides), posture break, deathblow
 - Hitboxes/hurtboxes, damage data, hit reactions
 - Hurtbox profiles per state (stand, crouch, air)
-- Clash mechanic (new, see 3.3 in `docs/design-later-steps.md`)
+- ~~Clash mechanic~~ **dropped** (first connect wins, as in FromSoftware; see 3.3 in `docs/design-later-steps.md`)
 - Input buffering
 - Third-person camera with collision, lock-on camera
 - Hitstop, camera shake, spark/sound hooks
@@ -165,7 +165,7 @@ Moved. The numbers for **built** features live in the Player and SwordVisual exp
 - State machine for player and enemy (states read `ActionData`). **Implemented for the player in Step 2a**; the Player drives it from `_physics_process` so the update order is deterministic.
 - Hitboxes and hurtboxes as `Area3D`; damage info passed as data.
 - Player body: `CharacterBody3D`. Third-person camera with collision (SpringArm3D). Lock-on camera mode.
-- Resolve order: first connect wins, unless both hitboxes go active within the clash window (then clash).
+- Resolve order: first connect wins (the clash was dropped, Step 8).
 - Animation: timer-driven; `AnimationPlayer` follows later.
 - Debug overlay from early on (current state, active windows, hitbox visibility).
 - Traversal as states in the same state machine: Crouch, Slide, WallJump (the mid-air reach lives in the Air state), LedgeHang (a plain state, no data), LedgeClimb (scripted, reads `ActionData`).
@@ -191,7 +191,7 @@ Moved. The numbers for **built** features live in the Player and SwordVisual exp
    - **7b** guard, deflect, repulse, flinch, riposte, recovery pose, adaptive guard chance. **(done)**
    - **7c** perilous attacks. **7c-1** the framework, danger symbol, thrust with mikiri, sweep with jump-over, the `monk` preset, combos continuing into a perilous attack, head bounce and slide. **(done)** **7c-2** the grab (answers O5). **(done and tested by the user 2026-10-08)** The high/mid/low enemy hitboxes were dropped (real animations will set the height).
    - **7d** varied deflect animations (side, high, low, thrust), shared by the player and the enemy, plus the perilous thrust's knockback. **(done and tested by the user 2026-10-08)**
-8. Clash mechanic.
+8. ~~Clash mechanic.~~ **Dropped (2026-10-08):** the game follows FromSoftware, first connect wins. The design that was considered is kept in `docs/design-later-steps.md`, 3.3.
 9. Lock-on.
 10. Heal and resurrection (prompt, final death, scene reset).
 11. Polish: sound, sparks, camera shake.
@@ -230,7 +230,7 @@ The unresolved ones (O1, O2, O4, O5, all about later steps; O3 was settled in St
 - [x] 7c-1. Perilous framework, danger symbol, thrust with mikiri, sweep with jump-over, the `monk` preset (spear look), `Debug Force Perilous` (see the build log, \"Step 7c-1\") **(done and tested by the user 2026-10-08, including the first follow-up batch: combos continuing into a perilous attack, the head slide, the bobblehead flinch, round red health dots inside the bar, the player's kneel and sway; and the second follow-up batch: the jump-over counter fires when the player lands on the head, air steering with kept momentum, a tight deflect of the perilous thrust)**
 - [x] 7c-2. The grab (yellow symbol, unguardable, dodge counter, breaks the guard and kneels the player visually; answers O5) **(done and tested by the user 2026-10-08; the high/mid/low enemy hitboxes were dropped: real animations will drive the hit height)**
 - [x] 7d. Varied deflect animations: four kinds (side, mirrored for the left; high; low; the thrust's slap) picked from the incoming attack, aimed partly at the contact point, shared by the player and the enemy; a plain guard keeps its flick; plus the perilous thrust's knockback (3.0 m, 0.4 s ease; a deflect pushes 0.6 of it) **(done and tested by the user 2026-10-08; poses can still be tuned with `SwordVisual.debug_force_deflect`)**
-- [ ] 8. Clash
+- [x] ~~8. Clash~~ **(dropped 2026-10-08: first connect wins, like FromSoftware; nothing of it is in the code)**
 - [ ] 9. Lock-on
 - [ ] 10. Heal and resurrection
 - [ ] 11. Polish

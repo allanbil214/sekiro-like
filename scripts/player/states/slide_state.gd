@@ -21,7 +21,7 @@ func _on_action_enter(_previous: StringName) -> void:
 		dir = player.get_facing_direction()
 	dir.y = 0.0
 	_move_dir = dir.normalized()
-	player.snap_facing(_move_dir)
+	player.snap_facing_lock_aware(_move_dir)
 
 
 func _on_action_update(_delta: float) -> void:

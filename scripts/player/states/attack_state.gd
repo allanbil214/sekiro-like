@@ -294,7 +294,8 @@ func _hit_is_active() -> bool:
 	return _phase == Phase.NORMAL and super._hit_is_active()
 
 
-## Step 9 (lock-on) will return false here while locked on, so lock-on locks the steering.
+## Step 9: no change needed here. While locked on, Player.face_input() turns toward the target, so the
+## steering is already locked to it (and _update_lunge_direction() aims the lunge at it).
 func _can_steer() -> bool:
 	return true
 
@@ -419,6 +420,15 @@ func _side_left_after_previous() -> bool:
 ## keeps the last direction and strength. A charged thrust scales it by _lunge_scale.
 func _update_lunge_direction(initial: bool) -> void:
 	var input_dir := player.get_move_input()
+	var lock_dir := player.get_lock_direction()
+	if lock_dir != Vector3.ZERO:
+		# Step 9: locked on, the lunge goes toward the target; a held direction only sets the strength.
+		_move_dir = lock_dir
+		if input_dir.length_squared() > 0.01:
+			_move_speed_multiplier = _lunge_scale
+		elif initial:
+			_move_speed_multiplier = no_input_lunge_factor * _lunge_scale
+		return
 	if input_dir.length_squared() > 0.01:
 		input_dir.y = 0.0
 		_move_dir = input_dir.normalized()

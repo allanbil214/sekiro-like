@@ -13,9 +13,13 @@ func _on_action_enter(_previous: StringName) -> void:
 	if input_dir.length_squared() > 0.01:
 		_move_dir = input_dir.normalized()
 		_move_speed_multiplier = 1.0
-		player.snap_facing(_move_dir)
+		player.snap_facing_lock_aware(_move_dir)
 	else:
 		var back := -player.get_facing_direction()
+		var lock_dir := player.get_lock_direction()
+		if lock_dir != Vector3.ZERO:
+			# Locked on: the backstep goes straight away from the target.
+			back = -lock_dir
 		back.y = 0.0
 		_move_dir = back.normalized()
 		_move_speed_multiplier = backstep_speed_multiplier

@@ -2,8 +2,6 @@
 
 [ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_btlyn"]
 [ext_resource type="PackedScene" path="res://scenes/enemy/dummy.tscn" id="2_kti05"]
-[ext_resource type="PackedScene" uid="uid://bwl4ivdc22duh" path="res://scenes/enemy/enemy.tscn" id="3_wt5dk"]
-[ext_resource type="Resource" path="res://ai/enemy_grappler.tres" id="4_kaasr"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -89,11 +87,10 @@ material = SubResource("StandardMaterial3D_lh4ft")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
 
 [node name="Dummy" parent="." unique_id=1141339365 instance=ExtResource("2_kti05")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2741022, 0.35307217, 10.986627)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9226103, 0.35307217, 10.986627)
 
-[node name="Enemy" parent="." unique_id=1794124896 instance=ExtResource("3_wt5dk")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1643076, 0.25, -6.682973)
-ai = ExtResource("4_kaasr")
+[node name="Dummy2" parent="." unique_id=885484419 instance=ExtResource("2_kti05")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.3933973, 0.35307217, 14.542424)
 
 [node name="Stairs" type="CSGBox3D" parent="." unique_id=1260047309]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.429325, 0.41362858, 12.701134)

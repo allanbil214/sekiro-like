@@ -173,6 +173,12 @@ extends Resource
 @export var perilous_symbol_lead: float = 0.5
 ## How far (m) the sweep lowers the whole swing so the hitbox travels near the floor.
 @export var sweep_drop: float = 1.0
+## The sweep duck (visual only; the capsule and hurtbox do not change): the body drops this far (m) and
+## pitches forward this far (degrees) from the start of the sweep to the end of its hit window, then
+## stands back up over sweep_crouch_out_time (s). Drop 0 and lean 0 = no duck.
+@export var sweep_crouch_drop: float = 0.35
+@export var sweep_crouch_lean_degrees: float = 25.0
+@export var sweep_crouch_out_time: float = 0.35
 
 @export_group("Grab (Step 7c-2)")
 ## The grab: a yellow symbol, unguardable and undeflectable; only a dodge (its i-frames) avoids it. If it

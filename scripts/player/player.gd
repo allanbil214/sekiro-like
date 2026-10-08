@@ -208,6 +208,7 @@ var sword_visual: SwordVisual
 
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: Node3D = $CameraRig
+@onready var lock_on: LockOn = $LockOn
 @onready var state_machine: StateMachine = $StateMachine
 @onready var _collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var _body_mesh: MeshInstance3D = $Visual/Body
@@ -359,8 +360,24 @@ func set_horizontal_velocity(v: Vector3) -> void:
 	velocity.z = v.z
 
 
-## Turn smoothly toward the movement input (if any).
+## Step 9: the flat direction from the player to the locked target, or Vector3.ZERO when not locked on.
+func get_lock_direction() -> Vector3:
+	if not lock_on.has_target():
+		return Vector3.ZERO
+	var to := lock_on.get_target_position() - global_position
+	to.y = 0.0
+	if to.length_squared() < 0.0001:
+		return Vector3.ZERO
+	return to.normalized()
+
+
+## Turn smoothly toward the movement input (if any). While locked on, toward the target instead
+## (so walking and dashing backward still face it).
 func face_input(delta: float) -> void:
+	var lock_dir := get_lock_direction()
+	if lock_dir != Vector3.ZERO:
+		face_direction(lock_dir, delta)
+		return
 	var move_dir := get_move_input()
 	if move_dir.length_squared() > 0.01:
 		face_direction(move_dir, delta)
@@ -374,6 +391,13 @@ func face_direction(dir: Vector3, delta: float) -> void:
 ## Turn instantly (used when an action starts).
 func snap_facing(dir: Vector3) -> void:
 	visual.rotation.y = atan2(-dir.x, -dir.z)
+
+
+## Like snap_facing(), but while locked on the body faces the target instead of `dir` (the dodge and
+## the slide still move along `dir`).
+func snap_facing_lock_aware(dir: Vector3) -> void:
+	var lock_dir := get_lock_direction()
+	snap_facing(lock_dir if lock_dir != Vector3.ZERO else dir)
 
 
 ## Resize the body. The collision capsule changes instantly (sizes are set on the shape

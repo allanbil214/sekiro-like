@@ -24,6 +24,8 @@ enum Phase { IDLE, WINDUP, ACTIVE, RECOVER }
 const SWING_START: float = 0.3
 
 @export var respawn_delay: float = 2.0
+## Step 9: where the lock-on marker and the camera aim sit, in metres above its feet.
+@export var lock_point_height: float = 1.2
 ## Step 6: health bars, whether a missed deathblow on the last bar leaves it alive (boss), and the
 ## deathblow window (s). Copied to the Combatant at startup.
 @export var health_bars: int = 2

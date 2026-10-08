@@ -32,6 +32,7 @@
 [ext_resource type="Script" uid="uid://2gky22glbhj6" path="res://scripts/player/states/deathblow_state.gd" id="28_pk8ii"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
 [ext_resource type="Script" uid="uid://c6tupl6mk6o4b" path="res://scripts/ui/danger_symbol.gd" id="32_pk8ii"]
+[ext_resource type="Script" uid="uid://bva5xai5g2xge" path="res://scripts/player/lock_on.gd" id="33_5mf0n"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -158,6 +159,7 @@ script = ExtResource("9_fcs02")
 
 [node name="Hurtbox" type="Area3D" parent="." unique_id=75634448]
 script = ExtResource("27_28m0y")
+team = 0
 metadata/_custom_type_script = "uid://ci1x2m5cjnqd7"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox" unique_id=1804744079]
@@ -170,3 +172,6 @@ metadata/_custom_type_script = "uid://bh8lwmou5enq6"
 [node name="DangerSymbol" type="Label3D" parent="." unique_id=1705645299]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
 script = ExtResource("32_pk8ii")
+
+[node name="LockOn" type="Node3D" parent="." unique_id=342494551]
+script = ExtResource("33_5mf0n")

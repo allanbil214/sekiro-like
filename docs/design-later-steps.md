@@ -27,6 +27,7 @@
 - Grabs are **unguardable and undeflectable**.
 
 ### 3.3 Clash (new mechanic)
+> **Dropped 2026-10-08.** The user chose to follow FromSoftware: whoever connects first wins, no clash. A version was built and reverted before testing. Kept only as a record; if it ever comes back: the swings' hit windows must have opened within 0.1 s of each other and the two hitboxes must touch; no damage, both sides take about 10 posture and a 1 m push, both swings are cut, the enemy recovers about 0.4 s; perilous attacks, grabs, and the dummy never clash; opposing hitboxes can be found by putting each active `Hitbox` on its team's hitbox layer (`Layers`, 4 and 5) and querying the other team's layer.
 - In Sekiro, whoever's hitbox connects first wins. This prototype adds a **clash**: if both sides' hitboxes become active within a short overlap window (placeholder **0.1s**), it's a clash instead.
 - On clash: both bounce back, each takes a small posture hit, play sparks and sound.
 - Otherwise, first connect wins.

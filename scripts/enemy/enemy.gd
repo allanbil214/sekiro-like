@@ -56,6 +56,8 @@ const PRESS_JITTER: float = 0.03
 @export var deathblow_window: float = 4.0
 @export var gravity_multiplier: float = 2.0
 @export var body_color: Color = Color(0.75, 0.3, 0.25)
+## Step 9: where the lock-on marker and the camera aim sit, in metres above its feet.
+@export var lock_point_height: float = 1.2
 @export_group("Recoil")
 ## How far (m) the body shifts away from a hit, and how far (radians) it tilts.
 @export var recoil_distance: float = 0.12
@@ -162,6 +164,8 @@ var _bobble_length: float = 0.0
 var _bobble_period: float = 1.0
 var _bobble_clock: float = 0.0
 var _bobble_loop: bool = false
+## The sweep duck, 0 (standing) to 1 (full), moved in _process (visual only).
+var _crouch: float = 0.0
 var _bobble_droop: float = 0.0
 var _bobble_sign: float = 1.0
 var _visual_dirty: bool = false
@@ -294,8 +298,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_crouch(delta)
 	var bobbing := _bobble_loop or _bobble_clock < _bobble_length
-	if _recoil <= 0.0 and not bobbing:
+	if _recoil <= 0.0 and not bobbing and _crouch <= 0.0:
 		if _visual_dirty:
 			_visual_dirty = false
 			visual.position = Vector3.ZERO
@@ -324,8 +329,25 @@ func _process(delta: float) -> void:
 		var pitch := -_bobble_droop * (1.0 if _bobble_loop else envelope) + _bobble_tilt * envelope * sin(swing)
 		var roll := _bobble_sign * _bobble_tilt * 0.6 * envelope * cos(swing)
 		bobble = Basis(Vector3.RIGHT, pitch) * Basis(Vector3.FORWARD, roll)
+	var crouch_basis := Basis.IDENTITY
+	if _crouch > 0.0:
+		var duck := smoothstep(0.0, 1.0, _crouch)
+		offset.y -= ai.sweep_crouch_drop * duck
+		crouch_basis = Basis(Vector3.RIGHT, -deg_to_rad(ai.sweep_crouch_lean_degrees) * duck)
 	visual.position = offset
-	visual.basis = bobble * tilt
+	visual.basis = crouch_basis * bobble * tilt
+
+
+## The sweep duck: follows the sweep's action clock up to full at the start of the hit window, holds
+## until the window closes, then stands back up over sweep_crouch_out_time.
+func _update_crouch(delta: float) -> void:
+	var ducking := phase == Phase.PERILOUS and _peril_kind == Peril.SWEEP and _action != null \
+			and _action_time < _action.active_hit.y \
+			and (ai.sweep_crouch_drop > 0.0 or ai.sweep_crouch_lean_degrees > 0.0)
+	if ducking:
+		_crouch = clampf(_action_time / maxf(_action.active_hit.x, 0.001), 0.0, 1.0)
+	elif _crouch > 0.0:
+		_crouch = move_toward(_crouch, 0.0, delta / maxf(ai.sweep_crouch_out_time, 0.001))
 
 
 ## Start a damped bobble (visual only): `tilt` radians, over `length` seconds, `cycles` swings.

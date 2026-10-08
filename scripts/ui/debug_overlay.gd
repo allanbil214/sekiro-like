@@ -65,6 +65,7 @@ func _process(_delta: float) -> void:
 			posture.posture, posture.max_posture, "  BROKEN" if posture.posture_full else "",
 			"in reach" if _player.find_deathblow_target() != null else "-",
 		]
+	text += "\n" + _player.lock_on.get_debug_text()
 	var stagger_state := machine.current as StaggerState
 	if stagger_state != null:
 		text += "\nSTAGGER: %.1f / %.1f s  dodge %s  (x%.1f damage)" % [
