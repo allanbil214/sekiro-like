@@ -52,6 +52,8 @@
 - **Built in 7c-1 (thrust and sweep; the grab is 7c-2):** the thrust and the sweep are also unguardable and undeflectable (user-approved default). The symbol shows 0.5 s before the hit window and stays until it closes. The jump-over counter is "in the air while the symbol shows" to arm it, and landing on the enemy's head is the parry (posture, stun, the bobblehead flinch) that also bounces the player up so a helm splitter can follow; any other landing on a head slides the player off. The thrust (not the sweep) can still be deflected, but only within a 0.1 s window after the guard press. In the air the player keeps its momentum and the move keys only steer it. Mikiri: +50 posture and a 1 s stun; jump-over: +30 posture and a 0.6 s stun (placeholders). A perilous attack can start a burst or continue a combo (chain chance per preset).
 - **No body flashing** on the character (explicitly disliked as unimmersive).
 
+- **Built in 7c-2 (the grab; answers O5, numbers are placeholders):** yellow `!` (`EnemyAIData.grab_symbol_color`), shown `perilous_symbol_lead` before the hit window like the others. Wind-up about 0.8 s, active window 0.25 s, starts within `grab_range` 2.4 m with a short lunge, 45 damage, 0 posture, a 2.0 m throw, super armor like the other perilous attacks. Unguardable and undeflectable; **only a dodge answers it** (its i-frames; no posture reward), and a whiff leaves the enemy open for `grab_whiff_recovery` 1.2 s. It hits crouched and airborne players too. A grab that connects always **breaks the guard** (whether or not the player was guarding): `HitData.grab` makes `Combatant` emit `guard_broken`, and on the ground the player also sinks to a knee for `Player.grab_kneel_time` 0.8 s (visual only; the capsules and the hurtbox do not change; any jump, fall, or action ends it). No held-in-hand animation yet.
+
 ### 3.6 Heal and resurrection
 - **Heal:** 3 charges (adjustable). **Instant heal when the animation finishes** (charge is consumed on completion). **Movement is allowed** while healing. **A hit interrupts it.**
 - **Resurrection:** 2 uses per run, revive at **half HP**. Presented as a **prompt** like Sekiro (the player chooses).
@@ -128,4 +130,4 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - **O2:** Exact posture numbers and regen rates: placeholders are built in Step 6 (see the table); tune them in play. (The spam-shrink amount was settled in Step 5.)
 - ~~O3~~ Resolved in Step 5: linear, -0.04 s per rapid re-press, floor 0.05 s.
 - **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
-- **O5:** Enemy grab damage amount and exact grab range/wind-up.
+- ~~O5~~ Resolved in 7c-2 (placeholders): damage 45, range 2.4 m, wind-up about 0.8 s, active 0.25 s; see 3.5.

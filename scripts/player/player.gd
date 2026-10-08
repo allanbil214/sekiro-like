@@ -138,12 +138,15 @@ var sheathed: bool = false
 ## this many times a plain hit's, and guard presses are ignored for the lockout (s; 0 = none).
 @export var guard_break_recoil_scale: float = 1.6
 @export var guard_break_lockout: float = 0.0
+## A grab that connects also sinks the player to a knee (visual only) for this long (s), on the ground.
+@export var grab_kneel_time: float = 0.8
 ## Knockback is a push that eases out over this many seconds (the distance comes from the hit).
 @export var knockback_time: float = 0.2
 ## Name of the hurtbox posture in use (debug overlay).
 var hurtbox_profile_name: String = "stand"
 ## Seconds left in which guard presses are ignored (after a guard break).
 var _guard_lockout: float = 0.0
+var _grab_kneel_left: float = 0.0
 
 ## Seconds since the last attack or dodge (counts only in Locomotion or Crouch).
 var sheathe_idle: float = 0.0
@@ -267,6 +270,7 @@ func _physics_process(delta: float) -> void:
 	if _guard_lockout > 0.0:
 		_guard_lockout -= delta
 		input_buffer.clear(&"guard")
+	_update_grab_kneel(delta)
 	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
 	combatant.tick_posture(delta, _posture_regen_paused())
 	_update_stagger()
@@ -566,9 +570,27 @@ func _on_guard_broken(hit: HitData) -> void:
 	if state_machine.current is GuardState:
 		state_machine.transition_to(&"Locomotion" if is_on_floor() else &"Air")
 	_guard_lockout = guard_break_lockout
+	if hit.grab and is_on_floor() and grab_kneel_time > 0.0:
+		_grab_kneel_left = grab_kneel_time
+		set_stagger_kneel(true)
 	if sword_visual != null:
 		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
 		sword_visual.play_guard_break(local_dir.x)
+
+
+## The grab's kneel is only a look: it ends after grab_kneel_time, or as soon as the player jumps, falls,
+## or starts an action. (A posture-break stagger keeps its own kneel.)
+func _update_grab_kneel(delta: float) -> void:
+	if _grab_kneel_left <= 0.0:
+		return
+	_grab_kneel_left -= delta
+	var current := state_machine.current
+	if current is StaggerState:
+		_grab_kneel_left = 0.0
+		return
+	if _grab_kneel_left <= 0.0 or not is_on_floor() or current is ActionState or current is AirState:
+		_grab_kneel_left = 0.0
+		set_stagger_kneel(false)
 
 
 ## A deflect: a lighter wobble, a white blade flash and the blade flick, and a softer knockback.

@@ -149,6 +149,7 @@ var _peril_kind: int = Peril.NONE
 var _peril_charging: bool = false
 var _peril_time: float = 0.0
 var _peril_cooldown: float = 0.0
+var _grab_connected: bool = false
 var _peril_history: Array[int] = []
 var _symbol: DangerSymbol
 var _symbol_shown: bool = false
@@ -785,7 +786,15 @@ func _update_hit() -> void:
 		if _peril_kind == Peril.THRUST:
 			template.knockback = ai.perilous_thrust_knockback
 			template.knockback_time = ai.perilous_knockback_time
-	hitbox.sweep(template)
+		if _peril_kind == Peril.GRAB:
+			# The grab: its own numbers, never deflectable, and it always breaks the guard.
+			template.damage = ai.grab_damage
+			template.posture_damage = ai.grab_posture
+			template.knockback = ai.grab_knockback
+			template.grab = true
+	var landed := hitbox.sweep(template)
+	if _peril_kind == Peril.GRAB and not landed.is_empty():
+		_grab_connected = true
 
 
 func _end_hit() -> void:
@@ -809,14 +818,13 @@ func _abort_attack() -> void:
 ## Which perilous attack (if any) to start now instead of a burst. Debug Force Perilous wins.
 func _pick_perilous(distance: float, chance: float) -> int:
 	if debug_force_perilous != Peril.NONE:
-		if debug_force_perilous == Peril.GRAB:
-			push_warning("Enemy: the grab comes in 7c-2; Debug Force Perilous = Grab does nothing yet.")
-			return Peril.NONE
 		return debug_force_perilous if _peril_available(debug_force_perilous, true) else Peril.NONE
 	if _peril_cooldown > 0.0 or distance > ai.perilous_range or randf() >= chance:
 		return Peril.NONE
 	var options: Array[int] = []
-	for kind: int in [Peril.THRUST, Peril.SWEEP]:
+	for kind: int in [Peril.THRUST, Peril.SWEEP, Peril.GRAB]:
+		if kind == Peril.GRAB and distance > ai.grab_range:
+			continue
 		if _peril_available(kind, false) and not _peril_repeated(kind):
 			options.append(kind)
 	if options.is_empty():
@@ -830,6 +838,8 @@ func _peril_available(kind: int, ignore_switch: bool) -> bool:
 			return weapon.thrust != null and (ignore_switch or ai.perilous_thrust)
 		Peril.SWEEP:
 			return ai.sweep_action != null and (ignore_switch or ai.perilous_sweep)
+		Peril.GRAB:
+			return ai.grab_action != null and (ignore_switch or ai.perilous_grab)
 	return false
 
 
@@ -866,11 +876,13 @@ func _start_perilous(kind: int) -> void:
 		sword_visual.begin_charge()
 	else:
 		_peril_charging = false
-		_action = ai.sweep_action
+		_action = ai.sweep_action if kind == Peril.SWEEP else ai.grab_action
 		_action_time = 0.0
+		_grab_connected = false
 		_lunge_dir = _flat_to_player().normalized()
 		sword_visual.begin_action(_action)
-		sword_visual.set_drop_target(ai.sweep_drop)
+		if kind == Peril.SWEEP:
+			sword_visual.set_drop_target(ai.sweep_drop)
 
 
 func _update_perilous(delta: float, to_player: Vector3, distance: float, has_target: bool) -> void:
@@ -971,10 +983,13 @@ func _countered(posture: float, stun: float, label: String, jump_over: bool) -> 
 
 
 func _end_perilous() -> void:
+	var whiffed := _peril_kind == Peril.GRAB and not _grab_connected
 	_end_hit()
 	_cancel_perilous()
 	sword_visual.end_combo()
 	_start_recover()
+	if whiffed:
+		_phase_timer = ai.grab_whiff_recovery
 
 
 ## Forget the perilous attack (it ended, was cut, or was interrupted): symbol off, swing back up.
@@ -1000,7 +1015,7 @@ func _show_symbol() -> void:
 			push_error("Enemy: no DangerSymbol found (add the Label3D with danger_symbol.gd under the Player).")
 		return
 	_symbol_shown = true
-	_symbol.show_danger(self, Color(1.0, 0.1, 0.1))
+	_symbol.show_danger(self, ai.grab_symbol_color if _peril_kind == Peril.GRAB else Color(1.0, 0.1, 0.1))
 
 
 func _hide_symbol() -> void:

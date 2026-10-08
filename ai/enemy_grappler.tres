@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EnemyAIData" format=3]
+
+[ext_resource type="Script" uid="uid://ey2sisai4rox" path="res://resources/enemy_ai_data.gd" id="1_ai"]
+
+[resource]
+script = ExtResource("1_ai")
+neutral_guard_chance = 0.95
+neutral_deflect_chance = 0.32
+pressured_guard_chance = 0.75
+pressured_deflect_chance = 0.47
+riposte_chance = 0.5
+perilous_grab = true
+perilous_chance = 0.7
+perilous_cooldown = 3.0
+perilous_range = 3.2

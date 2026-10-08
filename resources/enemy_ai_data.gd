@@ -174,6 +174,22 @@ extends Resource
 ## How far (m) the sweep lowers the whole swing so the hitbox travels near the floor.
 @export var sweep_drop: float = 1.0
 
+@export_group("Grab (Step 7c-2)")
+## The grab: a yellow symbol, unguardable and undeflectable; only a dodge (its i-frames) avoids it. If it
+## connects it breaks the guard and the player kneels (visual only). Off by default; the Debug Force
+## Perilous = Grab option works on every preset.
+@export var perilous_grab: bool = false
+@export var grab_action: ActionData = preload("res://actions/enemy_grab.tres")
+## It only starts a grab inside this distance (m).
+@export var grab_range: float = 2.4
+## The grab's own numbers (they replace the action's): health damage, posture damage, and the throw (m).
+@export var grab_damage: float = 45.0
+@export var grab_posture: float = 0.0
+@export var grab_knockback: float = 2.0
+## Recovery (s) when the grab misses (a dodge): the opening. A connected grab uses recovery_time.
+@export var grab_whiff_recovery: float = 1.2
+@export var grab_symbol_color: Color = Color(1.0, 0.85, 0.1)
+
 @export_group("Counters (Step 7c)")
 ## Mikiri (against the thrust): the player is dodging toward the enemy (inside this angle, degrees,
 ## from the line to it) within this distance (m) at any moment from the symbol to the end of the hit window.

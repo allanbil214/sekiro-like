@@ -27,6 +27,8 @@ var knockback: float = 0.0
 var knockback_time: float = -1.0
 ## True for a perilous attack. Landing as a plain hit on a target that is guarding breaks its guard.
 var perilous: bool = false
+## True for the grab: it always breaks the target's guard (guarding or not).
+var grab: bool = false
 ## Filled in by the target's Combatant: an Outcome value.
 var outcome: int = Outcome.HIT
 ## Where it connected (the middle of the hitbox), for sparks and sounds later.
@@ -44,6 +46,7 @@ func copy() -> HitData:
 	other.deflectable = deflectable
 	other.deflect_within = deflect_within
 	other.perilous = perilous
+	other.grab = grab
 	other.knockback = knockback
 	other.knockback_time = knockback_time
 	other.outcome = outcome

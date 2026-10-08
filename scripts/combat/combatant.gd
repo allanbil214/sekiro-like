@@ -29,7 +29,8 @@ signal died
 ## A plain guard blocked the hit. `chip` is the health lost (0 unless chip damage is on).
 signal hit_guarded(hit: HitData, chip: float)
 signal hit_deflected(hit: HitData)
-## A perilous attack landed as a plain hit on a guard that was up and facing it: the guard is broken.
+## A perilous attack landed as a plain hit on a guard that was up and facing it, or a grab landed: the
+## guard is broken.
 signal guard_broken(hit: HitData)
 ## A hit of THIS combatant's was repulsed by its target (a repulse deflect, Step 7b): `knockback` is
 ## how far (m) to push this combatant back. The owner also cuts its current swing (the player does).
@@ -259,7 +260,7 @@ func take_hit(hit: HitData) -> float:
 		add_posture(hit.posture_damage * posture_factor_guard)
 		return chip
 	_reset_spam("taking a hit")
-	var breaks_guard := guarding and hit.perilous and _in_cone(hit)
+	var breaks_guard := hit.grab or (guarding and hit.perilous and _in_cone(hit))
 	var multiplier := staggered_damage_multiplier if vulnerable else 1.0
 	var amount := minf(hit.damage * multiplier * health_taken_multiplier, health)
 	health -= amount
