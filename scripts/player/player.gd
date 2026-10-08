@@ -155,6 +155,9 @@ var _hurt_shape: CollisionShape3D
 var _recoil: float = 0.0
 var _recoil_direction: Vector3 = Vector3.ZERO
 var _recoil_scale: float = 1.0
+## A repulse (an enemy's special deflect, Step 7b) is waiting to cancel the current attack.
+var _repulse_pending: bool = false
+var _repulse_direction: Vector3 = Vector3.ZERO
 var _knockback_velocity: Vector3 = Vector3.ZERO
 var _knockback_decel: float = 0.0
 var _visual_rest: Vector3 = Vector3.ZERO
@@ -225,6 +228,7 @@ func _physics_process(delta: float) -> void:
 	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
 	combatant.tick_posture(delta, _posture_regen_paused())
 	_update_stagger()
+	_update_repulse()
 	_try_deathblow()
 	state_machine.physics_update(delta)
 	_update_auto_sheathe(delta)
@@ -449,6 +453,7 @@ func _setup_hurtbox() -> void:
 	combatant.damaged.connect(_on_damaged)
 	combatant.hit_guarded.connect(_on_guarded)
 	combatant.hit_deflected.connect(_on_deflected)
+	combatant.repulsed.connect(_on_repulsed)
 	combatant.posture_broken.connect(_on_posture_broken)
 	combatant.died.connect(_on_died)
 	_update_hurtbox()
@@ -511,6 +516,35 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 		# Which side of the player the attacker is on, in the Visual's own frame.
 		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
 		sword_visual.play_guard_hit(deflect, local_dir.x)
+
+
+## One of the player's hits was repulsed by an enemy (Step 7b): bounced back and the swing is cut
+## short (applied at the start of the next physics frame, see _update_repulse). No stun: the player
+## can guard, jump, or dodge at once, and the combo is back at attack 1.
+func _on_repulsed(hit: HitData, distance: float) -> void:
+	notify_combat()
+	apply_knockback(-hit.direction, distance)
+	_recoil = 1.0
+	_recoil_scale = 1.0
+	_recoil_direction = -hit.direction
+	_repulse_pending = true
+	_repulse_direction = -hit.direction
+
+
+## Cut the attack that was repulsed (the state machine is not touched in the middle of a sweep) and
+## flick the blade. Leaving the attack resets the combo. Anything else the player is doing stays.
+func _update_repulse() -> void:
+	if not _repulse_pending:
+		return
+	_repulse_pending = false
+	var current := state_machine.current
+	if current is AttackState:
+		state_machine.transition_to(&"Crouch" if is_crouched else &"Locomotion")
+	elif current is AirAttackState or current is HelmSplitterState:
+		state_machine.transition_to(&"Air")
+	if sword_visual != null:
+		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -_repulse_direction
+		sword_visual.play_guard_hit(true, local_dir.x)
 
 
 ## Posture is full: stagger as soon as nothing is in the way (a ledge climb finishes first).

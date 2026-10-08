@@ -1,13 +1,13 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bwl4ivdc22duh"]
 
-[ext_resource type="Script" path="res://scripts/enemy/enemy.gd" id="1_enemy"]
-[ext_resource type="Resource" path="res://ai/enemy_default.tres" id="2_ai"]
-[ext_resource type="Resource" path="res://weapons/katana.tres" id="3_weapon"]
-[ext_resource type="Script" path="res://scripts/player/sword_visual.gd" id="4_sword"]
-[ext_resource type="Script" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]
-[ext_resource type="Script" path="res://scripts/combat/hurtbox.gd" id="6_hurtbox"]
-[ext_resource type="Script" path="res://scripts/combat/combatant.gd" id="7_combatant"]
-[ext_resource type="Script" path="res://scripts/ui/enemy_bar.gd" id="8_bar"]
+[ext_resource type="Script" uid="uid://ciinp05kct374" path="res://scripts/enemy/enemy.gd" id="1_enemy"]
+[ext_resource type="Resource" path="res://ai/enemy_duelist.tres" id="2_13gj6"]
+[ext_resource type="Resource" uid="uid://cndijq62ntfbn" path="res://weapons/katana.tres" id="3_weapon"]
+[ext_resource type="Script" uid="uid://dgdgib1jc4f4g" path="res://scripts/player/sword_visual.gd" id="4_sword"]
+[ext_resource type="Script" uid="uid://ccpsk46sfaf3q" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]
+[ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="6_hurtbox"]
+[ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="7_combatant"]
+[ext_resource type="Script" uid="uid://84kjs2gkp6la" path="res://scripts/ui/enemy_bar.gd" id="8_bar"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4
@@ -26,49 +26,58 @@ size = Vector3(0.2, 0.2, 0.4)
 radius = 0.45
 height = 1.8
 
-[node name="Enemy" type="CharacterBody3D"]
-script = ExtResource("1_enemy")
-ai = ExtResource("2_ai")
-weapon = ExtResource("3_weapon")
+[sub_resource type="SphereMesh" id="SphereMesh_aura"]
+radius = 1.0
+height = 2.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+[node name="Enemy" type="CharacterBody3D" unique_id=1411356820]
+script = ExtResource("1_enemy")
+ai = ExtResource("2_13gj6")
+weapon = ExtResource("3_weapon")
+debug_log = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=513490288]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_body")
 
-[node name="Visual" type="Node3D" parent="."]
+[node name="Visual" type="Node3D" parent="." unique_id=1288801285]
 
-[node name="Body" type="MeshInstance3D" parent="Visual"]
+[node name="Body" type="MeshInstance3D" parent="Visual" unique_id=1739379535]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 mesh = SubResource("CapsuleMesh_body")
 
-[node name="Nose" type="MeshInstance3D" parent="Visual"]
+[node name="Nose" type="MeshInstance3D" parent="Visual" unique_id=1780961574]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.5)
 mesh = SubResource("BoxMesh_nose")
 
-[node name="SwordVisual" type="Node3D" parent="Visual" node_paths=PackedStringArray("hitbox")]
+[node name="SwordVisual" type="Node3D" parent="Visual" unique_id=260730772 node_paths=PackedStringArray("hitbox")]
 script = ExtResource("4_sword")
 hitbox = NodePath("Hitbox")
 rest_edge_direction = Vector3(0, -1, 0)
 
-[node name="Hitbox" type="Area3D" parent="Visual/SwordVisual"]
+[node name="Hitbox" type="Area3D" parent="Visual/SwordVisual" unique_id=1717663770]
 script = ExtResource("5_hitbox")
 team = 1
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Visual/SwordVisual/Hitbox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Visual/SwordVisual/Hitbox" unique_id=39829248]
 shape = SubResource("BoxShape3D_hitbox")
 
-[node name="Hurtbox" type="Area3D" parent="."]
+[node name="Hurtbox" type="Area3D" parent="." unique_id=888449573]
 script = ExtResource("6_hurtbox")
-team = 1
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox" unique_id=1622937297]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_hurt")
 
-[node name="Combatant" type="Node" parent="."]
+[node name="Combatant" type="Node" parent="." unique_id=396747591]
 script = ExtResource("7_combatant")
 max_health = 500.0
 
-[node name="Bar" type="Node3D" parent="."]
+[node name="Bar" type="Node3D" parent="." unique_id=527325189]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, 0)
 script = ExtResource("8_bar")
+
+[node name="Aura" type="MeshInstance3D" parent="." unique_id=295123224]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+visible = false
+mesh = SubResource("SphereMesh_aura")

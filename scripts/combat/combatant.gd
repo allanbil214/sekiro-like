@@ -29,6 +29,9 @@ signal died
 ## A plain guard blocked the hit. `chip` is the health lost (0 unless chip damage is on).
 signal hit_guarded(hit: HitData, chip: float)
 signal hit_deflected(hit: HitData)
+## A hit of THIS combatant's was repulsed by its target (a repulse deflect, Step 7b): `knockback` is
+## how far (m) to push this combatant back. The owner also cuts its current swing (the player does).
+signal repulsed(hit: HitData, knockback: float)
 signal posture_changed(current: float, maximum: float)
 ## Posture just reached the maximum.
 signal posture_broken
@@ -94,6 +97,12 @@ signal deathblow_closed(executed: bool, killed: bool)
 @export var knockback_multiplier_hit: float = 1.0
 @export var knockback_multiplier_guard: float = 1.0
 @export var knockback_multiplier_deflect: float = 0.6
+## Repulse (Step 7b): when a deflect window was opened with press_guard(true), the attacker is also
+## pushed back repulse_knockback m, takes this share of the hit's posture damage on top of the
+## normal deflect posture, and gets `repulsed`: the player's swing is cut and its blade bounces, and
+## the combo is back at attack 1. It is not stunned: it can guard, jump, or dodge at once.
+@export var repulse_knockback: float = 1.5
+@export var repulse_attacker_posture_extra: float = 0.5
 ## Print guard presses, spam resets, and outcomes to the Output panel. Off by default; tick it
 ## in the Inspector when tuning.
 @export var debug_log: bool = false
@@ -123,6 +132,8 @@ var last_outcome: int = -1
 
 var _spam_idle: float = 0.0
 var _since_posture_hit: float = 0.0
+## The current deflect window was opened as a repulse (press_guard(true)).
+var _window_repulse: bool = false
 var _guard_hold: float = 0.0
 
 
@@ -172,8 +183,10 @@ func spam_idle() -> float:
 
 
 ## A fresh guard press: open a new deflect window (shrunk by recent rapid presses). Returns its size.
-func press_guard() -> float:
+## `repulse`: a deflect inside this window is a repulse (see repulse_knockback).
+func press_guard(repulse: bool = false) -> float:
 	var window := next_window()
+	_window_repulse = repulse
 	press_count += 1
 	current_window = window
 	deflect_left = window
@@ -198,6 +211,9 @@ func take_hit(hit: HitData) -> float:
 		var attacker := Combatant.of(hit.attacker)
 		if attacker != null:
 			attacker.add_posture(hit.posture_damage * attacker_posture_factor_deflect)
+			if _window_repulse:
+				attacker.add_posture(hit.posture_damage * repulse_attacker_posture_extra)
+				attacker.repulsed.emit(hit, repulse_knockback)
 		return 0.0
 	if outcome == HitData.Outcome.GUARD:
 		var chip := 0.0
