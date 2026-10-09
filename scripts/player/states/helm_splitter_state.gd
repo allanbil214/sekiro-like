@@ -117,6 +117,7 @@ func _update_dive(delta: float) -> void:
 
 func _begin_land() -> void:
 	player.reset_air_actions()
+	Fx.play(player.get_tree(), Fx.Kind.HELM_LAND, player.global_position)
 	_phase = Phase.LAND
 	action = land_action
 	action_time = 0.0

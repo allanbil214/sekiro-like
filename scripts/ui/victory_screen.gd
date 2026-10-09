@@ -141,6 +141,7 @@ func _begin() -> void:
 	var token := _token
 	_start_ms = Time.get_ticks_msec()
 	_active = true
+	Fx.play(get_tree(), Fx.Kind.BOSS_SLAIN)
 	_word_spacing_now = -1
 	if hitstop_time > 0.0:
 		Hitstop.request(get_tree(), hitstop_time)

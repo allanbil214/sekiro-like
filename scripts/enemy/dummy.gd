@@ -237,6 +237,8 @@ func _on_deathblow_opened() -> void:
 
 ## The window closed: back to normal. A landed deathblow also makes it recoil from the player.
 func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
+	if executed:
+		Fx.play(get_tree(), Fx.Kind.DEATHBLOW, global_position + Vector3.UP * 1.2)
 	body.material_override = null
 	_timer = pause_time
 	if executed and _player != null:

@@ -1,6 +1,6 @@
 # Design for later steps (Step 4 and beyond)
 
-> **Paste this when starting Step 4 or any later step** (hitboxes, guard, posture, enemy AI, clash, lock-on, heal). Until then Claude does not read it (see `docs/work-agreements.md`, section 7). Section numbers match the handoff (3.x, 5.x). Moved out of the handoff on 2026-10-07; nothing here is built yet except where noted.
+> **Paste this when starting Step 4 or any later step** (hitboxes, guard, posture, enemy AI, clash, lock-on, heal). Until then Claude does not read it (see `docs/work-agreements.md`, section 7). Section numbers match the handoff (3.x, 5.x). Moved out of the handoff on 2026-10-07 (3.12, Step 11 polish, added 2026-10-09); nothing here is built yet except where noted.
 
 ---
 
@@ -62,6 +62,21 @@
   - On resurrect: the enemy **keeps its state** (HP, posture), stays locked on, and keeps its distance/moves a bit.
   - On choosing final death: the enemy **unlocks and returns to a non-combat state**, then **reset the scene**.
   - After the final death with no resurrections left: reset the scene.
+
+### 3.12 Polish (Step 11; agreed 2026-10-09, numbers are placeholders)
+> Built so far: **11d** (the boss-slain screen and the heal arm; see the build log, "Step 11d"). Everything else here is planned. Order: 11c, 11b, 11e, 11f, 11g; sound (11a) is parked until the user has the wavs.
+- **`Fx` helper (11c):** one static call per event (deflect, guard, hurt, ...) that triggers the shake and the effects, and later the sound, so each event has one call site. Finds the camera through a group.
+- **Camera shake (11c):** a trauma value 0 to 1 on `CameraRig`; strength = trauma squared; decays fast; real-time (plays during hitstop); a master strength, an on/off toggle, and a small directional kick along the hit direction. Trauma placeholders: own hit lands 0.15 (charged 0.3), deflect 0.2, guard 0.25, taking a hit 0.35, perilous hit through the guard 0.5, grab 0.6, guard break 0.5, posture break (either side) 0.4, mikiri and head stomp 0.3, helm splitter lands 0.5, deathblow 0.7, boss slain 0.8, hard landing 0.2.
+- **Sparks and effects (11b)**, short `CPUParticles3D` bursts made at runtime at `hit.point`, no scenes:
+  - Deflect: many fast sparks, bright yellow and yellow-orange. Guard: white, fewer, duller. Perilous deflect: like the deflect with reddish orange mixed in.
+  - Mikiri and head stomp: an expanding shockwave ring plus dust, no sparks.
+  - Deathblow: red. Heal: green motes around the player. Resurrect: pinkish-white light rising from the body.
+  - Guard break: a large orange burst. Posture break: a white-blue ring burst. Repulse: a shock ring. Flesh hits: a small red mist (one switch, can be off); landing and slide: small dust puffs.
+- **Shockwave (11e):** a visible wave that travels out along the extended hitbox (`hitbox_length_scale`) when the helm splitter lands, and the same for the charged iai. Visual only, no rule changes.
+- **Swing trail (11f):** a ribbon behind the blade tip during the hit window that fades after (pale white-blue, about 0.25 s), on the player's and the enemy's swings, with a switch on `SwordVisual`.
+- **Crouch vignette (11g):** a subtle screen-edge darkening while `Player.is_crouched` (the slide included), eased in and out (about 25%, black); a small CanvasLayer under Player with its own script.
+- **Boss-slain screen (built in 11d):** kanji 討取 stacked vertically over "ENEMY SLAIN" on a dimmed, gray screen, text per enemy in `EnemyAIData`, boss only, no reload; the Sekiro look is a placeholder until the game's own style (a samurai stealth game, Way of the Samurai / Ghost of Tsushima in theme) is found.
+- **Heal arm (built in 11d):** the left arm lifts a gourd to the mouth during the heal; placeholder look.
 
 ### 3.11 Hurtbox profiles
 - The player's **hurtbox** (`Area3D` that takes hits) is separate from the **body collision capsule**.

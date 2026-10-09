@@ -31,6 +31,8 @@ signal resurrected
 @export var gravity_multiplier: float = 2.0
 ## Gravity multiple while falling (1.5 = a 50% faster descent than the climb).
 @export var fall_gravity_factor: float = 1.5
+## Landing faster than this (m/s downward) is a hard landing: a small camera shake (Step 11c).
+@export var hard_land_speed: float = 14.0
 ## Near the top of a jump (vertical speed within +/- this many m/s of zero) gravity is multiplied by
 ## apex_gravity_factor, so there is no hang at the peak.
 @export var apex_speed_band: float = 2.0
@@ -337,7 +339,11 @@ func _physics_process(delta: float) -> void:
 	else:
 		push = Vector3.ZERO
 		_knockback_velocity = Vector3.ZERO
+	var was_airborne := not is_on_floor()
+	var fall_speed := -velocity.y
 	move_and_slide()
+	if was_airborne and is_on_floor() and fall_speed >= hard_land_speed:
+		Fx.play(get_tree(), Fx.Kind.HARD_LAND, global_position)
 	velocity.x -= push.x
 	velocity.z -= push.z
 	_update_enemy_head()
@@ -634,6 +640,12 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop)
+	var fx_kind := Fx.Kind.HURT
+	if hit.grab:
+		fx_kind = Fx.Kind.GRAB
+	elif hit.perilous:
+		fx_kind = Fx.Kind.PERILOUS_HIT
+	Fx.play(get_tree(), fx_kind, hit.point, hit.direction)
 	var hang := state_machine.current as LedgeHangState
 	if hang != null:
 		hang.knock_off()
@@ -686,6 +698,7 @@ func _on_deflected(hit: HitData) -> void:
 func _guard_reaction(hit: HitData, deflect: bool) -> void:
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop * guard_hitstop_factor)
+	Fx.play(get_tree(), Fx.Kind.DEFLECT if deflect else Fx.Kind.GUARD, hit.point, hit.direction)
 	_recoil = 1.0
 	_recoil_scale = deflect_recoil_scale if deflect else guard_recoil_scale
 	_recoil_direction = hit.direction
@@ -730,6 +743,7 @@ func _update_repulse() -> void:
 ## Posture is full: stagger as soon as nothing is in the way (a ledge climb finishes first).
 func _on_posture_broken() -> void:
 	_stagger_pending = true
+	Fx.play(get_tree(), Fx.Kind.POSTURE_BREAK, global_position + Vector3.UP * 1.2)
 
 
 func _update_stagger() -> void:
@@ -901,6 +915,14 @@ func _try_heal() -> void:
 func on_hit_landed(hit: HitData) -> void:
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop)
+	var fx_kind := Fx.Kind.HIT_LANDED
+	if hit.outcome == HitData.Outcome.DEFLECT:
+		fx_kind = Fx.Kind.DEFLECT
+	elif hit.outcome == HitData.Outcome.GUARD:
+		fx_kind = Fx.Kind.GUARD
+	elif hit.action != null and hit.action.charge_time > 0.0:
+		fx_kind = Fx.Kind.HIT_LANDED_CHARGED
+	Fx.play(get_tree(), fx_kind, hit.point, hit.direction)
 
 
 ## Called by ActionState when any action starts. Attacks leave the sword drawn; attacks and

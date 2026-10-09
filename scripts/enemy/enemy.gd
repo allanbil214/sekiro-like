@@ -216,6 +216,7 @@ func _ready() -> void:
 	combatant.died.connect(_on_died)
 	combatant.deathblow_opened.connect(_on_deathblow_opened)
 	combatant.deathblow_closed.connect(_on_deathblow_closed)
+	combatant.posture_broken.connect(_on_posture_broken)
 	sword_visual.hitbox.team = Layers.Team.ENEMY
 	# Per-type look: a copy of the weapon with a scaled blade (the weapon file stays as it is).
 	var look_weapon := weapon
@@ -988,7 +989,13 @@ func _check_counter(distance: float) -> bool:
 
 ## The attack is cut: posture added, then a stun with no guard and no flinch. A posture break opens
 ## the deathblow window instead (the usual stun).
+## The posture is full (Step 11c): a shake. The stun itself is handled by the deathblow window.
+func _on_posture_broken() -> void:
+	Fx.play(get_tree(), Fx.Kind.POSTURE_BREAK, global_position + Vector3.UP * 1.2)
+
+
 func _countered(posture: float, stun: float, label: String, jump_over: bool) -> void:
+	Fx.play(get_tree(), Fx.Kind.HEAD_STOMP if jump_over else Fx.Kind.MIKIRI, global_position + Vector3.UP * (1.8 if jump_over else 0.9))
 	if debug_log:
 		print("[Enemy] %s! +%.0f posture, stun %.1f s" % [label, posture, stun])
 	_abort_attack()
@@ -1192,6 +1199,12 @@ func _on_deathblow_opened() -> void:
 
 ## The window closed: back to normal. A landed deathblow also makes it recoil from the player.
 func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
+	if executed:
+		var blow := Vector3.ZERO
+		if _player != null:
+			blow = global_position - _player.global_position
+			blow.y = 0.0
+		Fx.play(get_tree(), Fx.Kind.DEATHBLOW, global_position + Vector3.UP * 1.2, blow)
 	body.material_override = _base_material
 	_end_stun_bobble()
 	if phase == Phase.STUNNED:
