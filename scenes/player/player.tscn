@@ -39,6 +39,7 @@
 [ext_resource type="Script" uid="uid://b16888o6dv8yx" path="res://scripts/ui/player_hud.gd" id="36_wva7c"]
 [ext_resource type="Script" uid="uid://cmn2inquu1kpu" path="res://scripts/ui/death_screen.gd" id="37_7obkq"]
 [ext_resource type="Script" uid="uid://dt6isbua3gv8c" path="res://scripts/ui/victory_screen.gd" id="38_5q8fn"]
+[ext_resource type="Script" uid="uid://c6i12djbtmd6b" path="res://scripts/ui/crouch_vignette.gd" id="40_7obkq"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -199,3 +200,6 @@ script = ExtResource("37_7obkq")
 
 [node name="VictoryScreen" type="CanvasLayer" parent="." unique_id=1722533979]
 script = ExtResource("38_5q8fn")
+
+[node name="CrouchVignette" type="CanvasLayer" parent="." unique_id=1888972953]
+script = ExtResource("40_7obkq")

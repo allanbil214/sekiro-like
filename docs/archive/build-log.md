@@ -868,3 +868,11 @@ Done and tested by the user (a parse error in `death_screen.gd` was fixed on the
 **11f Swing trail (built, to be tested).** `Hitbox` samples the blade tip and an inner point (`trail_base_fraction` 0.3 of the way from the hand) at every sweep step while the hit window is open (so a fast slash is smooth), keeps each point for `trail_time` 0.25 s, and draws a world-space triangle-strip ribbon (`ImmediateMesh`, a top-level child, additive, pale blue-white `trail_color`; bright at the tip edge, fading to nothing at the inner edge, and fading with age, squared). A new swing starts a new strip. `SwordVisual.swing_trail` (default on, group "Swing trail (Step 11f)") sets `Hitbox.trail_enabled` in `setup()`, so it covers the player and every enemy (`Enemy` calls `setup()` too); a Hitbox that is not under a SwordVisual (the dummy's arm) keeps it off. The trail uses the real blade length, not the extended hitbox. A thrust or a straight dive moves the tip along the blade, so its ribbon has no width (nothing shows).
 
 **Noticed, not changed:** the trail runs on game time (it freezes during the hitstop); the iai wave's origin and facing use `Player.get_facing_direction()`.
+
+### Step 11g: crouch vignette, and 11f tested (2026-10-09)
+
+**11f (the swing trail) was tested by the user** and left as built (see "Step 11e and 11f").
+
+**11g Crouch vignette (marked tested at the user's request on delivery; no problems reported yet).** `CrouchVignette` (`scripts/ui/crouch_vignette.gd`), a `CanvasLayer` (layer 5: above the game, below `PlayerHud` at 10, the victory screen at 19, and the death screen at 20), a direct child of Player, drawn in code. It reads `Player.is_crouched` (which includes the slide) and eases an amount toward 1 or 0 (`fade_in_time` and `fade_out_time` 0.25 s, smoothstep), driving a canvas shader that darkens the edges: `strength` 0.25 at the corners (deliberately subtle), `inner` 0.45 to `outer` 1.0 measured from the center to the corners, `vignette_color` black. The rect is hidden when the amount is 0. Needs a `CrouchVignette` CanvasLayer under Player with the script. All numbers are exports.
+
+**Step 11 status:** every part is built (11b to 11g) except 11a, sound, which is parked until the user has the wavs; `Fx` has a single call per event where it will hang.
