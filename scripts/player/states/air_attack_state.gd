@@ -151,8 +151,7 @@ func _apply_hold_gravity(delta: float) -> void:
 	var helm := machine.get_node_or_null("HelmSplitter") as HelmSplitterState
 	if helm == null:
 		return
-	player.velocity += player.get_gravity() * player.gravity_multiplier \
-			* (helm.opening_gravity_factor - 1.0) * delta
+	player.velocity += player.get_gravity_now() * (helm.opening_gravity_factor - 1.0) * delta
 
 
 func _can_draw() -> bool:

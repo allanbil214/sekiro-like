@@ -22,9 +22,9 @@ enum Phase { DIVE, LAND }
 @export var land_action: ActionData
 ## Extra gravity while diving, as a multiple of the player's current gravity (2.5 = 2.5x).
 @export var dive_gravity_factor: float = 2.5
-## Gravity multiple (0.5 = half) while the sheathed helm splitter's wind-up plays, and while the
+## Gravity multiple (0.25 = a quarter) while the sheathed helm splitter's wind-up plays, and while the
 ## attack is held during the draw slash's wind-up in the air. Only used for the sheathed version.
-@export var opening_gravity_factor: float = 0.5
+@export var opening_gravity_factor: float = 0.25
 
 ## Keeps the held clock just inside the active window so the pose stays at 6:00.
 const HOLD_MARGIN: float = 0.002
@@ -104,8 +104,7 @@ func _update_dive(delta: float) -> void:
 		var factor := dive_gravity_factor
 		if _opening and action_time < action.active_hit.x:
 			factor = opening_gravity_factor
-		player.velocity += player.get_gravity() * player.gravity_multiplier \
-				* (factor - 1.0) * delta
+		player.velocity += player.get_gravity_now() * (factor - 1.0) * delta
 	if action_time < action.active_hit.x:
 		player.face_input(delta)
 	# Hold the blade at the end of the stab until landing.

@@ -11,9 +11,16 @@ extends CharacterBody3D
 @export var turn_speed: float = 18.0
 
 @export_group("Jump")
-## 8.5 with gravity 1.5 = about 2x the original jump height (7.0 with 2.0), with a fall that stays fairly snappy.
-@export var jump_velocity: float = 8.5
-@export var gravity_multiplier: float = 1.5
+## 9.88 with gravity 2.0, a 1.5x fall and a 1.5x apex band = the same ~2.46 m jump as 8.5 with 1.5 used
+## to give, in about 0.88 s. If you change one of these, change the others to keep the height.
+@export var jump_velocity: float = 9.88
+@export var gravity_multiplier: float = 2.0
+## Gravity multiple while falling (1.5 = a 50% faster descent than the climb).
+@export var fall_gravity_factor: float = 1.5
+## Near the top of a jump (vertical speed within +/- this many m/s of zero) gravity is multiplied by
+## apex_gravity_factor, so there is no hang at the peak.
+@export var apex_speed_band: float = 2.0
+@export var apex_gravity_factor: float = 1.5
 @export var coyote_time: float = 0.1
 ## In the air your horizontal speed is kept; the move keys only add a push this strong (m/s^2) that can
 ## steer it or fight it (holding back slows you, left and right curve it) but never takes you above
@@ -125,7 +132,7 @@ var sheathed: bool = false
 ## Landing on an enemy's head right after a jump-over (a sweep dodged in the air) bounces you up at
 ## this speed (m/s), so you can dive with a helm splitter. Any other landing on a head slides you off
 ## at head_slide_speed (m/s). It counts as a head when your feet are this far (m) above the enemy's origin.
-@export var head_bounce_velocity: float = 6.5
+@export var head_bounce_velocity: float = 7.6
 @export var head_slide_speed: float = 4.0
 @export var head_min_height: float = 1.2
 @export_group("Guard")
@@ -313,7 +320,19 @@ func get_facing_direction() -> Vector3:
 
 
 func apply_gravity(delta: float) -> void:
-	velocity += get_gravity() * gravity_multiplier * delta
+	velocity += get_gravity_now() * delta
+
+
+## The gravity pulling on the player right now (a vector like get_gravity()): the base gravity times
+## the jump phase (faster near the apex, faster again while falling). The dive and the helm hover
+## multiply this, so their factors keep their meaning.
+func get_gravity_now() -> Vector3:
+	var factor := 1.0
+	if velocity.y <= apex_speed_band:
+		factor = apex_gravity_factor
+	if velocity.y < 0.0:
+		factor = maxf(factor, fall_gravity_factor)
+	return get_gravity() * gravity_multiplier * factor
 
 
 ## Air control for a normal jump or fall: momentum stays, the move input only steers it.

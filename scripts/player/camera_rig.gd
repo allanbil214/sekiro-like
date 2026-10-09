@@ -16,6 +16,8 @@ extends Node3D
 @export_group("Lock-on (Step 9)")
 ## Extra camera height (m) while locked on.
 @export var lock_height_bonus: float = 0.8
+## Extra downward tilt (degrees) while locked on, on top of aiming at the target, so less sky shows.
+@export var lock_pitch_down_degrees: float = 10.0
 ## How fast the camera eases toward the target and the extra height (higher = snappier).
 @export var lock_follow_speed: float = 8.0
 ## How fast a recenter turns the camera behind the player (LockOn.recenter_when_no_target).
@@ -92,7 +94,7 @@ func _aim_at_lock_target(delta: float) -> void:
 		return
 	var weight := 1.0 - exp(-lock_follow_speed * delta)
 	_yaw = lerp_angle(_yaw, atan2(-to.x, -to.z), weight)
-	_pitch = lerpf(_pitch, atan2(to.y, flat), weight)
+	_pitch = lerpf(_pitch, atan2(to.y, flat) - deg_to_rad(lock_pitch_down_degrees), weight)
 
 
 func _on_recenter_requested(yaw: float) -> void:
