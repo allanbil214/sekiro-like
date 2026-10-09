@@ -161,6 +161,10 @@ extends Node3D
 @export var windup_ease: float = -2.0
 @export var slash_ease: float = 0.45
 @export var follow_ease: float = 0.5
+@export_group("Swing trail (Step 11f)")
+## A ribbon behind the blade tip while a slash's hit window is open, fading after (the look is on the
+## Hitbox node: trail_time, trail_base_fraction, trail_color). Off: no ribbon for this sword.
+@export var swing_trail: bool = true
 
 ## Share of the follow-through spent on the wrist overshoot before relaxing.
 const OVERSHOOT_PORTION: float = 0.3
@@ -311,6 +315,7 @@ func setup(weapon: WeaponData, back_length: float = 0.0) -> void:
 		hitbox.name = "Hitbox"
 		add_child(hitbox)
 	hitbox.configure(weapon.blade_length, back_length)
+	hitbox.trail_enabled = swing_trail
 	_apply()
 
 

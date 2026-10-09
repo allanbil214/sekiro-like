@@ -20,12 +20,27 @@ signal hit_landed(hurtbox: Hurtbox, hit: HitData)
 ## Draw the box while the hit window is open.
 @export var debug_draw: bool = true
 
+@export_group("Swing trail (Step 11f)")
+## How long (s) the ribbon takes to fade, where its inner edge sits along the blade (0 = the hand, 1 = the
+## tip), and its color (the tip edge; the inner edge fades to nothing).
+@export var trail_time: float = 0.25
+@export_range(0.0, 0.95) var trail_base_fraction: float = 0.3
+@export var trail_color: Color = Color(0.82, 0.92, 1.0, 0.7)
+
+## Set by SwordVisual (its swing_trail switch). Off: no ribbon.
+var trail_enabled: bool = false
 var _shape_node: CollisionShape3D
 var _box: BoxShape3D
 var _debug_mesh: MeshInstance3D
 ## The glowing extension (Step 11e): the part of the box past the blade, shown when asked.
 var _glow_halo: MeshInstance3D
 var _glow_core: MeshInstance3D
+## The swing trail (Step 11f): a ribbon behind the blade, drawn in world space from the points sampled
+## while the hit window is open; each point fades out after trail_time.
+var _trail: MeshInstance3D
+var _trail_mesh: ImmediateMesh
+var _trail_points: Array[Dictionary] = []
+var _trail_new_strip: bool = true
 var _length: float = 1.1
 ## Extra box behind the hand (m): the handle end of a spear. 0 = none.
 var _back: float = 0.0
@@ -66,6 +81,7 @@ func _ready() -> void:
 	_shape_node.add_child(_debug_mesh)
 	_glow_halo = _make_glow(Color(0.6, 0.8, 1.0, 0.3), 0.14)
 	_glow_core = _make_glow(Color(0.9, 0.97, 1.0, 0.9), 0.035)
+	_make_trail()
 	_apply_size(1.0)
 
 
@@ -93,6 +109,7 @@ func begin_swing(length_scale: float, show_extension: bool = false) -> void:
 	_apply_size(length_scale)
 	_active = true
 	_has_last = false
+	_trail_new_strip = true
 	_debug_mesh.visible = debug_draw
 	var extra := _length * (length_scale - 1.0)
 	var glow := show_extension and extra > 0.01
@@ -136,6 +153,8 @@ func sweep(template: HitData) -> Array[HitData]:
 	for i in range(1, steps + 1):
 		var step := from.interpolate_with(now, float(i) / float(steps))
 		params.transform = Transform3D(step.basis.orthonormalized(), step.origin)
+		if trail_enabled:
+			_add_trail_point(step)
 		for result: Dictionary in space.intersect_shape(params, 16):
 			var hurtbox := result.get("collider") as Hurtbox
 			if hurtbox == null or hurtbox in _hit_set or not hurtbox.can_be_hit():
@@ -153,6 +172,73 @@ func sweep(template: HitData) -> Array[HitData]:
 			hit_landed.emit(hurtbox, hit)
 			landed.append(hit)
 	return landed
+
+
+func _make_trail() -> void:
+	_trail_mesh = ImmediateMesh.new()
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.vertex_color_use_as_albedo = true
+	_trail = MeshInstance3D.new()
+	_trail.mesh = _trail_mesh
+	_trail.material_override = material
+	_trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_trail.top_level = true
+	add_child(_trail)
+	_trail.global_transform = Transform3D.IDENTITY
+	set_process(false)
+
+
+## Remember where the blade's tip and the inner edge are at this step of the swing (`shape_transform` is
+## the box's transform; its offset from the hand is the box's local position).
+func _add_trail_point(shape_transform: Transform3D) -> void:
+	var offset := _shape_node.position.z
+	_trail_points.append({
+		"tip": shape_transform * Vector3(0.0, 0.0, -_length - offset),
+		"base": shape_transform * Vector3(0.0, 0.0, -_length * trail_base_fraction - offset),
+		"age": 0.0,
+		"start": _trail_new_strip,
+	})
+	_trail_new_strip = false
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	for point: Dictionary in _trail_points:
+		point["age"] = float(point["age"]) + delta
+	while not _trail_points.is_empty() and float(_trail_points[0]["age"]) > trail_time:
+		_trail_points.pop_front()
+	_rebuild_trail()
+	if _trail_points.is_empty():
+		set_process(false)
+
+
+func _rebuild_trail() -> void:
+	_trail_mesh.clear_surfaces()
+	var strips: Array[Array] = []
+	var current: Array = []
+	for point: Dictionary in _trail_points:
+		if bool(point["start"]) and not current.is_empty():
+			strips.append(current)
+			current = []
+		current.append(point)
+	if not current.is_empty():
+		strips.append(current)
+	for strip: Array in strips:
+		if strip.size() < 2:
+			continue
+		_trail_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+		for point: Dictionary in strip:
+			var fade := clampf(1.0 - float(point["age"]) / maxf(trail_time, 0.01), 0.0, 1.0)
+			fade *= fade
+			_trail_mesh.surface_set_color(Color(trail_color.r, trail_color.g, trail_color.b, trail_color.a * fade))
+			_trail_mesh.surface_add_vertex(point["tip"])
+			_trail_mesh.surface_set_color(Color(trail_color.r, trail_color.g, trail_color.b, 0.0))
+			_trail_mesh.surface_add_vertex(point["base"])
+		_trail_mesh.surface_end()
 
 
 func _make_glow(color: Color, thickness: float) -> MeshInstance3D:

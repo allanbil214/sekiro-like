@@ -64,7 +64,7 @@
   - After the final death with no resurrections left: reset the scene.
 
 ### 3.12 Polish (Step 11; agreed 2026-10-09, numbers are placeholders)
-> Built so far: **11d** (the boss-slain screen and the heal arm), **11c** (shake and `Fx`), and **11b** (sparks, effects, the blood jet); see the build log, "Step 11d" and "Step 11c and 11b". Still planned: 11e, 11f, 11g; sound (11a) is parked until the user has the wavs.
+> Built so far: **11d** (the boss-slain screen and the heal arm), **11c** (shake and `Fx`), and **11b** (sparks, effects, the blood jet), **11e** (shockwaves), and **11f** (the swing trail, built); see the build log, "Step 11d", "Step 11c and 11b", and "Step 11e and 11f". Still planned: 11g; sound (11a) is parked until the user has the wavs.
 - **`Fx` helper (11c):** one static call per event (deflect, guard, hurt, ...) that triggers the shake and the effects, and later the sound, so each event has one call site. Finds the camera through a group.
 - **Camera shake (11c):** a trauma value 0 to 1 on `CameraRig`; strength = trauma squared; decays fast; real-time (plays during hitstop); a master strength, an on/off toggle, and a small directional kick along the hit direction. Trauma placeholders: own hit lands 0.15 (charged 0.3), deflect 0.2, guard 0.25, taking a hit 0.35, perilous hit through the guard 0.5, grab 0.6, guard break 0.5, posture break (either side) 0.4, mikiri and head stomp 0.3, helm splitter lands 0.5, deathblow 0.7, boss slain 0.8, hard landing 0.2.
 - **Sparks and effects (11b)**, short `CPUParticles3D` bursts made at runtime at `hit.point`, no scenes:
@@ -72,8 +72,8 @@
   - Mikiri and head stomp: an expanding shockwave ring plus dust, no sparks.
   - Deathblow: red sparks, plus a 2 s blood jet like a burst pipe (pulses every 0.1 s, strongest first) that comes out of the wound toward the player and follows the enemy (built). Heal: green motes around the player. Resurrect: pinkish-white light rising from the body.
   - Guard break: a large orange burst. Posture break: a white-blue ring burst. Repulse: a shock ring. Flesh hits: a small red mist (one switch, can be off); landing and slide: small dust puffs.
-- **Shockwave (11e):** a visible wave that travels out along the extended hitbox (`hitbox_length_scale`) when the helm splitter lands, and the same for the charged iai. Visual only, no rule changes.
-- **Swing trail (11f):** a ribbon behind the blade tip during the hit window that fades after (pale white-blue, about 0.25 s), on the player's and the enemy's swings, with a switch on `SwordVisual`.
+- **Shockwave (11e, built):** the helm splitter shows a glowing beam over its extended hitbox while the hit window is open and a ground ring out to that reach when it lands; the charged iai sends a crescent wave forward out to its extended reach. The plain draw slash has none. Visual only, no rule changes.
+- **Swing trail (11f, built):** a ribbon behind the blade tip during the hit window that fades after (pale white-blue, 0.25 s), on the player's and the enemy's swings, with a switch on `SwordVisual`.
 - **Crouch vignette (11g):** a subtle screen-edge darkening while `Player.is_crouched` (the slide included), eased in and out (about 25%, black); a small CanvasLayer under Player with its own script.
 - **Boss-slain screen (built in 11d):** kanji 討取 stacked vertically over "ENEMY SLAIN" on a dimmed, gray screen, text per enemy in `EnemyAIData`, boss only, no reload; the Sekiro look is a placeholder until the game's own style (a samurai stealth game, Way of the Samurai / Ghost of Tsushima in theme) is found.
 - **Heal arm (built in 11d):** the left arm lifts a gourd to the mouth during the heal; placeholder look.
