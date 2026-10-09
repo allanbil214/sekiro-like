@@ -47,6 +47,14 @@ signal resurrected
 ## your run speed (or your current speed, if faster). Not used by the wall jump or air attacks.
 @export var air_steer_acceleration: float = 8.0
 
+@export_group("Personal space")
+## Keeps the player from standing right on top of an enemy: inside this distance (m, flat, center to
+## center; the bodies themselves touch at 0.8) the player is eased away. Off = the old behavior.
+@export var personal_space_enabled: bool = true
+@export var personal_space_distance: float = 2.0
+## The fastest the player is pushed out (m/s).
+@export var personal_space_push_speed: float = 4.0
+
 @export_group("Footsteps (Step 11a)")
 ## Distance (m) walked between two footsteps, per gait. The sounds are in audio/sfx_data.tres.
 @export var step_distance_walk: float = 1.0
@@ -364,6 +372,7 @@ func _physics_process(delta: float) -> void:
 	velocity.z -= push.z
 	_update_enemy_head()
 	_update_footsteps(delta)
+	_update_personal_space(delta)
 	_update_hurtbox()
 
 
@@ -648,6 +657,42 @@ func _update_hurtbox() -> void:
 	_hurt_capsule.height = height
 	_hurt_shape.position.y = profile.bottom_offset + height * 0.5
 	hurtbox_profile_name = profile_name
+
+
+## Personal space: eases the player away from any living enemy (or the dummy) that is closer than
+## personal_space_distance on the flat. Skipped when the player is well above or below it (a head stomp
+## or bounce), during the deathblow approach, on ledges, and while dead. The push goes through
+## move_and_collide, so it never pushes the player through a wall.
+func _update_personal_space(delta: float) -> void:
+	if not personal_space_enabled:
+		return
+	var current := state_machine.current
+	if current is DeathblowState or current is DeadState or current is LedgeHangState \
+			or current is LedgeClimbState:
+		return
+	var push := Vector3.ZERO
+	for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+		var other := node as Node3D
+		if other == null or other == self:
+			continue
+		var other_combatant := Combatant.of(other)
+		if other_combatant != null and other_combatant.dead:
+			continue
+		var away := global_position - other.global_position
+		if absf(away.y) > 1.0:
+			continue
+		away.y = 0.0
+		var distance := away.length()
+		if distance >= personal_space_distance:
+			continue
+		if distance < 0.001:
+			away = -get_facing_direction()
+			distance = 0.001
+		push += away / distance * (personal_space_distance - distance)
+	if push == Vector3.ZERO:
+		return
+	var step := push.limit_length(personal_space_push_speed * delta)
+	move_and_collide(step)
 
 
 ## Footsteps (Step 11a): one every step_distance_* metres walked on the floor, only in the walking

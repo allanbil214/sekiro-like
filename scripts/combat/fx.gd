@@ -300,18 +300,18 @@ static func _ring(scene: Node, point: Vector3, color: Color, radius: float, time
 	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.albedo_color = color
-	var ring := MeshInstance3D.new()
-	ring.mesh = torus
-	ring.material_override = material
-	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	ring.scale = Vector3(0.15, 1.0, 0.15)
-	scene.add_child(ring)
-	ring.global_position = point
-	var tween := ring.create_tween()
+	var band := MeshInstance3D.new()
+	band.mesh = torus
+	band.material_override = material
+	band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	band.scale = Vector3(0.15, 1.0, 0.15)
+	scene.add_child(band)
+	band.global_position = point
+	var tween := band.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(ring, "scale", Vector3(radius, 1.0, radius), time).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(band, "scale", Vector3(radius, 1.0, radius), time).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(material, "albedo_color:a", 0.0, time)
-	tween.chain().tween_callback(ring.queue_free)
+	tween.chain().tween_callback(band.queue_free)
 
 
 ## Public wrappers for Shockwave: a growing ground ring and a puff of dust at `point`.

@@ -3,6 +3,11 @@ extends State
 ## Fast run while the dodge button stays held. Ends on release, no movement input,
 ## leaving the ground, or jumping. Pressing crouch starts a slide, and pressing attack
 ## starts the weapon's dash attack.
+## While locked on, the body turns toward the way it runs (see face_move_when_locked).
+
+## On: a dash while locked on faces the movement direction instead of the target. Off: it keeps
+## facing the target like walking and running do.
+@export var face_move_when_locked: bool = true
 
 
 func physics_update(delta: float) -> void:
@@ -30,4 +35,7 @@ func physics_update(delta: float) -> void:
 		machine.transition_to(&"Locomotion")
 		return
 	player.apply_horizontal_movement(delta, player.dash_speed)
-	player.face_input(delta)
+	if face_move_when_locked:
+		player.face_direction(player.get_move_input(), delta)
+	else:
+		player.face_input(delta)
