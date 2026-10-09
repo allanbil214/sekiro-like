@@ -33,6 +33,10 @@ signal resurrected
 @export var fall_gravity_factor: float = 1.5
 ## Landing faster than this (m/s downward) is a hard landing: a small camera shake (Step 11c).
 @export var hard_land_speed: float = 14.0
+## Landing faster than this (m/s downward) puffs a little dust (Step 11b).
+@export var land_dust_speed: float = 5.0
+## Off: no red mist or flecks on flesh hits (Step 11b; the deathblow keeps its red sparks).
+@export var show_blood: bool = true
 ## Near the top of a jump (vertical speed within +/- this many m/s of zero) gravity is multiplied by
 ## apex_gravity_factor, so there is no hang at the peak.
 @export var apex_speed_band: float = 2.0
@@ -258,6 +262,7 @@ var sword_visual: SwordVisual
 
 func _ready() -> void:
 	input_buffer = InputBuffer.new(input_buffer_time)
+	Fx.blood_enabled = show_blood
 	_nose_drop = stand_height - _nose.position.y
 	_reach_arms = get_node_or_null("Visual/ReachArms") as ReachArms
 	sword_visual = get_node_or_null("Visual/SwordVisual") as SwordVisual
@@ -342,8 +347,11 @@ func _physics_process(delta: float) -> void:
 	var was_airborne := not is_on_floor()
 	var fall_speed := -velocity.y
 	move_and_slide()
-	if was_airborne and is_on_floor() and fall_speed >= hard_land_speed:
-		Fx.play(get_tree(), Fx.Kind.HARD_LAND, global_position)
+	if was_airborne and is_on_floor():
+		if fall_speed >= hard_land_speed:
+			Fx.play(get_tree(), Fx.Kind.HARD_LAND, global_position)
+		elif fall_speed >= land_dust_speed:
+			Fx.play(get_tree(), Fx.Kind.LAND_DUST, global_position)
 	velocity.x -= push.x
 	velocity.z -= push.z
 	_update_enemy_head()
@@ -662,6 +670,7 @@ func _on_guarded(hit: HitData, _chip: float) -> void:
 ## is knocked aside (SwordVisual.play_guard_break). The damage and the knockback are the plain hit's
 ## (_on_damaged ran just before this).
 func _on_guard_broken(hit: HitData) -> void:
+	Fx.play(get_tree(), Fx.Kind.GUARD_BREAK, hit.point, hit.direction)
 	_recoil_scale = guard_break_recoil_scale
 	if state_machine.current is GuardState:
 		state_machine.transition_to(&"Locomotion" if is_on_floor() else &"Air")
@@ -698,7 +707,10 @@ func _on_deflected(hit: HitData) -> void:
 func _guard_reaction(hit: HitData, deflect: bool) -> void:
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop * guard_hitstop_factor)
-	Fx.play(get_tree(), Fx.Kind.DEFLECT if deflect else Fx.Kind.GUARD, hit.point, hit.direction)
+	var fx_kind := Fx.Kind.GUARD
+	if deflect:
+		fx_kind = Fx.Kind.DEFLECT_PERILOUS if hit.perilous else Fx.Kind.DEFLECT
+	Fx.play(get_tree(), fx_kind, hit.point, hit.direction)
 	_recoil = 1.0
 	_recoil_scale = deflect_recoil_scale if deflect else guard_recoil_scale
 	_recoil_direction = hit.direction
@@ -715,6 +727,7 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 ## short (applied at the start of the next physics frame, see _update_repulse). No stun: the player
 ## can guard, jump, or dodge at once, and the combo is back at attack 1.
 func _on_repulsed(hit: HitData, distance: float) -> void:
+	Fx.play(get_tree(), Fx.Kind.REPULSE, hit.point, hit.direction)
 	notify_combat()
 	apply_knockback(-hit.direction, distance)
 	_recoil = 1.0
@@ -890,6 +903,7 @@ func _update_death() -> void:
 func resurrect() -> void:
 	resurrections_left = maxi(resurrections_left - 1, 0)
 	combatant.revive(resurrect_health_fraction)
+	Fx.play(get_tree(), Fx.Kind.RESURRECT, global_position)
 	_revive_invulnerable_left = resurrect_invulnerable_time
 	notify_combat()
 

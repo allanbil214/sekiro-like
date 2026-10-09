@@ -5,6 +5,8 @@ extends ActionState
 ## only when there is headroom to stand up. Attack (after the locked window) starts the
 ## weapon's crouch attack loop.
 
+var _dust_timer: float = 0.0
+
 
 func exit(next: StringName) -> void:
 	super.exit(next)
@@ -14,6 +16,7 @@ func exit(next: StringName) -> void:
 
 
 func _on_action_enter(_previous: StringName) -> void:
+	_dust_timer = 0.0
 	player.set_crouched(true)
 	player.play_slide_arms()
 	var dir := player.get_move_input()
@@ -24,11 +27,15 @@ func _on_action_enter(_previous: StringName) -> void:
 	player.snap_facing_lock_aware(_move_dir)
 
 
-func _on_action_update(_delta: float) -> void:
+func _on_action_update(delta: float) -> void:
 	if not player.is_on_floor():
 		player.coyote_timer = player.coyote_time
 		machine.transition_to(&"Air")
 		return
+	_dust_timer -= delta
+	if _dust_timer <= 0.0:
+		_dust_timer = 0.07
+		Fx.play(player.get_tree(), Fx.Kind.SLIDE_DUST, player.global_position, -_move_dir)
 	if not action.can_cancel(action_time):
 		return
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):

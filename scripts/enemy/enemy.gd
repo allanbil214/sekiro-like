@@ -995,7 +995,7 @@ func _on_posture_broken() -> void:
 
 
 func _countered(posture: float, stun: float, label: String, jump_over: bool) -> void:
-	Fx.play(get_tree(), Fx.Kind.HEAD_STOMP if jump_over else Fx.Kind.MIKIRI, global_position + Vector3.UP * (1.8 if jump_over else 0.9))
+	Fx.play(get_tree(), Fx.Kind.HEAD_STOMP if jump_over else Fx.Kind.MIKIRI, global_position + Vector3.UP * (1.8 if jump_over else 0.05))
 	if debug_log:
 		print("[Enemy] %s! +%.0f posture, stun %.1f s" % [label, posture, stun])
 	_abort_attack()
@@ -1204,7 +1204,7 @@ func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 		if _player != null:
 			blow = global_position - _player.global_position
 			blow.y = 0.0
-		Fx.play(get_tree(), Fx.Kind.DEATHBLOW, global_position + Vector3.UP * 1.2, blow)
+		Fx.play(get_tree(), Fx.Kind.DEATHBLOW, global_position + Vector3.UP * 1.2, blow, visual)
 	body.material_override = _base_material
 	_end_stun_bobble()
 	if phase == Phase.STUNNED:

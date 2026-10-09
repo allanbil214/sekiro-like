@@ -12,10 +12,12 @@ extends State
 var elapsed: float = 0.0
 
 var _interrupted: bool = false
+var _fx_timer: float = 0.0
 
 
 func enter(_previous: StringName) -> void:
 	elapsed = 0.0
+	_fx_timer = 0.0
 	_interrupted = false
 	player.walk_only = true
 	player.invulnerable = false
@@ -51,6 +53,10 @@ func physics_update(delta: float) -> void:
 		return
 	elapsed += delta
 	player.heal_arm.set_progress(elapsed / maxf(duration, 0.01))
+	_fx_timer -= delta
+	if _fx_timer <= 0.0:
+		_fx_timer = 0.12
+		Fx.play(player.get_tree(), Fx.Kind.HEAL_TICK, player.global_position + Vector3.UP * 0.9)
 	if not on_floor:
 		player.apply_gravity(delta)
 	# Free cancels.
@@ -78,5 +84,6 @@ func physics_update(delta: float) -> void:
 	player.face_input(delta)
 	if elapsed >= duration:
 		player.combatant.heal(player.heal_amount)
+		Fx.play(player.get_tree(), Fx.Kind.HEAL, player.global_position + Vector3.UP * 0.9)
 		player.heal_charges = maxi(player.heal_charges - 1, 0)
 		machine.transition_to(&"Locomotion" if on_floor else &"Air")
