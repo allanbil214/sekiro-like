@@ -347,6 +347,32 @@ func execute_deathblow() -> bool:
 	return true
 
 
+## Restore health (never above the maximum; ignored while dead). Returns how much was gained.
+func heal(amount: float) -> float:
+	if dead or amount <= 0.0:
+		return 0.0
+	var gained := minf(amount, max_health - health)
+	if gained <= 0.0:
+		return 0.0
+	health += gained
+	health_changed.emit(health, max_health)
+	return gained
+
+
+## Back from the dead (the player's resurrection): alive at `fraction` of the maximum health, posture
+## back to 0, guard down. A no-op if not dead. The caller handles states, invulnerability, and so on.
+func revive(fraction: float = 0.5) -> void:
+	if not dead:
+		return
+	dead = false
+	guarding = false
+	vulnerable = false
+	deathblow_open = false
+	health = max_health * clampf(fraction, 0.01, 1.0)
+	reset_posture()
+	health_changed.emit(health, max_health)
+
+
 ## Back to full health, all bars, no posture, and alive.
 func reset() -> void:
 	health = max_health

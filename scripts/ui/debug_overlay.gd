@@ -2,6 +2,10 @@ class_name DebugOverlay
 extends CanvasLayer
 ## Debug info: current state, i-frames, action clock. Must be a direct child of Player.
 
+## The text block at the top left (state, HP, guard, posture, lock-on ...). Off by default now that the
+## player HUD exists; tick it to bring it back. The 3D aids below are separate switches.
+@export var show_debug_text: bool = false
+
 ## Tint the body while the player is invulnerable.
 @export var tint_on_iframes: bool = true
 @export var tint_color: Color = Color(0.3, 0.7, 1.0)
@@ -50,6 +54,8 @@ func _process(_delta: float) -> void:
 	if _player.combatant != null:
 		text += "\nHP: %d / %d   Hurtbox: %s" % [
 			_player.combatant.health, _player.combatant.max_health, _player.hurtbox_profile_name]
+	text += "\nHeal charges: %d / %d   Resurrections: %d / %d" % [
+		_player.heal_charges, _player.max_heal_charges, _player.resurrections_left, _player.max_resurrections]
 	if _player.combatant != null:
 		var guard := _player.combatant
 		var last := "-"
@@ -94,6 +100,7 @@ func _process(_delta: float) -> void:
 	if helm_state != null:
 		text += "\n" + helm_state.get_debug_text()
 	_label.text = text
+	_label.visible = show_debug_text
 	if _body != null:
 		if tint_on_iframes and _player.invulnerable:
 			_body.material_override = _tint_material

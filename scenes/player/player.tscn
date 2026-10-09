@@ -26,6 +26,8 @@
 [ext_resource type="Script" uid="uid://socceebhysll" path="res://scripts/player/states/helm_splitter_state.gd" id="22_007i1"]
 [ext_resource type="Resource" uid="uid://deq0ib4qx1eyd" path="res://actions/helm_splitter_land.tres" id="23_6cv16"]
 [ext_resource type="Resource" uid="uid://bhemmwny60asf" path="res://actions/helm_splitter.tres" id="24_j4nxn"]
+[ext_resource type="Script" uid="uid://2wwaeurs2p6l" path="res://scripts/player/states/heal_state.gd" id="25_8qxvo"]
+[ext_resource type="Script" uid="uid://dgsq4xks6kmrc" path="res://scripts/player/states/dead_state.gd" id="26_5q8fn"]
 [ext_resource type="Script" uid="uid://ckyykx3ke8fdi" path="res://scripts/player/states/guard_state.gd" id="26_uniwh"]
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="27_28m0y"]
 [ext_resource type="Script" uid="uid://c3t1jclb0bed4" path="res://scripts/player/states/stagger_state.gd" id="27_tffgl"]
@@ -33,6 +35,8 @@
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
 [ext_resource type="Script" uid="uid://c6tupl6mk6o4b" path="res://scripts/ui/danger_symbol.gd" id="32_pk8ii"]
 [ext_resource type="Script" uid="uid://bva5xai5g2xge" path="res://scripts/player/lock_on.gd" id="33_5mf0n"]
+[ext_resource type="Script" uid="uid://b16888o6dv8yx" path="res://scripts/ui/player_hud.gd" id="36_wva7c"]
+[ext_resource type="Script" uid="uid://cmn2inquu1kpu" path="res://scripts/ui/death_screen.gd" id="37_7obkq"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -61,39 +65,6 @@ combatant = NodePath("Combatant")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=290697870]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_wynvb")
-
-[node name="Visual" type="Node3D" parent="." unique_id=1617843700]
-
-[node name="Body" type="MeshInstance3D" parent="Visual" unique_id=61799516]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-mesh = SubResource("CapsuleMesh_wynvb")
-
-[node name="Nose" type="MeshInstance3D" parent="Visual" unique_id=1985221740]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.5)
-mesh = SubResource("BoxMesh_wynvb")
-
-[node name="ReachArms" type="Node3D" parent="Visual" unique_id=1173044197]
-script = ExtResource("2_fcs02")
-
-[node name="SwordVisual" type="Node3D" parent="Visual" unique_id=1806981421 node_paths=PackedStringArray("hitbox")]
-script = ExtResource("3_8ydkj")
-hitbox = NodePath("Hitbox")
-rest_edge_direction = Vector3(0, -1, 0)
-
-[node name="Hitbox" type="Area3D" parent="Visual/SwordVisual" unique_id=1997284043]
-script = ExtResource("5_6cv16")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Visual/SwordVisual/Hitbox" unique_id=1215039185]
-shape = SubResource("BoxShape3D_v2xx4")
-
-[node name="CameraRig" type="Node3D" parent="." unique_id=76740487]
-script = ExtResource("2_gmlin")
-
-[node name="SpringArm3D" type="SpringArm3D" parent="CameraRig" unique_id=1799234984]
-shape = SubResource("SphereShape3D_wynvb")
-spring_length = 4.0
-
-[node name="Camera3D" type="Camera3D" parent="CameraRig/SpringArm3D" unique_id=1164152523]
 
 [node name="StateMachine" type="Node" parent="." unique_id=1232450398 node_paths=PackedStringArray("initial_state")]
 script = ExtResource("3_5gtgg")
@@ -154,8 +125,51 @@ script = ExtResource("27_tffgl")
 [node name="Deathblow" type="Node" parent="StateMachine" unique_id=1205442006]
 script = ExtResource("28_pk8ii")
 
-[node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
-script = ExtResource("9_fcs02")
+[node name="Heal" type="Node" parent="StateMachine" unique_id=897551154]
+script = ExtResource("25_8qxvo")
+
+[node name="Dead" type="Node" parent="StateMachine" unique_id=1098696889]
+script = ExtResource("26_5q8fn")
+
+[node name="Combatant" type="Node" parent="." unique_id=1176548210]
+script = ExtResource("28_uniwh")
+metadata/_custom_type_script = "uid://bh8lwmou5enq6"
+
+[node name="Visual" type="Node3D" parent="." unique_id=1617843700]
+
+[node name="Body" type="MeshInstance3D" parent="Visual" unique_id=61799516]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_wynvb")
+
+[node name="Nose" type="MeshInstance3D" parent="Visual" unique_id=1985221740]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.5)
+mesh = SubResource("BoxMesh_wynvb")
+
+[node name="ReachArms" type="Node3D" parent="Visual" unique_id=1173044197]
+script = ExtResource("2_fcs02")
+
+[node name="SwordVisual" type="Node3D" parent="Visual" unique_id=1806981421 node_paths=PackedStringArray("hitbox")]
+script = ExtResource("3_8ydkj")
+hitbox = NodePath("Hitbox")
+rest_edge_direction = Vector3(0, -1, 0)
+
+[node name="Hitbox" type="Area3D" parent="Visual/SwordVisual" unique_id=1997284043]
+script = ExtResource("5_6cv16")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Visual/SwordVisual/Hitbox" unique_id=1215039185]
+shape = SubResource("BoxShape3D_v2xx4")
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=76740487]
+script = ExtResource("2_gmlin")
+
+[node name="SpringArm3D" type="SpringArm3D" parent="CameraRig" unique_id=1799234984]
+shape = SubResource("SphereShape3D_wynvb")
+spring_length = 4.0
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig/SpringArm3D" unique_id=1164152523]
+
+[node name="LockOn" type="Node3D" parent="." unique_id=342494551]
+script = ExtResource("33_5mf0n")
 
 [node name="Hurtbox" type="Area3D" parent="." unique_id=75634448]
 script = ExtResource("27_28m0y")
@@ -165,13 +179,15 @@ metadata/_custom_type_script = "uid://ci1x2m5cjnqd7"
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox" unique_id=1804744079]
 shape = SubResource("CapsuleShape3D_v2xx4")
 
-[node name="Combatant" type="Node" parent="." unique_id=1176548210]
-script = ExtResource("28_uniwh")
-metadata/_custom_type_script = "uid://bh8lwmou5enq6"
-
 [node name="DangerSymbol" type="Label3D" parent="." unique_id=1705645299]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
 script = ExtResource("32_pk8ii")
 
-[node name="LockOn" type="Node3D" parent="." unique_id=342494551]
-script = ExtResource("33_5mf0n")
+[node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
+script = ExtResource("9_fcs02")
+
+[node name="PlayerHud" type="CanvasLayer" parent="." unique_id=1145584402]
+script = ExtResource("36_wva7c")
+
+[node name="DeathScreen" type="CanvasLayer" parent="." unique_id=314635366]
+script = ExtResource("37_7obkq")

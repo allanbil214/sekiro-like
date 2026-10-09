@@ -97,6 +97,8 @@ var phase: Phase = Phase.IDLE
 var _guarding: bool = false
 
 var _player: Node3D
+## True while the player is dead and this enemy is standing down (Step 10).
+var _stood_down: bool = false
 var _gravity: float = 9.8
 var _think_timer: float = 0.0
 var _phase_timer: float = 0.0
@@ -258,6 +260,12 @@ func _physics_process(delta: float) -> void:
 	var to_player := _flat_to_player()
 	var distance := to_player.length()
 	var has_target := _player != null and not _player_dead()
+	# Step 10: a dead player (the death prompt) means stand down; a resurrection resumes with a yield.
+	if _player != null:
+		if not has_target:
+			_stand_down()
+		elif _stood_down:
+			_stand_down_ended()
 	_update_defense(delta, distance, has_target)
 	_update_riposte(delta, has_target)
 	match phase:
@@ -1049,6 +1057,28 @@ func _hide_symbol() -> void:
 
 
 # --- Movement helpers ---------------------------------------------------------------------------
+
+## The player is dead: cut any swing, guard, or pose and go idle, once (a flinch, a counter, or a
+## stun finishes by itself). _stand_down_ended() runs when the player is alive again.
+func _stand_down() -> void:
+	if _stood_down:
+		return
+	_stood_down = true
+	_abort_attack()
+	_drop_guard()
+	_riposte_pending = false
+	_end_pose()
+	if phase != Phase.FLINCH and phase != Phase.COUNTERED and phase != Phase.STUNNED:
+		_set_phase(Phase.IDLE)
+
+
+## The player came back (a resurrection): the enemy keeps its health and posture, and starts with a
+## short yield (it keeps its distance and circles) instead of rushing in.
+func _stand_down_ended() -> void:
+	_stood_down = false
+	if phase == Phase.IDLE:
+		_start_yield()
+
 
 func _find_player() -> void:
 	if _player == null or not is_instance_valid(_player):

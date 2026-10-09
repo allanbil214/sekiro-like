@@ -2,6 +2,16 @@ class_name Player
 extends CharacterBody3D
 ## Shared player data and helpers. Behavior lives in the states under StateMachine.
 
+## Step 10: the death flow, for the death screen (DeadState emits them in this order).
+## The player just died (the body goes down).
+signal death_started
+## The Die / Resurrect prompt is up (`can_resurrect` false = the final death: no choice).
+signal death_prompt_shown(can_resurrect: bool)
+## The player chose to die (or had no resurrection left): fade to black over `fade_time`, then the scene reloads.
+signal death_confirmed(fade_time: float)
+## The player resurrected.
+signal resurrected
+
 @export_group("Movement")
 @export var run_speed: float = 6.5
 @export var walk_speed: float = 2.5
@@ -108,8 +118,16 @@ var sheathed: bool = false
 @export var crouch_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/crouch.tres")
 @export var air_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/air.tres")
 @export var max_health: float = 100.0
-## Temporary (Step 10 replaces it): seconds at 0 HP before health refills.
-@export var refill_delay: float = 1.5
+@export_group("Heal and resurrection")
+## Healing gourd charges per run (a scene reload gives them back) and the health one heal restores.
+@export var max_heal_charges: int = 3
+@export var heal_amount: float = 40.0
+## Off: the heal does not start at full health (no charge wasted). On: it plays and costs a charge anyway.
+@export var allow_heal_at_full_health: bool = false
+## Resurrections per run, the share of max health you come back with, and the invulnerable time (s) after.
+@export var max_resurrections: int = 2
+@export_range(0.05, 1.0) var resurrect_health_fraction: float = 0.5
+@export var resurrect_invulnerable_time: float = 2.0
 ## Hit wobble (cosmetic): the whole Visual shifts this far (m) away from the attacker, tilts this far
 ## (radians), and eases back over this many seconds.
 @export var hit_recoil_distance: float = 0.15
@@ -159,6 +177,14 @@ var _grab_kneel_left: float = 0.0
 var sheathe_idle: float = 0.0
 ## Set by GuardState: forces walking.
 var walk_only: bool = false
+## Step 10: gourd charges and resurrections left (set in _ready from the exports).
+var heal_charges: int = 0
+var resurrections_left: int = 0
+## The enemy that was locked when the player died (DeadState re-locks it on a resurrection).
+var relock_target: Node3D
+var _death_pending: bool = false
+var _revive_invulnerable_left: float = 0.0
+var _kneel_sway: bool = true
 ## Set by actions during their i-frame window (read by the damage system in Step 4).
 var invulnerable: bool = false
 var coyote_timer: float = 0.0
@@ -236,6 +262,8 @@ func _ready() -> void:
 	_headroom_shape.radius = 0.38
 	_headroom_shape.height = stand_height - 0.07
 	add_to_group("player")
+	heal_charges = max_heal_charges
+	resurrections_left = max_resurrections
 	_visual_rest = visual.position
 	_setup_hurtbox()
 	if state_machine.get_node_or_null("Guard") == null:
@@ -267,8 +295,9 @@ func _process(delta: float) -> void:
 	var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * _recoil_direction
 	var axis := Vector3.UP.cross(local_dir)
 	# The weary sway while kneeling: a side roll and a slower nod of the head.
-	var sway := sin(_sway_time * stagger_sway_speed) * stagger_sway_angle * kneel
-	var nod := sin(_sway_time * stagger_sway_speed * 0.6) * stagger_sway_angle * 0.5 * kneel
+	var sway_scale := 1.0 if _kneel_sway else 0.0
+	var sway := sin(_sway_time * stagger_sway_speed) * stagger_sway_angle * kneel * sway_scale
+	var nod := sin(_sway_time * stagger_sway_speed * 0.6) * stagger_sway_angle * 0.5 * kneel * sway_scale
 	visual.rotation.x = axis.x * hit_recoil_tilt * _recoil_scale * k - _lean_current + nod
 	visual.rotation.z = axis.z * hit_recoil_tilt * _recoil_scale * k + sway
 
@@ -281,9 +310,12 @@ func _physics_process(delta: float) -> void:
 	_update_grab_kneel(delta)
 	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
 	combatant.tick_posture(delta, _posture_regen_paused())
+	_revive_invulnerable_left = maxf(_revive_invulnerable_left - delta, 0.0)
+	_update_death()
 	_update_stagger()
 	_update_repulse()
 	_try_deathblow()
+	_try_heal()
 	state_machine.physics_update(delta)
 	_update_auto_sheathe(delta)
 	# A knockback push is added on top of the state's own velocity for the move, then taken off
@@ -541,7 +573,7 @@ func _setup_hurtbox() -> void:
 	hurtbox.team = Layers.Team.PLAYER
 	hurtbox.collision_layer = Layers.hurtbox_layer(Layers.Team.PLAYER)
 	hurtbox.combatant = combatant
-	hurtbox.is_invulnerable = func() -> bool: return invulnerable
+	hurtbox.is_invulnerable = func() -> bool: return invulnerable or _revive_invulnerable_left > 0.0
 	for child: Node in hurtbox.get_children():
 		if child is CollisionShape3D:
 			_hurt_shape = child as CollisionShape3D
@@ -628,7 +660,7 @@ func _update_grab_kneel(delta: float) -> void:
 		return
 	_grab_kneel_left -= delta
 	var current := state_machine.current
-	if current is StaggerState:
+	if current is StaggerState or current is DeadState:
 		_grab_kneel_left = 0.0
 		return
 	if _grab_kneel_left <= 0.0 or not is_on_floor() or current is ActionState or current is AirState:
@@ -695,7 +727,7 @@ func _update_stagger() -> void:
 	if not _stagger_pending:
 		return
 	var current := state_machine.current
-	if current is StaggerState:
+	if current is StaggerState or current is DeadState:
 		_stagger_pending = false
 		return
 	if current is LedgeClimbState or current is DeathblowState:
@@ -713,10 +745,11 @@ func set_stagger_lean(angle: float) -> void:
 
 
 ## Sink to a knee and sway (visual only; the capsules and the hurtbox are not touched). Used by the stagger.
-func set_stagger_kneel(on: bool) -> void:
+func set_stagger_kneel(on: bool, sway: bool = true) -> void:
 	if on and not _kneeling:
 		_sway_time = 0.0
 	_kneeling = on
+	_kneel_sway = sway
 
 
 ## Standing on an enemy's head: after a jump-over the landing is the counter and bounces you up (a
@@ -782,7 +815,7 @@ func _try_deathblow() -> void:
 	if weapon == null or not input_buffer.has_pressed(&"attack") or not is_on_floor():
 		return
 	var current := state_machine.current
-	if current is StaggerState or current is DeathblowState or current is AirState \
+	if current is StaggerState or current is DeathblowState or current is DeadState or current is AirState \
 			or current is WallJumpState or current is LedgeHangState or current is LedgeClimbState:
 		return
 	var action_state := current as ActionState
@@ -810,10 +843,49 @@ func apply_knockback(direction: Vector3, distance: float, time: float = -1.0) ->
 	_knockback_decel = _knockback_velocity.length() / duration
 
 
-## Temporary: refill after a moment so testing can go on. Death and retry are Step 10.
+## Health hit 0 (Step 10): go to the Dead state as soon as nothing is in the way (see _update_death).
 func _on_died() -> void:
-	await get_tree().create_timer(refill_delay).timeout
-	combatant.reset()
+	_death_pending = true
+
+
+## A ledge climb finishes first (it is scripted); anything else is left at once for Dead.
+func _update_death() -> void:
+	if not _death_pending:
+		return
+	var current := state_machine.current
+	if current is DeadState:
+		_death_pending = false
+		return
+	if current is LedgeClimbState:
+		return
+	_death_pending = false
+	state_machine.transition_to(&"Dead")
+
+
+## Called by DeadState when the player chooses to resurrect: spends one, comes back at a share of the
+## max health with no posture, and is invulnerable for a moment. The enemy is not touched.
+func resurrect() -> void:
+	resurrections_left = maxi(resurrections_left - 1, 0)
+	combatant.revive(resurrect_health_fraction)
+	_revive_invulnerable_left = resurrect_invulnerable_time
+	notify_combat()
+
+
+## Start the heal if `heal` was just pressed and the player is in a state that allows it (Locomotion,
+## Crouch, or Dash). Crouched under a low ceiling cannot heal (it stands you up first).
+func _try_heal() -> void:
+	if not Input.is_action_just_pressed(&"heal"):
+		return
+	if heal_charges <= 0 or combatant.dead or combatant.vulnerable:
+		return
+	if not allow_heal_at_full_health and combatant.health >= combatant.max_health:
+		return
+	var current := state_machine.current
+	if not (current is LocomotionState or current is CrouchState or current is DashState):
+		return
+	if is_crouched and not can_stand():
+		return
+	state_machine.transition_to(&"Heal")
 
 
 ## One of the player's attacks connected: restart the auto-sheathe timer and request the hitstop.

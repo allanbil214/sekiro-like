@@ -56,6 +56,7 @@
 - **Built in 7c-2 (the grab; answers O5, numbers are placeholders):** yellow `!` (`EnemyAIData.grab_symbol_color`), shown `perilous_symbol_lead` before the hit window like the others. Wind-up about 0.8 s, active window 0.25 s, starts within `grab_range` 2.4 m with a short lunge, 45 damage, 0 posture, a 2.0 m throw, super armor like the other perilous attacks. Unguardable and undeflectable; **only a dodge answers it** (its i-frames; no posture reward), and a whiff leaves the enemy open for `grab_whiff_recovery` 1.2 s. It hits crouched and airborne players too. A grab that connects always **breaks the guard** (whether or not the player was guarding): `HitData.grab` makes `Combatant` emit `guard_broken`, and on the ground the player also sinks to a knee for `Player.grab_kneel_time` 0.8 s (visual only; the capsules and the hurtbox do not change; any jump, fall, or action ends it). No held-in-hand animation yet.
 
 ### 3.6 Heal and resurrection
+> **Built in Step 10** (2026-10-09; rules and files in the build log, "Step 10"). Confirmed on top of the text below: dying releases the lock-on and a resurrection re-locks the same enemy if it is alive; the enemy stands down while the player is dead and resumes with a short yield; the prompt is attack = Resurrect, guard = Die; the heal does not start at full HP (a toggle changes it); the death screen darkens and shows a blood-red vignette.
 - **Heal:** 3 charges (adjustable). **Instant heal when the animation finishes** (charge is consumed on completion). **Movement is allowed** while healing. **A hit interrupts it.**
 - **Resurrection:** 2 uses per run, revive at **half HP**. Presented as a **prompt** like Sekiro (the player chooses).
   - On resurrect: the enemy **keeps its state** (HP, posture), stays locked on, and keeps its distance/moves a bit.
@@ -130,5 +131,5 @@ Placeholders: standing 1.8 tall, offset 0. Crouching 1.1 tall, offset 0. Airborn
 - ~~**O1**~~ Resolved in Step 6 (see the note under 3.1). Original question: When a **non-final** health bar empties and the deathblow window is missed, what happens? (Sekiro: the enemy recovers. The user said the enemy "falls and dies" on a missed deathblow, which clearly applies to the final bar. Confirm the non-final behavior.)
 - **O2:** Exact posture numbers and regen rates: placeholders are built in Step 6 (see the table); tune them in play. (The spam-shrink amount was settled in Step 5.)
 - ~~O3~~ Resolved in Step 5: linear, -0.04 s per rapid re-press, floor 0.05 s.
-- **O4:** Camera and lock-on details (e.g. lock-on range, how target switching feels).
+- ~~O4~~ Resolved in Step 9: 20 m acquire, 25 m release, flick to switch, an eased camera from 0.8 m higher with a 10 degree extra tilt (see the build log, "Step 9").
 - ~~O5~~ Resolved in 7c-2 (placeholders): damage 45, range 2.4 m, wind-up about 0.8 s, active 0.25 s; see 3.5.

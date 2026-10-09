@@ -7,8 +7,10 @@ extends Node3D
 ##
 ## Step 6: small round dots show the health bars left (shown when there are 2 or more). They sit in a
 ## row above the left end of the health bar, spaced apart (red with a maroon outline; a lost bar's dot
-## is hidden), and a posture bar sits under the health bar. It fills from both ends toward the middle: white,
-## turning orange as it nears full, red while full (a posture break or an open deathblow window).
+## is hidden), and a posture bar sits under the health bar. It grows from the middle out to both ends
+## (Step 10): yellow, blending to a reddish orange as it fills; at full (a posture break or an open
+## deathblow window) it pops to solid red with a short flash; when posture is reset it drains back to
+## empty and the color returns to yellow. The player's HUD bar (PlayerHud) uses the same look.
 ## While a deathblow window is open a big deathblow marker shows on the enemy's body: a white-reddish
 ## dot with a thick dark-red outline and a soft red glow, pulsing gently (the texture is drawn in code).
 
@@ -24,6 +26,20 @@ extends Node3D
 @export var yellow_color: Color = Color(0.95, 0.8, 0.15)
 @export var posture_height: float = 0.05
 @export var posture_gap: float = 0.04
+@export_group("Posture bar")
+## Yellow when low, blending to the reddish orange as it fills (the curve > 1 stays yellow longer).
+@export var posture_color_low: Color = Color(1.0, 0.85, 0.1)
+@export var posture_color_high: Color = Color(1.0, 0.35, 0.05)
+@export_range(0.2, 4.0) var posture_color_curve: float = 1.0
+## The solid red at a posture break, and the flash it pops with (it alternates with the red for this long, s).
+@export var posture_color_full: Color = Color(0.95, 0.04, 0.04)
+@export var posture_flash_color: Color = Color(1.0, 0.85, 0.8)
+@export var posture_flash_time: float = 0.35
+## How fast the shown posture falls to a lower value (share of the bar per second; a posture reset
+## drains) and how fast it follows a rise (share per second).
+@export var posture_drain_speed: float = 1.2
+@export var posture_rise_speed: float = 8.0
+@export_group("Health dots")
 @export var pip_size: float = 0.055
 ## Space between neighboring dots (m).
 @export var pip_gap: float = 0.06
@@ -62,6 +78,9 @@ var _posture_left: MeshInstance3D
 var _posture_right: MeshInstance3D
 var _posture_fraction: float = 0.0
 var _posture_full: bool = false
+var _posture_target: float = 0.0
+var _posture_drawn: float = -1.0
+var _posture_flash_left: float = 0.0
 var _pips: Array[MeshInstance3D] = []
 var _marker: Sprite3D
 var _marker_time: float = 0.0
@@ -80,7 +99,7 @@ func _ready() -> void:
 	(_posture_back.mesh as QuadMesh).center_offset = Vector3(0.0, _posture_y(), 0.0)
 	_posture_left = _make_quad(Color.WHITE, 3)
 	_posture_right = _make_quad(Color.WHITE, 3)
-	_set_posture(0.0, false)
+	_apply_posture()
 	_marker = Sprite3D.new()
 	var marker_texture := _build_marker_texture()
 	_marker.texture = marker_texture
@@ -114,6 +133,7 @@ func bind(combatant: Combatant) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_posture(delta)
 	if _marker.visible and marker_pulse:
 		_marker_time += delta
 		var beat := 0.5 + 0.5 * sin(_marker_time * 9.0)
@@ -187,7 +207,13 @@ static func _over(top: Color, bottom: Color) -> Color:
 
 func _on_posture_changed(current: float, maximum: float) -> void:
 	var fraction := current / maxf(maximum, 0.001)
-	_set_posture(fraction, fraction >= 0.999)
+	var full := fraction >= 0.999
+	_posture_target = clampf(fraction, 0.0, 1.0)
+	if full and not _posture_full:
+		# A posture break: pop to full and flash.
+		_posture_fraction = 1.0
+		_posture_flash_left = posture_flash_time
+	_posture_full = full
 
 
 ## A lost health bar's dot is hidden.
@@ -234,19 +260,41 @@ func _build_pip_texture() -> ImageTexture:
 	return ImageTexture.create_from_image(image)
 
 
-## Fill the posture bar from both ends toward the middle.
-func _set_posture(fraction: float, full: bool) -> void:
-	_posture_fraction = clampf(fraction, 0.0, 1.0)
-	_posture_full = full
-	var color := Color.WHITE.lerp(Color(1.0, 0.55, 0.1), clampf(_posture_fraction / 0.8, 0.0, 1.0))
-	if full:
-		color = Color(0.9, 0.05, 0.05)
+## The yellow-to-reddish-orange blend for a posture fraction (shared with the player's HUD bar).
+static func posture_gradient(fraction: float, low: Color, high: Color, curve: float) -> Color:
+	return low.lerp(high, pow(clampf(fraction, 0.0, 1.0), curve))
+
+
+## Ease the shown posture toward the real one (falls drain, rises follow) and redraw when it moved.
+func _update_posture(delta: float) -> void:
+	var before := _posture_fraction
+	if _posture_fraction < _posture_target:
+		_posture_fraction = minf(_posture_fraction + posture_rise_speed * delta, _posture_target)
+	elif _posture_fraction > _posture_target and not _posture_full:
+		_posture_fraction = maxf(_posture_fraction - posture_drain_speed * delta, _posture_target)
+	var flashing := _posture_flash_left > 0.0
+	if flashing:
+		_posture_flash_left -= delta
+	if flashing or not is_equal_approx(before, _posture_fraction) or not is_equal_approx(_posture_drawn, _posture_fraction):
+		_apply_posture()
+
+
+## Draw the posture bar from the middle out to both ends, in the color of the current fill.
+func _apply_posture() -> void:
+	_posture_drawn = _posture_fraction
+	var color := posture_gradient(_posture_fraction, posture_color_low, posture_color_high, posture_color_curve)
+	if _posture_full and _posture_fraction >= 0.999:
+		color = posture_color_full
+		if _posture_flash_left > 0.0:
+			# Alternate the flash and the red about 20 times a second.
+			if int(_posture_flash_left * 20.0) % 2 == 0:
+				color = posture_flash_color
 	var half_width := bar_width * 0.5 * _posture_fraction
 	for side: float in [-1.0, 1.0]:
 		var instance := _posture_left if side < 0.0 else _posture_right
 		var quad := instance.mesh as QuadMesh
 		quad.size = Vector2(maxf(half_width, 0.0001), posture_height)
-		quad.center_offset = Vector3(side * (bar_width * 0.5 - half_width * 0.5), _posture_y(), 0.0)
+		quad.center_offset = Vector3(side * half_width * 0.5, _posture_y(), 0.0)
 		instance.visible = _posture_fraction > 0.0005
 		(instance.material_override as StandardMaterial3D).albedo_color = color
 

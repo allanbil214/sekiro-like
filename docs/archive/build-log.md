@@ -785,3 +785,56 @@ Files: `scripts/combat/combatant.gd` (`shrink_steps`, `_since_press`, `_hold_tim
 - **Files:** `hit_data.gd`, `combatant.gd`, `enemy.gd`, `player.gd`, `enemy_ai_data.gd` (group "Grab (Step 7c-2)"; `grab_action` defaults to `preload("res://actions/enemy_grab.tres")`, so `Debug Force Perilous = Grab` works on every preset), new `actions/enemy_grab.tres` (placeholder poses: a scoop from (5, 0.6, 0.2) to (12, 0.5, 1.1), `hitbox_length_scale` 1.3) and `ai/enemy_grappler.tres` (the soldier plus the grab at 70%, range 3.2, cooldown 3 s).
 - **Not done on purpose:** the high/mid/low enemy hitboxes (real animations will set the hit height), a held-in-hand grab animation, new symbol art, grab variants.
 - **Noticed, not fixed:** nothing. This closes Step 7 (7a to 7d).
+
+### Step 8: clash dropped (2026-10-08)
+- **Decision:** the game follows FromSoftware, so there is no clash: whoever connects first wins (a trade where both swings land is still possible). A version was built and reverted before it was tested: a rule in `Hitbox` that found an opposing live swing, opened within 0.1 s, whose box overlapped (using the so far unused hitbox layers 4 and 5); no damage, 10 posture each, a 1 m push, both swings cut, the enemy recovering 0.4 s, hitstop 0.08 s. Nothing of it is in the code. The idea is kept in `docs/design-later-steps.md`, 3.3.
+
+### Step 9: lock-on (2026-10-09)
+- **What exists:** `LockOn` (`scripts/player/lock_on.gd`, a `Node3D` named `LockOn`, a direct child of `Player`, added in the editor) holds the target. `Player.lock_on` and `CameraRig` find it. Targets are nodes in group `enemy` with a living `Combatant`, so the dummy counts too.
+- **Acquire:** `lock_on` (middle mouse or right-stick click; ignored while the mouse is not captured) locks the living enemy nearest the screen center that is inside the view cone (`view_half_angle_degrees` 50), within `acquire_range` 20 m, and has a clear line: a world-only ray (`Layers.WORLD`) from the player at `los_eye_height` 1.4 m to the target's lock point; every enemy body is excluded from the ray. Nothing found: nothing happens, or with `recenter_when_no_target` (off by default, the user dislikes Sekiro's recenter) the camera swings behind the player.
+- **Release:** the button again, the target beyond `release_range` 25 m, no clear line for `los_lost_time` 2 s, or the player dead. When the target dies and `auto_lock_next` is on (default), the nearest living enemy in range is locked at once (no view cone, a clear line needed). A deathblow that leaves the enemy alive keeps the lock; it only moves on when the enemy really dies. Off, the lock just drops.
+- **Switch:** `CameraRig` hands the mouse's sideways movement to `LockOn.feed_flick()` while locked; 90 px gathered (it drains at 1200 px/s, so slow movement never adds up) or a right-stick flick (past 0.8 from under 0.5) picks the nearest candidate just past the current one on that side of the screen (an angle from the camera's forward; no wrap), then `switch_cooldown` 0.3 s.
+- **Marker:** a white billboard ring (a `QuadMesh` with a radial `GradientTexture2D`, no depth test, scaled up with distance) at the target's `lock_point_height`: an export on `Enemy` and `Dummy` (1.2 m); `LockOn.default_lock_point_height` covers any other target.
+- **Camera:** `CameraRig` is now `class_name CameraRig`. While locked, yaw and pitch ease (`lock_follow_speed` 8) to look from the camera's pivot at the target; the pivot rises by `lock_height_bonus` (0.8, tuned by the user) and an extra tilt `lock_pitch_down_degrees` (10) keeps the sky out of the frame. Mouse and stick look are off while locked (the mouse is the flick); free look resumes from the current yaw and pitch. `recenter_speed` turns it for the recenter option.
+- **Body:** `Player.get_lock_direction()` is the flat direction to the target. `face_input()` faces it while locked: Locomotion, Crouch, Guard, Air, attack wind-ups, and the dash, so walking or dashing backward still faces the target. `snap_facing_lock_aware()` does the same for the dodge and the slide, which still move along the input; a dodge without input steps straight away from the target. `AttackState._update_lunge_direction()` lunges toward the target (a held direction only sets the strength). Wall jump, ledges, and the deathblow are unchanged.
+- **Files:** new `lock_on.gd`; `camera_rig.gd`, `player.gd`, `attack_state.gd`, `dodge_state.gd`, `slide_state.gd`, `enemy.gd`, `dummy.gd`, `debug_overlay.gd` (a "Lock-on" line). No `.tres` and no Input Map changes (`lock_on` already existed). Answers open question O4.
+- **Not done on purpose:** a lock-on HUD (names, health), camera shake or zoom, the enemy knowing it is locked on, different facing for walking and running, per-enemy lock points beyond the height export.
+- **Noticed, not fixed:** nothing.
+
+### Follow-ups after Step 9: sweep duck, snappy jump (2026-10-09)
+- **Sweep duck (visual only):** `Enemy._update_crouch()` keeps `_crouch` (0 to 1): while the enemy is in a perilous sweep before its hit window closes it follows `_action_time / active_hit.x` (full at the start of the window), then eases back over `EnemyAIData.sweep_crouch_out_time` (0.35 s). `_process` applies it with a smoothstep: the `Visual` drops `sweep_crouch_drop` (0.35 m) and pitches forward `sweep_crouch_lean_degrees` (25) about the feet (`crouch_basis * bobble * tilt`). Drop and lean both 0 turn it off. The capsule, the hurtbox and the head-bounce landing point do not follow it (placeholder until real models); the blade and the bar are children of `Visual`, so they follow; `sweep_drop` stays 1.0. Only the sweep ducks.
+- **Snappy jump:** the same ~2.46 m jump in about 0.88 s (rise 0.47 s, fall 0.41 s, landing about 12 m/s; about 24% less horizontal reach than the old 8.5 / 1.5 jump). `Player.jump_velocity` 9.88, `gravity_multiplier` 2.0, new `fall_gravity_factor` 1.5 and `apex_speed_band` 2.0 with `apex_gravity_factor` 1.5 (no hang at the peak). `Player.get_gravity_now()` is the base gravity times that phase factor (the apex factor while `velocity.y` is at or under the band, the larger of it and the fall factor while falling); `apply_gravity()` uses it, and so do the helm splitter's dive and `AirAttackState`'s hold gravity, so their factors stay relative: `dive_gravity_factor` 2.5 (the scene's 5.0 override was set back to it) and `opening_gravity_factor` default 0.25 (was 0.5). `head_bounce_velocity` 7.6 (was 6.5, same 1.44 m bounce). The wall jump keeps its height.
+- **Tried and dropped:** real gravity (`gravity_multiplier` 1.0, `jump_velocity` 6.94, bounce 5.31, dive 7.5): the same height but 1.42 s in the air, which felt floaty.
+- **Noticed, not fixed:** nothing.
+
+### Step 10: heal, death and resurrection, player HUD (2026-10-09)
+Done and tested by the user (a parse error in `death_screen.gd` was fixed on the way: `PackedStringArray([...])` is not a constant expression, so the font list became the export `kanji_fonts`).
+
+**Decisions (confirmed by the user)**
+- Heal: 3 charges, 1.0 s, walk speed, restores 40 of 100 HP on completion (the charge is spent then), a damaging hit interrupts it and keeps the charge, dodge/jump/attack/guard cancel it free. Starts from Locomotion, Crouch, or Dash with `heal` (Q / Y). Placeholder: it refuses at full HP (`allow_heal_at_full_health`), which the user did not ask for either way.
+- Death: 0 HP enters `Dead`; the prompt shows after 1.0 s; **attack = Resurrect, guard = Die** (matches RB / LB in the user's Sekiro screenshot). Resurrect: 50% HP, posture 0, 2 s invulnerable, the enemy keeps HP and posture. Dying releases the lock-on; a resurrection re-locks the same enemy if alive; Die or no resurrections left: fade to black, scene reload. With none left: only "DEATH", auto after 3 s.
+- Death screen: the screen darkens (0.35), a blood-red vignette fades in, then the 死 and the prompts.
+- HUD layout (from the user's screenshots): health bar bottom-left with the resurrection pips above it and the gourd count **below** the bar (first understood wrongly as above); posture bar bottom-center; nothing bottom-right.
+- Posture bars (enemy and player): grow from the **middle out** (they used to fill from the ends inward), yellow blending to reddish orange, solid red with a flash at a break, then drain back to empty and yellow. The player's bar is hidden at 0.
+- Debug text at the top left is off by default (`DebugOverlay.show_debug_text`); the 3D debug aids stay.
+
+**Files**
+- New: `scripts/player/states/heal_state.gd`, `dead_state.gd`, `scripts/ui/player_hud.gd`, `death_screen.gd`.
+- Modified: `player.gd` (charges, resurrections, signals, `_try_heal()`, `_update_death()`, `resurrect()`, the temporary refill and `refill_delay` removed, `set_stagger_kneel(on, sway)`), `combatant.gd` (`heal()`, `revive()`), `enemy.gd` (`_stand_down()`, `_stand_down_ended()`), `dummy.gd` (stands down), `lock_on.gd` (`locked_out`, `lock_onto()`), `enemy_bar.gd` (the posture look, `posture_gradient()`), `debug_overlay.gd`.
+- Scene: `Heal` and `Dead` nodes under `StateMachine`; `PlayerHud` and `DeathScreen` CanvasLayers under Player. No Input Map or `.tres` changes.
+
+**Rules that are not obvious from the code**
+- `Combatant.died` sets only a pending flag in the Player; `_update_death()` enters `Dead` next physics frame and waits while a ledge climb is running. `Dead` is excluded from the stagger, the deathblow, the grab kneel, and the heal.
+- The invulnerability after a resurrection is a separate timer (`_revive_invulnerable_left`) on the hurtbox's callable, so action states resetting `Player.invulnerable` do not cancel it.
+- The prompt reads `Input.is_action_just_pressed` after the buffers are cleared, so a button held through the death does not choose.
+- `PlayerHud` polls the Player each frame instead of using signals (the Player sets charges in its own `_ready`, after the HUD's). `DeathScreen` listens to the Player's four death signals. `DeadState` owns the reload timer; the screen only fades over the time it is told.
+- The enemy's stand-down is polled in `Enemy._physics_process` from `_player_dead()` (once, idempotent); a flinch, counter, or stun finishes by itself.
+- The 3D enemy bar and the 2D HUD bar share `EnemyBar.posture_gradient()`; each keeps its own color exports with the same defaults.
+- The vignette is a canvas shader built from a string in code; the 死 uses a system serif font list (`kanji_fonts`).
+- Each scene now starts black and fades in (`DeathScreen.fade_in_on_start`, 0.7 s).
+
+**Not done**
+- Heal and death animations beyond the placeholder lie-down (stagger lean 1.3 and kneel), sound, item and prosthetic icons, the spirit emblem count, button icons on the prompts, a low-HP vignette, checkpoints, gourd upgrades, the enemy name HUD.
+
+**Noticed, not fixed**
+- Nothing new broke. The cleanup of the code-created fallbacks (Guard, Hurtbox, Combatant) in the Phase 2 backlog still stands.

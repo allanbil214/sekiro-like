@@ -52,6 +52,8 @@ signal recenter_requested(yaw: float)
 
 ## The locked target, or null. Use has_target() (the node may have been freed).
 var target: Node3D
+## Step 10: while true (the player is dead) the lock_on button does nothing.
+var locked_out: bool = false
 
 var _player: Player
 var _marker: MeshInstance3D
@@ -108,6 +110,14 @@ func feed_flick(dx: float) -> void:
 	_flick_x += dx
 
 
+## Lock onto a given enemy (a resurrection re-locks the one it had). False if it is not a valid target.
+func lock_onto(node: Node3D) -> bool:
+	if node == null or not is_instance_valid(node) or not _is_valid_target(node):
+		return false
+	_set_target(node)
+	return true
+
+
 func release() -> void:
 	if target == null:
 		return
@@ -130,6 +140,8 @@ func get_debug_text() -> String:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if locked_out:
+		return
 	if not event.is_action_pressed(&"lock_on") or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
 	if has_target():

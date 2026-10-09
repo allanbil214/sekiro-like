@@ -125,6 +125,12 @@ func _physics_process(delta: float) -> void:
 		_player = get_tree().get_first_node_in_group("player") as Node3D
 	if _player == null:
 		return
+	# Step 10: stand down while the player is dead (the death prompt).
+	var player_combatant := Combatant.of(_player)
+	if player_combatant != null and player_combatant.dead:
+		if _phase != Phase.IDLE:
+			_end_attack()
+		return
 	var to_player := _player.global_position - global_position
 	to_player.y = 0.0
 	match _phase:
