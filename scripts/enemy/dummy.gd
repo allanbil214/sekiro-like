@@ -254,6 +254,7 @@ func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 
 
 func _on_died() -> void:
+	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_DEATH, global_position + Vector3.UP * 1.0)
 	body.material_override = null
 	visual.visible = false
 	bar.visible = false

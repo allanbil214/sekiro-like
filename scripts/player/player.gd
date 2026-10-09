@@ -47,6 +47,12 @@ signal resurrected
 ## your run speed (or your current speed, if faster). Not used by the wall jump or air attacks.
 @export var air_steer_acceleration: float = 8.0
 
+@export_group("Footsteps (Step 11a)")
+## Distance (m) walked between two footsteps, per gait. The sounds are in audio/sfx_data.tres.
+@export var step_distance_walk: float = 1.0
+@export var step_distance_run: float = 1.9
+@export var step_distance_crouch: float = 0.9
+
 @export_group("Crouch")
 ## Placeholder speed while crouched (m/s).
 @export var crouch_speed: float = 2.0
@@ -232,6 +238,8 @@ var _recoil_scale: float = 1.0
 var _repulse_pending: bool = false
 var _repulse_direction: Vector3 = Vector3.ZERO
 var _knockback_velocity: Vector3 = Vector3.ZERO
+## Metres walked since the last footstep.
+var _step_travelled: float = 0.0
 var _knockback_decel: float = 0.0
 var _visual_rest: Vector3 = Vector3.ZERO
 var _hurt_capsule: CapsuleShape3D
@@ -355,6 +363,7 @@ func _physics_process(delta: float) -> void:
 	velocity.x -= push.x
 	velocity.z -= push.z
 	_update_enemy_head()
+	_update_footsteps(delta)
 	_update_hurtbox()
 
 
@@ -405,6 +414,7 @@ func apply_air_steering(delta: float) -> void:
 
 
 func start_jump() -> void:
+	Sfx.play(get_tree(), Sfx.Id.JUMP)
 	velocity.y = jump_velocity
 	coyote_timer = 0.0
 
@@ -560,6 +570,7 @@ func set_sheathed(value: bool) -> void:
 		return
 	sheathed = value
 	sheathe_idle = 0.0
+	Sfx.play(get_tree(), Sfx.Id.SHEATHE if value else Sfx.Id.DRAW)
 	if sword_visual == null:
 		return
 	if sheathed:
@@ -637,6 +648,31 @@ func _update_hurtbox() -> void:
 	_hurt_capsule.height = height
 	_hurt_shape.position.y = profile.bottom_offset + height * 0.5
 	hurtbox_profile_name = profile_name
+
+
+## Footsteps (Step 11a): one every step_distance_* metres walked on the floor, only in the walking
+## states (not in actions, the air, or ledges). The gait comes from the speed (crouch, walk, run).
+func _update_footsteps(delta: float) -> void:
+	var current := state_machine.current
+	var walking := current is LocomotionState or current is CrouchState or current is GuardState \
+			or current is DashState or current is HealState
+	var horizontal := Vector2(velocity.x, velocity.z).length()
+	if not walking or not is_on_floor() or horizontal < 0.5:
+		# Standing still: the first step comes soon after setting off.
+		_step_travelled = step_distance_walk * 0.6
+		return
+	var id := Sfx.Id.FOOTSTEP_WALK
+	var stride := step_distance_walk
+	if is_crouched:
+		id = Sfx.Id.FOOTSTEP_CROUCH
+		stride = step_distance_crouch
+	elif horizontal > walk_speed * 1.5:
+		id = Sfx.Id.FOOTSTEP_RUN
+		stride = step_distance_run
+	_step_travelled += horizontal * delta
+	if _step_travelled >= stride:
+		_step_travelled -= stride
+		Sfx.play(get_tree(), id)
 
 
 ## Took a hit (the Combatant already lost the health): the combat timer restarts, the hitstop plays,
@@ -1029,6 +1065,7 @@ func try_air_jump() -> bool:
 	if reach_ready:
 		reach_ready = false
 		play_reach_arms()
+		Sfx.play(get_tree(), Sfx.Id.REACH)
 	return false
 
 

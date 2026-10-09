@@ -25,6 +25,9 @@ func enter(_previous: StringName) -> void:
 	player.input_buffer.consume(&"guard")
 	player.combatant.press_guard()
 	_airborne = not player.is_on_floor()
+	Sfx.play(player.get_tree(), Sfx.Id.GUARD_RAISE)
+	if was_sheathed:
+		Sfx.play(player.get_tree(), Sfx.Id.DRAW)
 	if player.sword_visual != null:
 		player.sword_visual.play_guard(was_sheathed)
 

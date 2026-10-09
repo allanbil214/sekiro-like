@@ -9,6 +9,7 @@ extends ActionState
 
 
 func _on_action_enter(_previous: StringName) -> void:
+	Sfx.play(player.get_tree(), Sfx.Id.DODGE)
 	var input_dir := player.get_move_input()
 	if input_dir.length_squared() > 0.01:
 		_move_dir = input_dir.normalized()

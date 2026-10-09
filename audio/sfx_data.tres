@@ -1,0 +1,417 @@
+[gd_resource type="Resource" script_class="SfxData" load_steps=95 format=3]
+
+[ext_resource type="Script" path="res://resources/sfx_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://resources/sfx_slot.gd" id="2_slot"]
+[ext_resource type="AudioStream" path="res://audio/deathblow/deathblow_opening_1.wav" id="s0"]
+[ext_resource type="AudioStream" path="res://audio/deathblow/deathblow_opening_2.wav" id="s1"]
+[ext_resource type="AudioStream" path="res://audio/deathblow/generic_final_death.wav" id="s2"]
+[ext_resource type="AudioStream" path="res://audio/deathblow/kill_blood_burst.wav" id="s3"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_1.wav" id="s4"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_2.wav" id="s5"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_3.wav" id="s6"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_4.wav" id="s7"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_5.wav" id="s8"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_6.wav" id="s9"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_7.wav" id="s10"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_8.wav" id="s11"]
+[ext_resource type="AudioStream" path="res://audio/deflect/deflect_9.wav" id="s12"]
+[ext_resource type="AudioStream" path="res://audio/deflect/heavy_deflect.wav" id="s13"]
+[ext_resource type="AudioStream" path="res://audio/footwalk/generic_1.wav" id="s14"]
+[ext_resource type="AudioStream" path="res://audio/footwalk/generic_2.wav" id="s15"]
+[ext_resource type="AudioStream" path="res://audio/footwalk/generic_3.wav" id="s16"]
+[ext_resource type="AudioStream" path="res://audio/footwalk/generic_4.wav" id="s17"]
+[ext_resource type="AudioStream" path="res://audio/footwalk/stone_l.wav" id="s18"]
+[ext_resource type="AudioStream" path="res://audio/guard/guard_1.wav" id="s19"]
+[ext_resource type="AudioStream" path="res://audio/guard/guard_2.wav" id="s20"]
+[ext_resource type="AudioStream" path="res://audio/guard/guard_3.wav" id="s21"]
+[ext_resource type="AudioStream" path="res://audio/guard/guard_4.wav" id="s22"]
+[ext_resource type="AudioStream" path="res://audio/guard/posture_break.wav" id="s23"]
+[ext_resource type="AudioStream" path="res://audio/heal/heal.wav" id="s24"]
+[ext_resource type="AudioStream" path="res://audio/hurt/generic_damage_1.wav" id="s25"]
+[ext_resource type="AudioStream" path="res://audio/hurt/generic_damage_2.wav" id="s26"]
+[ext_resource type="AudioStream" path="res://audio/hurt/generic_damage_3.wav" id="s27"]
+[ext_resource type="AudioStream" path="res://audio/menu/back.wav" id="s28"]
+[ext_resource type="AudioStream" path="res://audio/menu/ok.wav" id="s29"]
+[ext_resource type="AudioStream" path="res://audio/menu/select.wav" id="s30"]
+[ext_resource type="AudioStream" path="res://audio/movement/generic_1.wav" id="s31"]
+[ext_resource type="AudioStream" path="res://audio/movement/generic_2.wav" id="s32"]
+[ext_resource type="AudioStream" path="res://audio/perilous/grab.wav" id="s33"]
+[ext_resource type="AudioStream" path="res://audio/perilous/mikiri.wav" id="s34"]
+[ext_resource type="AudioStream" path="res://audio/perilous/sweep_head.wav" id="s35"]
+[ext_resource type="AudioStream" path="res://audio/perilous/warning.wav" id="s36"]
+[ext_resource type="AudioStream" path="res://audio/sheathing/fast_sheath.wav" id="s37"]
+[ext_resource type="AudioStream" path="res://audio/sheathing/fast_unsheathe_less_clanky.wav" id="s38"]
+[ext_resource type="AudioStream" path="res://audio/swing/swing_1.wav" id="s39"]
+[ext_resource type="AudioStream" path="res://audio/swing/swing_2.wav" id="s40"]
+[ext_resource type="AudioStream" path="res://audio/swing/swing_super.wav" id="s41"]
+[ext_resource type="AudioStream" path="res://audio/thrust/thrust_1.wav" id="s42"]
+[ext_resource type="AudioStream" path="res://audio/thrust/thrust_2.wav" id="s43"]
+
+[sub_resource type="Resource" id="Resource_swing"]
+script = ExtResource("2_slot")
+slot_name = "swing"
+streams = Array[AudioStream]([ExtResource("s39")])
+pitch_min = 0.96
+pitch_max = 1.04
+
+[sub_resource type="Resource" id="Resource_swing_alt"]
+script = ExtResource("2_slot")
+slot_name = "swing_alt"
+streams = Array[AudioStream]([ExtResource("s40")])
+pitch_min = 0.96
+pitch_max = 1.04
+
+[sub_resource type="Resource" id="Resource_swing_super"]
+script = ExtResource("2_slot")
+slot_name = "swing_super"
+streams = Array[AudioStream]([ExtResource("s41")])
+pitch_min = 0.98
+pitch_max = 1.02
+
+[sub_resource type="Resource" id="Resource_thrust"]
+script = ExtResource("2_slot")
+slot_name = "thrust"
+streams = Array[AudioStream]([ExtResource("s42"), ExtResource("s43")])
+pitch_min = 0.97
+pitch_max = 1.03
+
+[sub_resource type="Resource" id="Resource_charge_loop"]
+script = ExtResource("2_slot")
+slot_name = "charge_loop"
+streams = Array[AudioStream]([])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_hit_flesh"]
+script = ExtResource("2_slot")
+slot_name = "hit_flesh"
+streams = Array[AudioStream]([ExtResource("s25"), ExtResource("s26"), ExtResource("s27")])
+pitch_min = 0.95
+pitch_max = 1.05
+
+[sub_resource type="Resource" id="Resource_hit_flesh_heavy"]
+script = ExtResource("2_slot")
+slot_name = "hit_flesh_heavy"
+streams = Array[AudioStream]([ExtResource("s25"), ExtResource("s26"), ExtResource("s27")])
+volume_db = 2.0
+pitch_min = 0.88
+pitch_max = 0.96
+
+[sub_resource type="Resource" id="Resource_player_hurt"]
+script = ExtResource("2_slot")
+slot_name = "player_hurt"
+streams = Array[AudioStream]([ExtResource("s25"), ExtResource("s26"), ExtResource("s27")])
+pitch_min = 0.95
+pitch_max = 1.05
+
+[sub_resource type="Resource" id="Resource_enemy_flinch"]
+script = ExtResource("2_slot")
+slot_name = "enemy_flinch"
+streams = Array[AudioStream]([ExtResource("s25"), ExtResource("s26"), ExtResource("s27")])
+volume_db = -6.0
+pitch_min = 0.85
+pitch_max = 0.95
+
+[sub_resource type="Resource" id="Resource_guard_block"]
+script = ExtResource("2_slot")
+slot_name = "guard_block"
+streams = Array[AudioStream]([ExtResource("s19"), ExtResource("s20"), ExtResource("s21"), ExtResource("s22")])
+pitch_min = 0.97
+pitch_max = 1.03
+group = &"clash"
+
+[sub_resource type="Resource" id="Resource_guard_raise"]
+script = ExtResource("2_slot")
+slot_name = "guard_raise"
+streams = Array[AudioStream]([])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_deflect"]
+script = ExtResource("2_slot")
+slot_name = "deflect"
+streams = Array[AudioStream]([ExtResource("s4"), ExtResource("s5"), ExtResource("s6"), ExtResource("s7"), ExtResource("s8"), ExtResource("s9"), ExtResource("s10"), ExtResource("s11"), ExtResource("s12")])
+volume_db = -2.0
+pitch_min = 0.97
+pitch_max = 1.03
+group = &"clash"
+
+[sub_resource type="Resource" id="Resource_deflect_perilous"]
+script = ExtResource("2_slot")
+slot_name = "deflect_perilous"
+streams = Array[AudioStream]([ExtResource("s13")])
+volume_db = -2.0
+pitch_min = 0.97
+pitch_max = 1.03
+group = &"clash"
+
+[sub_resource type="Resource" id="Resource_guard_break"]
+script = ExtResource("2_slot")
+slot_name = "guard_break"
+streams = Array[AudioStream]([ExtResource("s13")])
+volume_db = -2.0
+pitch_min = 0.9
+pitch_max = 0.97
+group = &"clash"
+
+[sub_resource type="Resource" id="Resource_repulse"]
+script = ExtResource("2_slot")
+slot_name = "repulse"
+streams = Array[AudioStream]([ExtResource("s13")])
+volume_db = -4.0
+pitch_min = 1.05
+pitch_max = 1.12
+group = &"clash"
+
+[sub_resource type="Resource" id="Resource_posture_break"]
+script = ExtResource("2_slot")
+slot_name = "posture_break"
+streams = Array[AudioStream]([ExtResource("s23")])
+volume_db = -2.0
+pitch_min = 1.0
+pitch_max = 1.0
+group = &"posture"
+
+[sub_resource type="Resource" id="Resource_deathblow_open"]
+script = ExtResource("2_slot")
+slot_name = "deathblow_open"
+streams = Array[AudioStream]([ExtResource("s0"), ExtResource("s1")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_blood_burst"]
+script = ExtResource("2_slot")
+slot_name = "blood_burst"
+streams = Array[AudioStream]([ExtResource("s3")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_enemy_death"]
+script = ExtResource("2_slot")
+slot_name = "enemy_death"
+streams = Array[AudioStream]([ExtResource("s2")])
+pitch_min = 0.97
+pitch_max = 1.03
+
+[sub_resource type="Resource" id="Resource_danger_red"]
+script = ExtResource("2_slot")
+slot_name = "danger_red"
+streams = Array[AudioStream]([ExtResource("s36")])
+pitch_min = 1.0
+pitch_max = 1.0
+group = &"danger"
+
+[sub_resource type="Resource" id="Resource_danger_yellow"]
+script = ExtResource("2_slot")
+slot_name = "danger_yellow"
+streams = Array[AudioStream]([ExtResource("s36")])
+pitch_min = 1.0
+pitch_max = 1.0
+group = &"danger"
+
+[sub_resource type="Resource" id="Resource_grab_hit"]
+script = ExtResource("2_slot")
+slot_name = "grab_hit"
+streams = Array[AudioStream]([ExtResource("s33")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_mikiri"]
+script = ExtResource("2_slot")
+slot_name = "mikiri"
+streams = Array[AudioStream]([ExtResource("s34")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_head_stomp"]
+script = ExtResource("2_slot")
+slot_name = "head_stomp"
+streams = Array[AudioStream]([ExtResource("s35")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_aura_start"]
+script = ExtResource("2_slot")
+slot_name = "aura_start"
+streams = Array[AudioStream]([ExtResource("s28")])
+volume_db = -6.0
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_aura_loop"]
+script = ExtResource("2_slot")
+slot_name = "aura_loop"
+streams = Array[AudioStream]([])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_footstep_walk"]
+script = ExtResource("2_slot")
+slot_name = "footstep_walk"
+streams = Array[AudioStream]([ExtResource("s14"), ExtResource("s15"), ExtResource("s16"), ExtResource("s17")])
+volume_db = -3.0
+pitch_min = 0.9
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_footstep_run"]
+script = ExtResource("2_slot")
+slot_name = "footstep_run"
+streams = Array[AudioStream]([ExtResource("s14"), ExtResource("s15"), ExtResource("s16"), ExtResource("s17")])
+volume_db = 0.0
+pitch_min = 1.05
+pitch_max = 1.15
+
+[sub_resource type="Resource" id="Resource_footstep_crouch"]
+script = ExtResource("2_slot")
+slot_name = "footstep_crouch"
+streams = Array[AudioStream]([ExtResource("s14"), ExtResource("s15"), ExtResource("s16"), ExtResource("s17")])
+volume_db = -7.0
+pitch_min = 0.8
+pitch_max = 0.9
+
+[sub_resource type="Resource" id="Resource_jump"]
+script = ExtResource("2_slot")
+slot_name = "jump"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -3.0
+pitch_min = 0.96
+pitch_max = 1.04
+
+[sub_resource type="Resource" id="Resource_dodge"]
+script = ExtResource("2_slot")
+slot_name = "dodge"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -3.0
+pitch_min = 0.96
+pitch_max = 1.04
+
+[sub_resource type="Resource" id="Resource_reach"]
+script = ExtResource("2_slot")
+slot_name = "reach"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -4.0
+pitch_min = 0.96
+pitch_max = 1.04
+
+[sub_resource type="Resource" id="Resource_wall_jump"]
+script = ExtResource("2_slot")
+slot_name = "wall_jump"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -3.0
+pitch_min = 0.96
+pitch_max = 1.04
+
+[sub_resource type="Resource" id="Resource_ledge_grab"]
+script = ExtResource("2_slot")
+slot_name = "ledge_grab"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -3.0
+pitch_min = 0.9
+pitch_max = 0.98
+
+[sub_resource type="Resource" id="Resource_ledge_climb"]
+script = ExtResource("2_slot")
+slot_name = "ledge_climb"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -3.0
+pitch_min = 0.96
+pitch_max = 1.04
+
+[sub_resource type="Resource" id="Resource_slide"]
+script = ExtResource("2_slot")
+slot_name = "slide"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -3.0
+pitch_min = 0.8
+pitch_max = 0.9
+
+[sub_resource type="Resource" id="Resource_crouch"]
+script = ExtResource("2_slot")
+slot_name = "crouch"
+streams = Array[AudioStream]([ExtResource("s31"), ExtResource("s32")])
+volume_db = -8.0
+pitch_min = 0.85
+pitch_max = 0.95
+
+[sub_resource type="Resource" id="Resource_land_soft"]
+script = ExtResource("2_slot")
+slot_name = "land_soft"
+streams = Array[AudioStream]([])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_land_hard"]
+script = ExtResource("2_slot")
+slot_name = "land_hard"
+streams = Array[AudioStream]([ExtResource("s18")])
+pitch_min = 0.95
+pitch_max = 1.05
+
+[sub_resource type="Resource" id="Resource_draw"]
+script = ExtResource("2_slot")
+slot_name = "draw"
+streams = Array[AudioStream]([ExtResource("s38")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_sheathe"]
+script = ExtResource("2_slot")
+slot_name = "sheathe"
+streams = Array[AudioStream]([ExtResource("s37")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_heal_drink"]
+script = ExtResource("2_slot")
+slot_name = "heal_drink"
+streams = Array[AudioStream]([])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_heal_done"]
+script = ExtResource("2_slot")
+slot_name = "heal_done"
+streams = Array[AudioStream]([ExtResource("s24")])
+pitch_min = 1.0
+pitch_max = 1.0
+group = &"heal"
+
+[sub_resource type="Resource" id="Resource_resurrect"]
+script = ExtResource("2_slot")
+slot_name = "resurrect"
+streams = Array[AudioStream]([ExtResource("s24")])
+pitch_min = 1.0
+pitch_max = 1.0
+group = &"heal"
+
+[sub_resource type="Resource" id="Resource_death_hit"]
+script = ExtResource("2_slot")
+slot_name = "death_hit"
+streams = Array[AudioStream]([ExtResource("s2")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_death_toll"]
+script = ExtResource("2_slot")
+slot_name = "death_toll"
+streams = Array[AudioStream]([ExtResource("s29")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_prompt_open"]
+script = ExtResource("2_slot")
+slot_name = "prompt_open"
+streams = Array[AudioStream]([ExtResource("s30")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[sub_resource type="Resource" id="Resource_die_confirm"]
+script = ExtResource("2_slot")
+slot_name = "die_confirm"
+streams = Array[AudioStream]([ExtResource("s29")])
+pitch_min = 1.0
+pitch_max = 1.0
+
+[resource]
+script = ExtResource("1_data")
+slots = Array[ExtResource("2_slot")]([SubResource("Resource_swing"), SubResource("Resource_swing_alt"), SubResource("Resource_swing_super"), SubResource("Resource_thrust"), SubResource("Resource_charge_loop"), SubResource("Resource_hit_flesh"), SubResource("Resource_hit_flesh_heavy"), SubResource("Resource_player_hurt"), SubResource("Resource_enemy_flinch"), SubResource("Resource_guard_block"), SubResource("Resource_guard_raise"), SubResource("Resource_deflect"), SubResource("Resource_deflect_perilous"), SubResource("Resource_guard_break"), SubResource("Resource_repulse"), SubResource("Resource_posture_break"), SubResource("Resource_deathblow_open"), SubResource("Resource_blood_burst"), SubResource("Resource_enemy_death"), SubResource("Resource_danger_red"), SubResource("Resource_danger_yellow"), SubResource("Resource_grab_hit"), SubResource("Resource_mikiri"), SubResource("Resource_head_stomp"), SubResource("Resource_aura_start"), SubResource("Resource_aura_loop"), SubResource("Resource_footstep_walk"), SubResource("Resource_footstep_run"), SubResource("Resource_footstep_crouch"), SubResource("Resource_jump"), SubResource("Resource_dodge"), SubResource("Resource_reach"), SubResource("Resource_wall_jump"), SubResource("Resource_ledge_grab"), SubResource("Resource_ledge_climb"), SubResource("Resource_slide"), SubResource("Resource_crouch"), SubResource("Resource_land_soft"), SubResource("Resource_land_hard"), SubResource("Resource_draw"), SubResource("Resource_sheathe"), SubResource("Resource_heal_drink"), SubResource("Resource_heal_done"), SubResource("Resource_resurrect"), SubResource("Resource_death_hit"), SubResource("Resource_death_toll"), SubResource("Resource_prompt_open"), SubResource("Resource_die_confirm")])

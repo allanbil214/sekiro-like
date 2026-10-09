@@ -24,6 +24,7 @@ func _on_action_enter(_previous: StringName) -> void:
 	player.snap_facing(-player.ledge_wall_normal)
 	player.set_body_collision_enabled(false)
 	player.play_climb_arms()
+	Sfx.play(player.get_tree(), Sfx.Id.LEDGE_CLIMB)
 
 
 func _on_action_update(_delta: float) -> void:

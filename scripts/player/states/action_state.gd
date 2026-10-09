@@ -117,6 +117,7 @@ func _update_hit() -> void:
 	if not _hit_was_active:
 		hitbox.begin_swing(action.hitbox_length_scale, _shows_extension())
 		_hit_was_active = true
+		Sfx.play(player.get_tree(), Sfx.swing_id(action))
 		_on_hit_window_opened(hitbox)
 	var template := HitData.new()
 	template.attacker = player

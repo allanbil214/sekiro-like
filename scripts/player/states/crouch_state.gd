@@ -6,8 +6,10 @@ extends State
 ## starts the weapon's crouch attack loop (you stay crouched).
 
 
-func enter(_previous: StringName) -> void:
+func enter(previous: StringName) -> void:
 	player.set_crouched(true)
+	if previous == &"Locomotion":
+		Sfx.play(player.get_tree(), Sfx.Id.CROUCH)
 
 
 func exit(next: StringName) -> void:

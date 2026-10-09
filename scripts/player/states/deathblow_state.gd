@@ -13,11 +13,14 @@ const THRUST_VISUAL: ActionData = preload("res://actions/deathblow_thrust.tres")
 
 ## The player stops this close (m, flat) to the target's center.
 @export var stop_distance: float = 1.1
+## The thrust sound starts this long (s) before the strike.
+@export var swing_sound_lead: float = 0.1
 ## Hitstop (s) when the deathblow lands.
 @export var landing_hitstop: float = 0.15
 
 var _target: Node3D
 var _executed: bool = false
+var _swing_played: bool = false
 var _visual_action: ActionData
 
 
@@ -32,6 +35,9 @@ func _slows_active_window() -> bool:
 
 func _on_action_enter(_previous: StringName) -> void:
 	_executed = false
+	_swing_played = false
+	if Sfx.deathblow_open_enabled():
+		Sfx.play(player.get_tree(), Sfx.Id.DEATHBLOW_OPEN)
 	_target = player.deathblow_target
 	_visual_action = THRUST_VISUAL
 	if player.sheathed and player.weapon != null and player.weapon.draw_attack != null:
@@ -60,6 +66,9 @@ func _on_action_update(_delta: float) -> void:
 			_move_dir = Vector3.ZERO
 	if player.sword_visual != null:
 		player.sword_visual.update_action(_visual_action, action_time)
+	if not _swing_played and action_time >= maxf(action.active_hit.x - swing_sound_lead, 0.0):
+		_swing_played = true
+		Sfx.play(player.get_tree(), Sfx.Id.THRUST)
 	var strike_time := action.active_hit.x + (action.active_hit.y - action.active_hit.x) * 0.5
 	if not _executed and action_time >= strike_time:
 		_executed = true

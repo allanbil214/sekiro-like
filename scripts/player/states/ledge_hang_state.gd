@@ -23,6 +23,7 @@ func enter(_previous: StringName) -> void:
 	player.snap_facing(-_normal)
 	player.reset_air_actions()
 	player.play_climb_arms()
+	Sfx.play(player.get_tree(), Sfx.Id.LEDGE_GRAB)
 
 
 func exit(next: StringName) -> void:

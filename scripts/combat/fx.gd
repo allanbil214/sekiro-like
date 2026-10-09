@@ -1,7 +1,7 @@
 class_name Fx
 extends RefCounted
 ## One call per game event (Step 11): Fx.play(tree, kind, point, direction). It adds the camera shake
-## (11c) and the sparks and effects (11b); the sound (11a) will hang on the same call later, so each
+## (11c), the sparks and effects (11b), and the sound (11a, `Sfx`, see `_sound()` below), so each
 ## event has a single call site. `point` is where it happened (HitData.point or a body position) and
 ## `direction` is the horizontal direction of the blow (HitData.direction, attacker to target); both are
 ## optional. The shake finds the camera through the group "camera_rig" (CameraRig.add_trauma). The
@@ -56,9 +56,52 @@ static func play(tree: SceneTree, kind: Kind, point: Vector3 = Vector3.ZERO, dir
 	var trauma: float = TRAUMA.get(kind, 0.0)
 	if trauma > 0.0:
 		tree.call_group("camera_rig", "add_trauma", trauma, direction)
+	_sound(tree, kind, point)
 	var scene := tree.current_scene
 	if scene != null:
 		_spawn(scene, kind, point, direction, attach)
+
+
+# --- Which sound each event makes (Step 11a) ---------------------------------------------------
+
+## World events play at `point`; the player's own sounds (hurt, landing, heal) are not placed.
+static func _sound(tree: SceneTree, kind: Kind, point: Vector3) -> void:
+	match kind:
+		Kind.HIT_LANDED:
+			Sfx.play_at(tree, Sfx.Id.HIT_FLESH, point)
+		Kind.HIT_LANDED_CHARGED:
+			Sfx.play_at(tree, Sfx.Id.HIT_FLESH_HEAVY, point)
+		Kind.DEFLECT:
+			Sfx.play_at(tree, Sfx.Id.DEFLECT, point)
+		Kind.DEFLECT_PERILOUS:
+			Sfx.play_at(tree, Sfx.Id.DEFLECT_PERILOUS, point)
+		Kind.GUARD:
+			Sfx.play_at(tree, Sfx.Id.GUARD_BLOCK, point)
+		Kind.GUARD_BREAK:
+			Sfx.play_at(tree, Sfx.Id.GUARD_BREAK, point)
+		Kind.REPULSE:
+			Sfx.play_at(tree, Sfx.Id.REPULSE, point)
+		Kind.HURT, Kind.PERILOUS_HIT:
+			Sfx.play(tree, Sfx.Id.PLAYER_HURT)
+		Kind.GRAB:
+			Sfx.play(tree, Sfx.Id.GRAB_HIT)
+		Kind.POSTURE_BREAK:
+			Sfx.play_at(tree, Sfx.Id.POSTURE_BREAK, point)
+		Kind.MIKIRI:
+			Sfx.play_at(tree, Sfx.Id.MIKIRI, point)
+		Kind.HEAD_STOMP:
+			Sfx.play_at(tree, Sfx.Id.HEAD_STOMP, point)
+		Kind.DEATHBLOW:
+			Sfx.play_at(tree, Sfx.Id.HIT_FLESH_HEAVY, point)
+			Sfx.play_at(tree, Sfx.Id.BLOOD_BURST, point)
+		Kind.HARD_LAND:
+			Sfx.play(tree, Sfx.Id.LAND_HARD)
+		Kind.HEAL:
+			Sfx.play(tree, Sfx.Id.HEAL_DONE)
+		Kind.RESURRECT:
+			Sfx.play(tree, Sfx.Id.RESURRECT)
+		_:
+			pass
 
 
 # --- Which effect each event makes ------------------------------------------------------------

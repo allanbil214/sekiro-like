@@ -17,6 +17,7 @@ func exit(next: StringName) -> void:
 
 func _on_action_enter(_previous: StringName) -> void:
 	_dust_timer = 0.0
+	Sfx.play(player.get_tree(), Sfx.Id.SLIDE)
 	player.set_crouched(true)
 	player.play_slide_arms()
 	var dir := player.get_move_input()

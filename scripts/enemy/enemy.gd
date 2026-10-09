@@ -461,6 +461,7 @@ func _start_recover() -> void:
 
 
 func _start_flinch() -> void:
+	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_FLINCH, global_position + Vector3.UP * 1.2)
 	_abort_attack()
 	_riposte_pending = false
 	_phase_timer = ai.hit_stun_time
@@ -506,6 +507,7 @@ func _can_pose() -> bool:
 
 
 func _start_pose() -> void:
+	Sfx.play_at(get_tree(), Sfx.Id.AURA_START, global_position + Vector3.UP * 1.2)
 	_drop_guard()
 	_pose_timer = 0.0
 	combatant.posture_regen = _base_posture_regen * ai.pose_regen_factor
@@ -796,6 +798,8 @@ func _update_hit() -> void:
 	if not _hit_was_active:
 		hitbox.begin_swing(_action.hitbox_length_scale)
 		_hit_was_active = true
+		if _peril_kind != Peril.GRAB:
+			Sfx.play_at(get_tree(), Sfx.swing_id(_action), global_position + Vector3.UP * 1.2)
 	var template := HitData.new()
 	template.attacker = self
 	template.damage = _action.damage * ai.damage_scale
@@ -1052,6 +1056,7 @@ func _show_symbol() -> void:
 			push_error("Enemy: no DangerSymbol found (add the Label3D with danger_symbol.gd under the Player).")
 		return
 	_symbol_shown = true
+	Sfx.play(get_tree(), Sfx.Id.DANGER_YELLOW if _peril_kind == Peril.GRAB else Sfx.Id.DANGER_RED)
 	_symbol.show_danger(self, ai.grab_symbol_color if _peril_kind == Peril.GRAB else Color(1.0, 0.1, 0.1))
 
 
@@ -1219,6 +1224,7 @@ func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 
 
 func _on_died() -> void:
+	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_DEATH, global_position + Vector3.UP * 1.0)
 	if boss and ai != null:
 		# Step 11d: the VictoryScreen (group "victory_screen") shows the boss-slain banner.
 		get_tree().call_group("victory_screen", "show_victory", ai.victory_kanji, ai.victory_text)

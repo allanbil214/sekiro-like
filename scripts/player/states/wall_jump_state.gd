@@ -8,6 +8,7 @@ extends ActionState
 
 
 func _on_action_enter(_previous: StringName) -> void:
+	Sfx.play(player.get_tree(), Sfx.Id.WALL_JUMP)
 	# A leap from a ledge hang always goes away from the wall and does not use up a wall jump.
 	var forced_away := player.wall_jump_forced_away
 	player.wall_jump_forced_away = false

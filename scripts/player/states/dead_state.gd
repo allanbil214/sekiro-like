@@ -18,6 +18,8 @@ extends State
 @export var die_fade_time: float = 1.0
 ## How far (radians) the body lies down (the stagger lean; the kneel sinks it too). Placeholder look.
 @export var lie_lean: float = 1.3
+## The death bell (Sfx.Id.DEATH_TOLL) sounds this long (s) after the body hits the ground.
+@export var death_toll_delay: float = 0.35
 
 var elapsed: float = 0.0
 
@@ -47,6 +49,8 @@ func enter(_previous: StringName) -> void:
 	player.lock_on.locked_out = true
 	player.set_stagger_lean(lie_lean)
 	player.set_stagger_kneel(true, false)
+	Sfx.play(player.get_tree(), Sfx.Id.DEATH_HIT)
+	_play_toll()
 	player.death_started.emit()
 
 
@@ -72,6 +76,7 @@ func physics_update(delta: float) -> void:
 	if not _prompt_shown:
 		if elapsed >= prompt_delay:
 			_prompt_shown = true
+			Sfx.play(player.get_tree(), Sfx.Id.PROMPT_OPEN)
 			player.death_prompt_shown.emit(_can_resurrect)
 		return
 	if _can_resurrect:
@@ -99,4 +104,13 @@ func _resurrect() -> void:
 func _die() -> void:
 	_dying = true
 	_dying_time = 0.0
+	Sfx.play(player.get_tree(), Sfx.Id.DIE_CONFIRM)
 	player.death_confirmed.emit(die_fade_time)
+
+
+## The bell comes a moment after the body falls (real time, so a hitstop does not stretch it).
+func _play_toll() -> void:
+	var tree := player.get_tree()
+	await tree.create_timer(death_toll_delay, true, false, true).timeout
+	if is_instance_valid(player) and machine.current == self:
+		Sfx.play(tree, Sfx.Id.DEATH_TOLL)

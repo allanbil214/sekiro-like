@@ -30,6 +30,7 @@ func enter(_previous: StringName) -> void:
 	if not player.combatant.damaged.is_connected(_on_damaged):
 		player.combatant.damaged.connect(_on_damaged)
 	player.heal_arm.begin()
+	Sfx.play(player.get_tree(), Sfx.Id.HEAL_DRINK)
 
 
 func exit(_next: StringName) -> void:
