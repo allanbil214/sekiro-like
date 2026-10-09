@@ -4,12 +4,16 @@ extends CharacterBody3D
 
 ## Step 10: the death flow, for the death screen (DeadState emits them in this order).
 ## The player just died (the body goes down).
+@warning_ignore("unused_signal")
 signal death_started
 ## The Die / Resurrect prompt is up (`can_resurrect` false = the final death: no choice).
+@warning_ignore("unused_signal")
 signal death_prompt_shown(can_resurrect: bool)
 ## The player chose to die (or had no resurrection left): fade to black over `fade_time`, then the scene reloads.
+@warning_ignore("unused_signal")
 signal death_confirmed(fade_time: float)
 ## The player resurrected.
+@warning_ignore("unused_signal")
 signal resurrected
 
 @export_group("Movement")
@@ -246,6 +250,8 @@ var sword_visual: SwordVisual
 @onready var _collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var _body_mesh: MeshInstance3D = $Visual/Body
 @onready var _nose: MeshInstance3D = $Visual/Nose
+## The left arm that lifts the gourd while healing (Step 11, HealState drives it).
+@onready var heal_arm: HealArm = $Visual/HealArm
 
 
 func _ready() -> void:
@@ -317,6 +323,9 @@ func _physics_process(delta: float) -> void:
 	_try_deathblow()
 	_try_heal()
 	state_machine.physics_update(delta)
+	# DeadState can reload the scene during the update; this node is out of the tree then.
+	if not is_inside_tree():
+		return
 	_update_auto_sheathe(delta)
 	# A knockback push is added on top of the state's own velocity for the move, then taken off
 	# again, so the states never see it (they set or ease the velocity themselves).

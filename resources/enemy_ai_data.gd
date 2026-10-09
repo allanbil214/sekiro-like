@@ -210,3 +210,9 @@ extends Resource
 ## After a jump-over (jumping while the sweep's symbol shows), landing on this enemy's head within this
 ## long (s) is the counter: the sweep is cut, posture added, the enemy stunned, and the player bounces.
 @export var head_bounce_window: float = 1.5
+
+@export_group("Victory screen (Step 11d)")
+## Shown by the VictoryScreen when this enemy is a boss (Enemy.boss) and its final deathblow lands.
+## The kanji is stacked top to bottom, one character per line. Placeholder wording.
+@export var victory_kanji: String = "討取"
+@export var victory_text: String = "ENEMY SLAIN"

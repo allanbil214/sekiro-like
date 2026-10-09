@@ -89,6 +89,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
 
 [node name="Enemy" parent="." unique_id=1411356820 instance=ExtResource("2_wt5dk")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -6.646483)
+boss = true
 
 [node name="Dummy" parent="." unique_id=1141339365 instance=ExtResource("2_kti05")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9226103, 0.35307217, 10.986627)

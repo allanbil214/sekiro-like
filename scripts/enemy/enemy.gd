@@ -1206,6 +1206,9 @@ func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 
 
 func _on_died() -> void:
+	if boss and ai != null:
+		# Step 11d: the VictoryScreen (group "victory_screen") shows the boss-slain banner.
+		get_tree().call_group("victory_screen", "show_victory", ai.victory_kanji, ai.victory_text)
 	_abort_attack()
 	_drop_guard()
 	_riposte_pending = false

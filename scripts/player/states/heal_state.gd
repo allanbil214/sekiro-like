@@ -4,7 +4,8 @@ extends State
 ## health is restored (Player.heal_amount) and one charge is spent; the charge is spent only then.
 ## A hit that does damage interrupts it and the charge is kept. Dodge, jump, attack, and guard cancel it
 ## for free. Started by Player._try_heal() from Locomotion, Crouch, or Dash (a crouch is stood up first).
-## Placeholder visual: none yet (the HUD gourd pulses while this state runs).
+## Placeholder visual: the left arm lifts a gourd to the mouth (HealArm, driven by elapsed / duration),
+## and the HUD gourd pulses while this state runs.
 
 @export var duration: float = 1.0
 
@@ -26,10 +27,12 @@ func enter(_previous: StringName) -> void:
 	player.input_buffer.consume(&"guard")
 	if not player.combatant.damaged.is_connected(_on_damaged):
 		player.combatant.damaged.connect(_on_damaged)
+	player.heal_arm.begin()
 
 
 func exit(_next: StringName) -> void:
 	player.walk_only = false
+	player.heal_arm.end()
 	player.notify_combat()
 	if player.combatant.damaged.is_connected(_on_damaged):
 		player.combatant.damaged.disconnect(_on_damaged)
@@ -47,6 +50,7 @@ func physics_update(delta: float) -> void:
 		machine.transition_to(&"Locomotion" if on_floor else &"Air")
 		return
 	elapsed += delta
+	player.heal_arm.set_progress(elapsed / maxf(duration, 0.01))
 	if not on_floor:
 		player.apply_gravity(delta)
 	# Free cancels.

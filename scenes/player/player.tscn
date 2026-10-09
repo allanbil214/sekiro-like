@@ -33,10 +33,12 @@
 [ext_resource type="Script" uid="uid://c3t1jclb0bed4" path="res://scripts/player/states/stagger_state.gd" id="27_tffgl"]
 [ext_resource type="Script" uid="uid://2gky22glbhj6" path="res://scripts/player/states/deathblow_state.gd" id="28_pk8ii"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
+[ext_resource type="Script" uid="uid://jus833ce0e24" path="res://scripts/player/heal_arm.gd" id="29_wva7c"]
 [ext_resource type="Script" uid="uid://c6tupl6mk6o4b" path="res://scripts/ui/danger_symbol.gd" id="32_pk8ii"]
 [ext_resource type="Script" uid="uid://bva5xai5g2xge" path="res://scripts/player/lock_on.gd" id="33_5mf0n"]
 [ext_resource type="Script" uid="uid://b16888o6dv8yx" path="res://scripts/ui/player_hud.gd" id="36_wva7c"]
 [ext_resource type="Script" uid="uid://cmn2inquu1kpu" path="res://scripts/ui/death_screen.gd" id="37_7obkq"]
+[ext_resource type="Script" uid="uid://dt6isbua3gv8c" path="res://scripts/ui/victory_screen.gd" id="38_5q8fn"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -148,6 +150,9 @@ mesh = SubResource("BoxMesh_wynvb")
 [node name="ReachArms" type="Node3D" parent="Visual" unique_id=1173044197]
 script = ExtResource("2_fcs02")
 
+[node name="HealArm" type="Node3D" parent="Visual" unique_id=1231670644]
+script = ExtResource("29_wva7c")
+
 [node name="SwordVisual" type="Node3D" parent="Visual" unique_id=1806981421 node_paths=PackedStringArray("hitbox")]
 script = ExtResource("3_8ydkj")
 hitbox = NodePath("Hitbox")
@@ -191,3 +196,6 @@ script = ExtResource("36_wva7c")
 
 [node name="DeathScreen" type="CanvasLayer" parent="." unique_id=314635366]
 script = ExtResource("37_7obkq")
+
+[node name="VictoryScreen" type="CanvasLayer" parent="." unique_id=1722533979]
+script = ExtResource("38_5q8fn")
