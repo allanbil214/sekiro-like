@@ -271,6 +271,17 @@ static func _ring(scene: Node, point: Vector3, color: Color, radius: float, time
 	tween.chain().tween_callback(ring.queue_free)
 
 
+## Public wrappers for Shockwave: a growing ground ring and a puff of dust at `point`.
+static func ring(tree: SceneTree, point: Vector3, color: Color, radius: float, time: float) -> void:
+	if tree != null and tree.current_scene != null:
+		_ring(tree.current_scene, point, color, radius, time)
+
+
+static func dust(tree: SceneTree, point: Vector3, amount: int, size: float) -> void:
+	if tree != null and tree.current_scene != null:
+		_dust(tree.current_scene, point, amount, size, Vector3.ZERO)
+
+
 static func _launch(scene: Node, particles: CPUParticles3D, point: Vector3) -> void:
 	particles.one_shot = true
 	particles.emitting = false

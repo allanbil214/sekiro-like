@@ -78,6 +78,17 @@ func _slows_active_window() -> bool:
 	return true
 
 
+## Subclasses return true to draw the glowing blade extension while the hit window is open (the helm
+## splitter, Step 11e). Visual only.
+func _shows_extension() -> bool:
+	return false
+
+
+## Called once when the hit window opens (after the Hitbox started its swing). Subclasses add visuals.
+func _on_hit_window_opened(_hitbox: Hitbox) -> void:
+	pass
+
+
 ## Subclasses return false for actions guard must not interrupt (the ledge climb).
 func _allows_guard_cancel() -> bool:
 	return true
@@ -104,8 +115,9 @@ func _update_hit() -> void:
 		_end_hit()
 		return
 	if not _hit_was_active:
-		hitbox.begin_swing(action.hitbox_length_scale)
+		hitbox.begin_swing(action.hitbox_length_scale, _shows_extension())
 		_hit_was_active = true
+		_on_hit_window_opened(hitbox)
 	var template := HitData.new()
 	template.attacker = player
 	template.damage = action.damage * _hit_damage_multiplier()

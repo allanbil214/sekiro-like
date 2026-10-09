@@ -221,6 +221,18 @@ func get_debug_text() -> String:
 	return text
 
 
+## The charged iai (the draw slash's hold action) sends a crescent wave forward out to its extended
+## reach (Step 11e, visual only).
+func _on_hit_window_opened(hitbox: Hitbox) -> void:
+	if player.weapon == null or player.weapon.draw_attack == null:
+		return
+	if action != player.weapon.draw_attack.hold_action or action.hitbox_length_scale <= 1.0:
+		return
+	var blade := hitbox.get_blade_length()
+	var extra := hitbox.get_reach(action.hitbox_length_scale) - blade
+	Shockwave.arc(player.get_tree(), hitbox.global_position, player.get_facing_direction(), blade, extra + 0.4)
+
+
 ## The charged thrust keeps its own speed; every slash (the charged iai too) is slowed.
 func _slows_active_window() -> bool:
 	return not _is_thrust

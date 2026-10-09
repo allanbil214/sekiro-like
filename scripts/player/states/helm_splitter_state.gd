@@ -85,6 +85,11 @@ func _slows_active_window() -> bool:
 	return false
 
 
+## The helm splitter's blade glows past its tip while the hit window is open (Step 11e).
+func _shows_extension() -> bool:
+	return true
+
+
 func _on_action_enter(_previous: StringName) -> void:
 	_queued = false
 	if player.sword_visual != null:
@@ -118,6 +123,10 @@ func _update_dive(delta: float) -> void:
 func _begin_land() -> void:
 	player.reset_air_actions()
 	Fx.play(player.get_tree(), Fx.Kind.HELM_LAND, player.global_position)
+	var hitbox := _get_hitbox()
+	if hitbox != null:
+		var landing := player.global_position + player.get_facing_direction() * 1.0
+		Shockwave.ground(player.get_tree(), landing, hitbox.get_reach(action.hitbox_length_scale))
 	_phase = Phase.LAND
 	action = land_action
 	action_time = 0.0

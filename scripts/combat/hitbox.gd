@@ -23,6 +23,9 @@ signal hit_landed(hurtbox: Hurtbox, hit: HitData)
 var _shape_node: CollisionShape3D
 var _box: BoxShape3D
 var _debug_mesh: MeshInstance3D
+## The glowing extension (Step 11e): the part of the box past the blade, shown when asked.
+var _glow_halo: MeshInstance3D
+var _glow_core: MeshInstance3D
 var _length: float = 1.1
 ## Extra box behind the hand (m): the handle end of a spear. 0 = none.
 var _back: float = 0.0
@@ -61,6 +64,8 @@ func _ready() -> void:
 	_debug_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_debug_mesh.visible = false
 	_shape_node.add_child(_debug_mesh)
+	_glow_halo = _make_glow(Color(0.6, 0.8, 1.0, 0.3), 0.14)
+	_glow_core = _make_glow(Color(0.9, 0.97, 1.0, 0.9), 0.035)
 	_apply_size(1.0)
 
 
@@ -72,18 +77,37 @@ func configure(blade_length: float, back_length: float = 0.0) -> void:
 	_apply_size(1.0)
 
 
+## The blade length (m) the box is built on, and how far the box reaches at `length_scale`.
+func get_blade_length() -> float:
+	return _length
+
+
+func get_reach(length_scale: float) -> float:
+	return _length * maxf(length_scale, 0.01)
+
+
 ## A hit window opened: forget who was hit, and size the box (length_scale grows it from the tip).
-func begin_swing(length_scale: float) -> void:
+## `show_extension` also draws a glowing beam over the part of the box past the blade (Step 11e).
+func begin_swing(length_scale: float, show_extension: bool = false) -> void:
 	_hit_set.clear()
 	_apply_size(length_scale)
 	_active = true
 	_has_last = false
 	_debug_mesh.visible = debug_draw
+	var extra := _length * (length_scale - 1.0)
+	var glow := show_extension and extra > 0.01
+	for beam: MeshInstance3D in [_glow_halo, _glow_core]:
+		beam.visible = glow
+		if glow:
+			(beam.mesh as BoxMesh).size.z = extra
+			beam.position = Vector3(0.0, 0.0, -(_length + extra * 0.5))
 
 
 func end_swing() -> void:
 	_active = false
 	_debug_mesh.visible = false
+	_glow_halo.visible = false
+	_glow_core.visible = false
 
 
 ## Test the swept box against the other team's hurtboxes. `template` carries the damage, hitstop,
@@ -129,6 +153,23 @@ func sweep(template: HitData) -> Array[HitData]:
 			hit_landed.emit(hurtbox, hit)
 			landed.append(hit)
 	return landed
+
+
+func _make_glow(color: Color, thickness: float) -> MeshInstance3D:
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(thickness, thickness, 1.0)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	var beam := MeshInstance3D.new()
+	beam.mesh = mesh
+	beam.material_override = material
+	beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	beam.visible = false
+	add_child(beam)
+	return beam
 
 
 ## Box length = blade length x scale, from the hand (root) out past the tip, plus the back

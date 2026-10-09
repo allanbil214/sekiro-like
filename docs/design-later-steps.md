@@ -64,13 +64,13 @@
   - After the final death with no resurrections left: reset the scene.
 
 ### 3.12 Polish (Step 11; agreed 2026-10-09, numbers are placeholders)
-> Built so far: **11d** (the boss-slain screen and the heal arm; see the build log, "Step 11d"). Everything else here is planned. Order: 11c, 11b, 11e, 11f, 11g; sound (11a) is parked until the user has the wavs.
+> Built so far: **11d** (the boss-slain screen and the heal arm), **11c** (shake and `Fx`), and **11b** (sparks, effects, the blood jet); see the build log, "Step 11d" and "Step 11c and 11b". Still planned: 11e, 11f, 11g; sound (11a) is parked until the user has the wavs.
 - **`Fx` helper (11c):** one static call per event (deflect, guard, hurt, ...) that triggers the shake and the effects, and later the sound, so each event has one call site. Finds the camera through a group.
 - **Camera shake (11c):** a trauma value 0 to 1 on `CameraRig`; strength = trauma squared; decays fast; real-time (plays during hitstop); a master strength, an on/off toggle, and a small directional kick along the hit direction. Trauma placeholders: own hit lands 0.15 (charged 0.3), deflect 0.2, guard 0.25, taking a hit 0.35, perilous hit through the guard 0.5, grab 0.6, guard break 0.5, posture break (either side) 0.4, mikiri and head stomp 0.3, helm splitter lands 0.5, deathblow 0.7, boss slain 0.8, hard landing 0.2.
 - **Sparks and effects (11b)**, short `CPUParticles3D` bursts made at runtime at `hit.point`, no scenes:
   - Deflect: many fast sparks, bright yellow and yellow-orange. Guard: white, fewer, duller. Perilous deflect: like the deflect with reddish orange mixed in.
   - Mikiri and head stomp: an expanding shockwave ring plus dust, no sparks.
-  - Deathblow: red. Heal: green motes around the player. Resurrect: pinkish-white light rising from the body.
+  - Deathblow: red sparks, plus a 2 s blood jet like a burst pipe (pulses every 0.1 s, strongest first) that comes out of the wound toward the player and follows the enemy (built). Heal: green motes around the player. Resurrect: pinkish-white light rising from the body.
   - Guard break: a large orange burst. Posture break: a white-blue ring burst. Repulse: a shock ring. Flesh hits: a small red mist (one switch, can be off); landing and slide: small dust puffs.
 - **Shockwave (11e):** a visible wave that travels out along the extended hitbox (`hitbox_length_scale`) when the helm splitter lands, and the same for the charged iai. Visual only, no rule changes.
 - **Swing trail (11f):** a ribbon behind the blade tip during the hit window that fades after (pale white-blue, about 0.25 s), on the player's and the enemy's swings, with a switch on `SwordVisual`.
