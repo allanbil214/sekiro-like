@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/arena/fighting_arena.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://scenes/enemy/enemy.tscn" id="2_enemy"]
+[ext_resource type="Resource" path="res://ai/enemy_soldier.tres" id="3_soldier"]
+[ext_resource type="Resource" path="res://ai/enemy_monk.tres" id="4_monk"]
+
+[node name="FightingSquad" instance=ExtResource("1_base")]
+
+[node name="Soldier1" parent="." instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -7)
+ai = ExtResource("3_soldier")
+
+[node name="Soldier2" parent="." instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+ai = ExtResource("3_soldier")
+
+[node name="Soldier3" parent="." instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -7)
+ai = ExtResource("3_soldier")
+
+[node name="Monk" parent="." instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
+ai = ExtResource("4_monk")
+boss = true

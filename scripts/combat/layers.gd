@@ -12,6 +12,10 @@ const PLAYER_HURTBOX: int = 2
 const ENEMY_HURTBOX: int = 4
 const PLAYER_HITBOX: int = 8
 const ENEMY_HITBOX: int = 16
+## Invisible walls (layer 6, Phase 2 item 3c): a solid for the Player and the Enemy bodies only. The
+## camera's spring arm and the ledge and wall sensing do not see it. Tick layer 6 in the mask of the
+## Player and Enemy root nodes.
+const INVISIBLE_WALL: int = 32
 
 
 static func hurtbox_layer(team: Team) -> int:

@@ -1014,3 +1014,24 @@ Done and tested by the user 2026-10-12 (jump off the edge, the 1 HP floor, dead,
 
 **Not done:** checkpoints (the start position is the respawn), anything for enemies, fall damage by height, any effect or sound beyond the hurt sound. The `FallZone` exists in `test_arena.tscn` only; 3c's new arenas each need their own.
 **Noticed, not fixed:** nothing.
+
+### Phase 2 item 3b: ArenaData and the arena chooser (2026-10-12)
+Done and tested by the user 2026-10-12. Not run headless (not asked); look and feel tested by the user.
+
+**What exists**
+- `ArenaData` (`resources/arena_data.gd`, a `Resource`): `display_name`, `scene_path` (`@export_file`, a path and not a `PackedScene`, so listing the arenas does not load every one of them), `image` (optional `Texture2D`), `description`, `category` (`ArenaData.Category`: TEST, MOVEMENT, FIGHTING), `debug_only`, and `sort_order` (added to the plan; lower first, ties by name). `ArenaData.category_label()` gives the heading text.
+- `ArenaLibrary` (`scripts/ui/arena_library.gd`, static): `all()` reads every `.tres` or `.res` in `res://arenas/` (a new arena is one new resource; it strips the `.remap` suffix an exported project adds and skips a resource with no scene path), sorted by category, `sort_order`, name; `visible_arenas()` applies the rule (a debug build lists every arena, a release build only those with `debug_only` off); `has_visible()`.
+- `ArenaChooser` (`scripts/ui/arena_chooser.gd`, scene `scenes/ui/arena_chooser.tscn`, one scene instanced by both menus): a scrolling list on the left (a heading per category, one `EntryButton` row per arena) and the focused arena's picture (a "NO IMAGE" placeholder if empty), name, category (plus "DEBUG ONLY") and description on the right, and a BACK button. Signals `arena_chosen(arena)` and `closed`; `open()`, `request_close()` (the hosts forward the cancel key), `unlock()` (after a failed load; after a pick further picks are ignored). Up from the first row goes to BACK, down from BACK to the first row. Sounds use `Sfx.play_ui`. Sizes (`row_font_size` 28, `heading_font_size` 22, `row_height`, `image_height` 280, `back_*`) are exports scaled with the window height by `UiTextScaler`.
+- Main menu: entries START, ARENAS, OPTIONS, QUIT; a new `Phase.ARENAS`; ARENAS is visible only if `ArenaLibrary.has_visible()`; a pick does the same fade and music-out as START, through `_load_arena(path)` (its default is `DEFAULT_ARENA`, so START is unchanged).
+- Pause menu: entries RESUME, CHANGE ARENA, OPTIONS, QUIT TO TITLE; CHANGE ARENA is visible only if `OS.is_debug_build()` and an arena is listed; Esc or Cancel closes the chooser first, then resumes; `_start_leaving(path)` and `_change_scene(path)` replaced `_go_to_title()` (the same fade, unpause, time scale 1, then the scene; on a failed load the pause comes back and the chooser is unlocked).
+- `arenas/test_arena.tres`: "Test Arena", TEST, `debug_only` on.
+
+**Rules that are not obvious from the code**
+- START stays the real game's entry (`DEFAULT_ARENA`); the chooser is never START.
+- `main_menu.tscn` and `pause_menu.tscn` were edited as text by Claude at the user's request (the user confirmed they had not touched them since the snapshot); the nodes added are `ArenasButton` and the instanced `ArenaChooser` (both with unique names).
+- The two menus still keep their own copy of the empty Options panel.
+
+**Files:** new `resources/arena_data.gd`, `scripts/ui/arena_library.gd`, `scripts/ui/arena_chooser.gd`, `scenes/ui/arena_chooser.tscn`, `arenas/test_arena.tres`; modified `scripts/ui/main_menu.gd`, `scripts/ui/pause_menu.gd`, `scenes/ui/main_menu.tscn`, `scenes/ui/pause_menu.tscn`. Zip: `sekiro-like_arena-chooser.zip`.
+
+**Not done:** the new arenas (3c), arena images, a spawner or arena modes. The release-build rule (ARENAS hidden when every arena is `debug_only`) could not be tested in the editor.
+**Noticed, not fixed:** nothing.

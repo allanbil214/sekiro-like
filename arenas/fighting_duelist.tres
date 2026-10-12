@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ArenaData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/arena_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Duelist"
+scene_path = "res://scenes/arena/fighting_duelist.tscn"
+description = "A sharp guard that deflects often and uses the perilous thrust (mikiri it). A boss."
+category = 2
+debug_only = true
+sort_order = 2

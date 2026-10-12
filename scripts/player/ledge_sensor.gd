@@ -12,6 +12,12 @@ func _init(owner_player: Player) -> void:
 	player = owner_player
 
 
+## The player's collision mask without the invisible walls (Layers.INVISIBLE_WALL): they block the
+## body but are not a wall to wall-jump from or a ledge to grab.
+func _world_mask() -> int:
+	return player.collision_mask & ~Layers.INVISIBLE_WALL
+
+
 ## Nearest wall within wall_range of the capsule edge, from 8 horizontal rays at chest
 ## height. Returns {"normal": Vector3, "distance": float}, or {} if there is none.
 func find_wall() -> Dictionary:
@@ -23,7 +29,7 @@ func find_wall() -> Dictionary:
 	for i in 8:
 		var angle := TAU * float(i) / 8.0
 		var dir := Vector3(sin(angle), 0.0, cos(angle))
-		var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * reach, player.collision_mask, [player.get_rid()])
+		var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * reach, _world_mask(), [player.get_rid()])
 		var hit := space.intersect_ray(query)
 		if hit.is_empty():
 			continue
@@ -75,7 +81,7 @@ func find_ledge() -> Dictionary:
 	var top_query := PhysicsRayQueryParameters3D.create(
 			Vector3(probe.x, feet_y + player.ledge_zone_max + 0.2, probe.z),
 			Vector3(probe.x, feet_y + player.ledge_zone_min - 0.05, probe.z),
-			player.collision_mask, [player.get_rid()])
+			_world_mask(), [player.get_rid()])
 	var top := space.intersect_ray(top_query)
 	if top.is_empty():
 		return {}
@@ -89,7 +95,7 @@ func find_ledge() -> Dictionary:
 	var stand_query := PhysicsRayQueryParameters3D.create(
 			Vector3(stand_xz.x, top_pos.y + 0.5, stand_xz.z),
 			Vector3(stand_xz.x, top_pos.y - 0.3, stand_xz.z),
-			player.collision_mask, [player.get_rid()])
+			_world_mask(), [player.get_rid()])
 	var ground := space.intersect_ray(stand_query)
 	if ground.is_empty():
 		return {}
@@ -155,7 +161,7 @@ func probe_hang_ledge(pos: Vector3, normal: Vector3) -> Dictionary:
 	var top_query := PhysicsRayQueryParameters3D.create(
 			Vector3(probe.x, player.ledge_top_y + 0.3, probe.z),
 			Vector3(probe.x, player.ledge_top_y - 0.3, probe.z),
-			player.collision_mask, [player.get_rid()])
+			_world_mask(), [player.get_rid()])
 	var top := space.intersect_ray(top_query)
 	if top.is_empty():
 		return {}
@@ -169,7 +175,7 @@ func probe_hang_ledge(pos: Vector3, normal: Vector3) -> Dictionary:
 	var ground_query := PhysicsRayQueryParameters3D.create(
 			Vector3(stand_xz.x, top_pos.y + 0.5, stand_xz.z),
 			Vector3(stand_xz.x, top_pos.y - 0.3, stand_xz.z),
-			player.collision_mask, [player.get_rid()])
+			_world_mask(), [player.get_rid()])
 	var ground := space.intersect_ray(ground_query)
 	if ground.is_empty():
 		return {"top_y": top_pos.y, "fits": false}
@@ -203,7 +209,7 @@ func _hands_on_ledge(pos: Vector3, normal: Vector3, top_y: float) -> bool:
 		var query := PhysicsRayQueryParameters3D.create(
 				Vector3(probe.x, top_y + 0.3, probe.z),
 				Vector3(probe.x, top_y - 0.3, probe.z),
-				player.collision_mask, [player.get_rid()])
+				_world_mask(), [player.get_rid()])
 		var hit := space.intersect_ray(query)
 		if hit.is_empty():
 			return false

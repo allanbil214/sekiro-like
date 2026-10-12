@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ArenaData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/arena_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Aura"
+scene_path = "res://scenes/arena/fighting_aura.tscn"
+description = "A slow, patient enemy that deflects almost everything and ripostes less. A boss."
+category = 2
+debug_only = true
+sort_order = 3
