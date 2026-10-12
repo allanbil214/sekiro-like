@@ -133,9 +133,8 @@ signal resurrected
 var sheathed: bool = false
 @export_group("Hurtbox and health")
 ## The Area3D that takes hits (an Area3D with hurtbox.gd, Team = Player, and a CapsuleShape3D child).
-## Created in code if the scene has none.
 @export var hurtbox: Hurtbox
-## The player's health (a Node with combatant.gd). Created in code if the scene has none.
+## The player's health (a Node named Combatant with combatant.gd).
 @export var combatant: Combatant
 ## Hurtbox shapes per posture (height / bottom offset). Crouched = crouch, in the air = air.
 @export var stand_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/stand.tres")
@@ -295,11 +294,6 @@ func _ready() -> void:
 	resurrections_left = max_resurrections
 	_visual_rest = visual.position
 	_setup_hurtbox()
-	if state_machine.get_node_or_null("Guard") == null:
-		push_warning("Player: no Guard state under StateMachine; creating one in code (add a Node named Guard with guard_state.gd).")
-		var guard_state := GuardState.new()
-		guard_state.name = "Guard"
-		state_machine.add_child(guard_state)
 	state_machine.setup(self)
 	state_machine.start()
 
@@ -593,26 +587,15 @@ func notify_combat() -> void:
 	sheathe_idle = 0.0
 
 
-## Find or create the Hurtbox and Combatant, and connect them (i-frames, damage, death).
+## Find the Hurtbox and Combatant (both must be in the scene), and connect them (i-frames, damage, death).
 func _setup_hurtbox() -> void:
 	if combatant == null:
-		combatant = get_node_or_null("Combatant") as Combatant
-	if combatant == null:
-		push_warning("Player: no Combatant set; creating one in code (add a Node with combatant.gd).")
-		combatant = Combatant.new()
-		combatant.name = "Combatant"
-		add_child(combatant)
+		combatant = get_node("Combatant") as Combatant
 	combatant.max_health = max_health
 	combatant.health = max_health
 	combatant.fast_regen_on_guard = true
 	if hurtbox == null:
-		hurtbox = get_node_or_null("Hurtbox") as Hurtbox
-	if hurtbox == null:
-		push_warning("Player: no Hurtbox set; creating one in code (add an Area3D with hurtbox.gd).")
-		hurtbox = Hurtbox.new()
-		hurtbox.name = "Hurtbox"
-		hurtbox.team = Layers.Team.PLAYER
-		add_child(hurtbox)
+		hurtbox = get_node("Hurtbox") as Hurtbox
 	hurtbox.team = Layers.Team.PLAYER
 	hurtbox.collision_layer = Layers.hurtbox_layer(Layers.Team.PLAYER)
 	hurtbox.combatant = combatant
@@ -621,9 +604,7 @@ func _setup_hurtbox() -> void:
 		if child is CollisionShape3D:
 			_hurt_shape = child as CollisionShape3D
 			break
-	if _hurt_shape == null:
-		_hurt_shape = CollisionShape3D.new()
-		hurtbox.add_child(_hurt_shape)
+	assert(_hurt_shape != null, "Player: the Hurtbox needs a CollisionShape3D child.")
 	# This hurtbox owns its capsule (the height changes with the posture).
 	_hurt_capsule = CapsuleShape3D.new()
 	_hurt_capsule.radius = (_collision_shape.shape as CapsuleShape3D).radius

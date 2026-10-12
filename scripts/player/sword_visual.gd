@@ -10,7 +10,7 @@ extends Node3D
 ## previous pose -> wind-up -> slash -> follow-through. Place it under Visual.
 ##
 ## Hits (Step 4): the Hitbox (an Area3D child of this node) follows the hand every frame, so the
-## damage box lies along the blade. Without one set in the Inspector, a Hitbox is created in code.
+## damage box lies along the blade. It must be set in the Inspector.
 ##
 ## Sheathing (3c, visual only): the sword rests in a scabbard at the left hip (edge up) while the
 ## arm hangs relaxed. Drawing (R) reaches the right hand across to the grip, then pulls the blade
@@ -309,11 +309,7 @@ func setup(weapon: WeaponData, back_length: float = 0.0) -> void:
 	_sheath_blade = weapon.sheathed_blade_direction.normalized()
 	_sheath_edge = weapon.sheathed_edge_direction.normalized()
 	_build_scabbard(weapon)
-	if hitbox == null:
-		push_warning("SwordVisual: no Hitbox set; creating one in code (add an Area3D with hitbox.gd).")
-		hitbox = Hitbox.new()
-		hitbox.name = "Hitbox"
-		add_child(hitbox)
+	assert(hitbox != null, "SwordVisual: set the Hitbox export (an Area3D with hitbox.gd).")
 	hitbox.configure(weapon.blade_length, back_length)
 	hitbox.trail_enabled = swing_trail
 	_apply()
