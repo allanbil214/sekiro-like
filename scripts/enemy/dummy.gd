@@ -83,6 +83,7 @@ var _stun_material: StandardMaterial3D
 
 func _ready() -> void:
 	add_to_group(Groups.ENEMY)
+	Enemies.register(self)
 	combatant.health_bars = health_bars
 	combatant.boss = boss
 	combatant.deathblow_window = deathblow_window
@@ -111,6 +112,10 @@ func _ready() -> void:
 	arm.position = Vector3(0.0, 0.0, -(SWING_START + length * 0.5))
 	arm.visible = false
 	_timer = pause_time
+
+
+func _exit_tree() -> void:
+	Enemies.unregister(self)
 
 
 func _physics_process(delta: float) -> void:

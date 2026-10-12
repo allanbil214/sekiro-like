@@ -189,6 +189,7 @@ func _ready() -> void:
 		set_physics_process(false)
 		return
 	add_to_group(Groups.ENEMY)
+	Enemies.register(self)
 	_gravity = float(ProjectSettings.get_setting("physics/3d/default_gravity")) * gravity_multiplier
 	_spawn_position = global_position
 	_spawn_yaw = rotation.y
@@ -235,6 +236,10 @@ func _ready() -> void:
 	sword_visual.setup(look_weapon, ai.blade_back_length)
 	_think_timer = 0.5
 	_roll_break_threshold()
+
+
+func _exit_tree() -> void:
+	Enemies.unregister(self)
 
 
 func _physics_process(delta: float) -> void:

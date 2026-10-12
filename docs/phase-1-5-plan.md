@@ -14,7 +14,7 @@
 
 | # | Item | Kind | Status |
 |---|---|---|---|
-| 1 | Shared list of living enemies (no group search per frame) | performance | [ ] |
+| 1 | Shared list of enemies (no group search per frame) | structure | [x] (done 2026-10-12) |
 | 2 | Typed trail points in `hitbox.gd` | safety | [x] (done 2026-10-12) |
 | 3 | Debug prints (and the hitbox debug draw) only in debug builds | tidy | [x] (done 2026-10-12) |
 | 4 | Group names as constants | tidy, safety | [x] (done 2026-10-12) |
@@ -24,7 +24,7 @@
 | 8 | Delay bigger refactors to Phase 2 | decision | not built |
 | 9 | Object pooling for `Fx` particles | performance | [ ] |
 
-Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1, 6, 9, then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
+Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6, 9, then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
 
 ## 3. The items
 
@@ -33,6 +33,7 @@ Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1, 6, 9, then
 - **Why:** no tree search per frame, and a base for several enemies. No visible gain at 1 enemy.
 - **Open:** where the list lives (default: a static helper, cleared on scene reload so a reload keeps no dead references).
 - **Risk:** low to medium. Test death, resurrection, scene reload and lock-on switching.
+- **Done 2026-10-12:** `Enemies` (`scripts/combat/enemies.gd`, static: `register`, `unregister`, `all()`); `Enemy` and `Dummy` register in `_ready()` and unregister in the new `_exit_tree()`. The list holds every enemy in the tree, dead ones too (not "living only": the callers check `dead` and `deathblow_open` themselves, and a dead dummy stays in the tree). The 5 per-frame group searches use it. No speed-up was measured or expected at 1 enemy plus the dummy (see the build log, "Phase 1.5, item 1").
 
 ### 2. Typed trail points
 - **What:** `Hitbox._trail_points` is an `Array[Dictionary]` with string keys. Replace it with a tiny typed inner class (or parallel typed arrays).

@@ -660,7 +660,7 @@ func _update_personal_space(delta: float) -> void:
 			or current is LedgeClimbState:
 		return
 	var push := Vector3.ZERO
-	for node: Node in get_tree().get_nodes_in_group(Groups.ENEMY):
+	for node: Node in Enemies.all():
 		var other := node as Node3D
 		if other == null or other == self:
 			continue
@@ -898,7 +898,7 @@ func find_deathblow_target() -> Node3D:
 	var best_distance := deathblow_range
 	var facing := get_facing_direction()
 	facing.y = 0.0
-	for node: Node in get_tree().get_nodes_in_group(Groups.ENEMY):
+	for node: Node in Enemies.all():
 		var enemy := node as Node3D
 		var enemy_combatant := Combatant.of(enemy)
 		if enemy == null or enemy_combatant == null or not enemy_combatant.deathblow_open:
