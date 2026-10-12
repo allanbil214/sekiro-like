@@ -66,10 +66,10 @@ func tick(delta: float) -> void:
 		reset_guard_streak()
 
 
-## Read the player's current attack (`state` is its current action state, or null). A new threat rolls
+## Read the player's current attack (`state` is its current action state, or null: no target). A new threat rolls
 ## the plan (guard or not, deflect or not, repulse or not) and a reaction delay; then the plan is
 ## carried out while the threat lasts.
-func update(delta: float, distance: float, has_target: bool, state: ActionState) -> void:
+func update(delta: float, distance: float, state: ActionState) -> void:
 	var ai := enemy.ai
 	var idle_before := since_player_attack
 	var attack: ActionData = null

@@ -194,7 +194,6 @@ var sheathed: bool = false
 var hurtbox_profile_name: String = "stand"
 ## Seconds left in which guard presses are ignored (after a guard break).
 var _guard_lockout: float = 0.0
-var _grab_kneel_left: float = 0.0
 
 ## Seconds since the last attack or dodge (counts only in Locomotion or Crouch).
 var sheathe_idle: float = 0.0
@@ -207,7 +206,6 @@ var resurrections_left: int = 0
 var relock_target: Node3D
 var _death_pending: bool = false
 var _revive_invulnerable_left: float = 0.0
-var _kneel_sway: bool = true
 ## Set by actions during their i-frame window (read by the damage system in Step 4).
 var invulnerable: bool = false
 var coyote_timer: float = 0.0
@@ -240,17 +238,11 @@ var wall_jump_forced_away: bool = false
 
 var _headroom_shape: CapsuleShape3D
 var _hurt_shape: CollisionShape3D
-var _recoil: float = 0.0
-var _recoil_direction: Vector3 = Vector3.ZERO
-var _recoil_scale: float = 1.0
 ## A repulse (an enemy's special deflect, Step 7b) is waiting to cancel the current attack.
 var _repulse_pending: bool = false
 var _repulse_direction: Vector3 = Vector3.ZERO
-var _knockback_velocity: Vector3 = Vector3.ZERO
 ## Metres walked since the last footstep.
 var _step_travelled: float = 0.0
-var _knockback_decel: float = 0.0
-var _visual_rest: Vector3 = Vector3.ZERO
 var _hurt_capsule: CapsuleShape3D
 var _nose_drop: float = 0.4
 var _visual_tween: Tween
@@ -258,11 +250,10 @@ var _reach_arms: ReachArms
 ## The enemy a deathblow was started on (read by DeathblowState).
 var deathblow_target: Node3D
 var _stagger_pending: bool = false
-var _lean_current: float = 0.0
-var _lean_target: float = 0.0
-var _kneeling: bool = false
-var _kneel_current: float = 0.0
-var _sway_time: float = 0.0
+## Forced movement (knockback, head slide, personal space) and the placeholder body reactions (the hit
+## wobble, the lean, the kneel), Phase 1.5 item 5c.
+var _forced: PlayerForcedMovement
+var _reaction: PlayerBodyReaction
 ## The placeholder sword (found in _ready). Null if the scene has no SwordVisual.
 var sword_visual: SwordVisual
 
@@ -280,6 +271,8 @@ var sword_visual: SwordVisual
 func _ready() -> void:
 	input_buffer = InputBuffer.new(input_buffer_time)
 	ledge_sensor = LedgeSensor.new(self)
+	_forced = PlayerForcedMovement.new(self)
+	_reaction = PlayerBodyReaction.new(self)
 	Fx.blood_enabled = show_blood
 	_nose_drop = stand_height - _nose.position.y
 	_reach_arms = get_node_or_null("Visual/ReachArms") as ReachArms
@@ -295,7 +288,7 @@ func _ready() -> void:
 	add_to_group(Groups.PLAYER)
 	heal_charges = max_heal_charges
 	resurrections_left = max_resurrections
-	_visual_rest = visual.position
+	_reaction.capture_rest()
 	_setup_hurtbox()
 	state_machine.setup(self)
 	state_machine.start()
@@ -304,28 +297,7 @@ func _ready() -> void:
 ## The hit wobble: shift and tilt the Visual away from the hit, then ease back. The yaw (facing) is
 ## left alone; only the position and the tilt are set here.
 func _process(delta: float) -> void:
-	var leaning := not is_zero_approx(_lean_current) or not is_zero_approx(_lean_target)
-	var kneeling := _kneeling or not is_zero_approx(_kneel_current)
-	_lean_current = move_toward(_lean_current, _lean_target, delta * 4.0)
-	_kneel_current = move_toward(_kneel_current, 1.0 if _kneeling else 0.0, delta * stagger_kneel_speed)
-	if _kneeling:
-		_sway_time += delta
-	if _recoil <= 0.0 and not leaning and not kneeling:
-		return
-	_recoil = maxf(0.0, _recoil - delta / maxf(hit_recoil_time, 0.001))
-	var k := ease(_recoil, 2.0)
-	var kneel := ease(_kneel_current, -2.0)
-	visual.position = _visual_rest + _recoil_direction * hit_recoil_distance * _recoil_scale * k \
-			+ Vector3.DOWN * stagger_kneel_drop * kneel
-	# Tilt the top toward the push, in the Visual's own (yawed) frame.
-	var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * _recoil_direction
-	var axis := Vector3.UP.cross(local_dir)
-	# The weary sway while kneeling: a side roll and a slower nod of the head.
-	var sway_scale := 1.0 if _kneel_sway else 0.0
-	var sway := sin(_sway_time * stagger_sway_speed) * stagger_sway_angle * kneel * sway_scale
-	var nod := sin(_sway_time * stagger_sway_speed * 0.6) * stagger_sway_angle * 0.5 * kneel * sway_scale
-	visual.rotation.x = axis.x * hit_recoil_tilt * _recoil_scale * k - _lean_current + nod
-	visual.rotation.z = axis.z * hit_recoil_tilt * _recoil_scale * k + sway
+	_reaction.update(delta)
 
 
 func _physics_process(delta: float) -> void:
@@ -333,7 +305,7 @@ func _physics_process(delta: float) -> void:
 	if _guard_lockout > 0.0:
 		_guard_lockout -= delta
 		input_buffer.clear(Actions.GUARD)
-	_update_grab_kneel(delta)
+	_reaction.update_grab_kneel(delta)
 	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
 	combatant.tick_posture(delta, _posture_regen_paused())
 	_revive_invulnerable_left = maxf(_revive_invulnerable_left - delta, 0.0)
@@ -349,14 +321,7 @@ func _physics_process(delta: float) -> void:
 	_update_auto_sheathe(delta)
 	# A knockback push is added on top of the state's own velocity for the move, then taken off
 	# again, so the states never see it (they set or ease the velocity themselves).
-	var push := _knockback_velocity
-	if push != Vector3.ZERO and not state_machine.current is LedgeClimbState:
-		velocity.x += push.x
-		velocity.z += push.z
-		_knockback_velocity = push.move_toward(Vector3.ZERO, _knockback_decel * delta)
-	else:
-		push = Vector3.ZERO
-		_knockback_velocity = Vector3.ZERO
+	var push := _forced.add_push(delta)
 	var was_airborne := not is_on_floor()
 	var fall_speed := -velocity.y
 	move_and_slide()
@@ -367,9 +332,9 @@ func _physics_process(delta: float) -> void:
 			Fx.play(get_tree(), Fx.Kind.LAND_DUST, global_position)
 	velocity.x -= push.x
 	velocity.z -= push.z
-	_update_enemy_head()
+	_forced.update_enemy_head()
 	_update_footsteps(delta)
-	_update_personal_space(delta)
+	_forced.update_personal_space(delta)
 	_update_hurtbox()
 
 
@@ -648,42 +613,6 @@ func _update_hurtbox() -> void:
 	hurtbox_profile_name = profile_name
 
 
-## Personal space: eases the player away from any living enemy (or the dummy) that is closer than
-## personal_space_distance on the flat. Skipped when the player is well above or below it (a head stomp
-## or bounce), during the deathblow approach, on ledges, and while dead. The push goes through
-## move_and_collide, so it never pushes the player through a wall.
-func _update_personal_space(delta: float) -> void:
-	if not personal_space_enabled:
-		return
-	var current := state_machine.current
-	if current is DeathblowState or current is DeadState or current is LedgeHangState \
-			or current is LedgeClimbState:
-		return
-	var push := Vector3.ZERO
-	for node: Node in Enemies.all():
-		var other := node as Node3D
-		if other == null or other == self:
-			continue
-		var other_combatant := Combatant.of(other)
-		if other_combatant != null and other_combatant.dead:
-			continue
-		var away := global_position - other.global_position
-		if absf(away.y) > 1.0:
-			continue
-		away.y = 0.0
-		var distance := away.length()
-		if distance >= personal_space_distance:
-			continue
-		if distance < 0.001:
-			away = -get_facing_direction()
-			distance = 0.001
-		push += away / distance * (personal_space_distance - distance)
-	if push == Vector3.ZERO:
-		return
-	var step := push.limit_length(personal_space_push_speed * delta)
-	move_and_collide(step)
-
-
 ## Footsteps (Step 11a): one every step_distance_* metres walked on the floor, only in the walking
 ## states (not in actions, the air, or ledges). The gait comes from the speed (crouch, walk, run).
 func _update_footsteps(delta: float) -> void:
@@ -712,9 +641,7 @@ func _update_footsteps(delta: float) -> void:
 ## Took a hit (the Combatant already lost the health): the combat timer restarts, the hitstop plays,
 ## and a hanging player is knocked off the ledge. A full posture staggers (_on_posture_broken).
 func _on_damaged(hit: HitData, _amount: float) -> void:
-	_recoil = 1.0
-	_recoil_scale = 1.0
-	_recoil_direction = hit.direction
+	_reaction.start_recoil(hit.direction, 1.0)
 	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop)
@@ -741,31 +668,15 @@ func _on_guarded(hit: HitData, _chip: float) -> void:
 ## (_on_damaged ran just before this).
 func _on_guard_broken(hit: HitData) -> void:
 	Fx.play(get_tree(), Fx.Kind.GUARD_BREAK, hit.point, hit.direction)
-	_recoil_scale = guard_break_recoil_scale
+	_reaction.recoil_scale = guard_break_recoil_scale
 	if state_machine.current is GuardState:
 		state_machine.transition_to(StateName.LOCOMOTION if is_on_floor() else StateName.AIR)
 	_guard_lockout = guard_break_lockout
 	if hit.grab and is_on_floor() and grab_kneel_time > 0.0:
-		_grab_kneel_left = grab_kneel_time
-		set_stagger_kneel(true)
+		_reaction.start_grab_kneel()
 	if sword_visual != null:
 		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
 		sword_visual.play_guard_break(local_dir.x)
-
-
-## The grab's kneel is only a look: it ends after grab_kneel_time, or as soon as the player jumps, falls,
-## or starts an action. (A posture-break stagger keeps its own kneel.)
-func _update_grab_kneel(delta: float) -> void:
-	if _grab_kneel_left <= 0.0:
-		return
-	_grab_kneel_left -= delta
-	var current := state_machine.current
-	if current is StaggerState or current is DeadState:
-		_grab_kneel_left = 0.0
-		return
-	if _grab_kneel_left <= 0.0 or not is_on_floor() or current is ActionState or current is AirState:
-		_grab_kneel_left = 0.0
-		set_stagger_kneel(false)
 
 
 ## A deflect: a lighter wobble, a white blade flash and the blade flick, and a softer knockback.
@@ -781,9 +692,7 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 	if deflect:
 		fx_kind = Fx.Kind.DEFLECT_PERILOUS if hit.perilous else Fx.Kind.DEFLECT
 	Fx.play(get_tree(), fx_kind, hit.point, hit.direction)
-	_recoil = 1.0
-	_recoil_scale = deflect_recoil_scale if deflect else guard_recoil_scale
-	_recoil_direction = hit.direction
+	_reaction.start_recoil(hit.direction, deflect_recoil_scale if deflect else guard_recoil_scale)
 	if sword_visual != null:
 		# Which side of the player the attacker is on, in the Visual's own frame.
 		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -hit.direction
@@ -800,9 +709,7 @@ func _on_repulsed(hit: HitData, distance: float) -> void:
 	Fx.play(get_tree(), Fx.Kind.REPULSE, hit.point, hit.direction)
 	notify_combat()
 	apply_knockback(-hit.direction, distance)
-	_recoil = 1.0
-	_recoil_scale = 1.0
-	_recoil_direction = -hit.direction
+	_reaction.start_recoil(-hit.direction, 1.0)
 	_repulse_pending = true
 	_repulse_direction = -hit.direction
 
@@ -845,42 +752,15 @@ func _update_stagger() -> void:
 	state_machine.transition_to(StateName.STAGGER)
 
 
-## Lean the body forward (radians; 0 = upright). Eases in and out. Used by the stagger.
+## Lean the body forward (radians; 0 = upright). Eases in and out. Used by the stagger and death.
 func set_stagger_lean(angle: float) -> void:
-	_lean_target = angle
+	_reaction.set_lean(angle)
 
 
-## Sink to a knee and sway (visual only; the capsules and the hurtbox are not touched). Used by the stagger.
+## Sink to a knee and sway (visual only; the capsules and the hurtbox are not touched). Used by the
+## stagger, the grab and death.
 func set_stagger_kneel(on: bool, sway: bool = true) -> void:
-	if on and not _kneeling:
-		_sway_time = 0.0
-	_kneeling = on
-	_kneel_sway = sway
-
-
-## Standing on an enemy's head: after a jump-over the landing is the counter and bounces you up (a
-## helm splitter from there), otherwise you are pushed off sideways. Uses the same easing push as knockback.
-func _update_enemy_head() -> void:
-	for i in get_slide_collision_count():
-		var collision := get_slide_collision(i)
-		var body := collision.get_collider() as Node3D
-		if body == null or not body.is_in_group(Groups.ENEMY) or collision.get_normal().y < 0.35:
-			continue
-		if global_position.y < body.global_position.y + head_min_height:
-			continue
-		var enemy := body as Enemy
-		if enemy != null and state_machine.current is AirState and velocity.y <= 0.0 \
-				and enemy.on_stomped():
-			velocity.y = head_bounce_velocity
-			return
-		var away := global_position - body.global_position
-		away.y = 0.0
-		if away.length_squared() < 0.0001:
-			away = -get_facing_direction()
-		away.y = 0.0
-		_knockback_velocity = away.normalized() * head_slide_speed
-		_knockback_decel = head_slide_speed / 0.15
-		return
+	_reaction.set_kneel(on, sway)
 
 
 ## Posture does not regenerate while attacking, dashing, or dodging.
@@ -939,14 +819,9 @@ func _try_deathblow() -> void:
 
 
 ## Push the player away along `direction` by about `distance` metres, easing out over `time` seconds
-## (a heavy hit can ask for a longer one; 0 or less = knockback_time).
+## (0 or less = knockback_time). See PlayerForcedMovement.
 func apply_knockback(direction: Vector3, distance: float, time: float = -1.0) -> void:
-	var flat := Vector3(direction.x, 0.0, direction.z)
-	var duration := time if time > 0.0 else knockback_time
-	if distance <= 0.0 or duration <= 0.0 or flat.length_squared() < 0.0001:
-		return
-	_knockback_velocity = flat.normalized() * (2.0 * distance / duration)
-	_knockback_decel = _knockback_velocity.length() / duration
+	_forced.apply_knockback(direction, distance, time)
 
 
 ## Health hit 0 (Step 10): go to the Dead state as soon as nothing is in the way (see _update_death).

@@ -250,7 +250,7 @@ func _physics_process(delta: float) -> void:
 			_stand_down()
 		elif _stood_down:
 			_stand_down_ended()
-	_defense.update(delta, distance, has_target, _player_action_state(has_target))
+	_defense.update(delta, distance, _player_action_state(has_target))
 	if _defense.tick_riposte(delta, has_target):
 		_start_burst(ai.riposte_burst_count, true)
 	match phase:
