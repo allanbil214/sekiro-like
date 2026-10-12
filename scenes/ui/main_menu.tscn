@@ -3,6 +3,7 @@
 [ext_resource type="Theme" path="res://resources/ui_theme.tres" id="1_theme"]
 [ext_resource type="Script" uid="uid://ce058rqejajm5" path="res://scripts/ui/main_menu.gd" id="2_script"]
 [ext_resource type="AudioStream" uid="uid://cwbl1s5e7nqsy" path="res://audio/music/main_menu.ogg" id="3_1g8jr"]
+[ext_resource type="PackedScene" path="res://scenes/ui/arena_chooser.tscn" id="4_chooser"]
 
 [sub_resource type="Gradient" id="Gradient_vignette"]
 offsets = PackedFloat32Array(0, 0.55, 1)
@@ -107,6 +108,13 @@ size_flags_horizontal = 4
 theme_type_variation = &"EntryButton"
 text = "START"
 
+[node name="ArenasButton" type="Button" parent="EntryList"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"EntryButton"
+text = "ARENAS"
+
 [node name="OptionsButton" type="Button" parent="EntryList" unique_id=1659677986]
 unique_name_in_owner = true
 layout_mode = 2
@@ -175,6 +183,10 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_type_variation = &"EntryButton"
 text = "BACK"
+
+[node name="ArenaChooser" parent="." instance=ExtResource("4_chooser")]
+unique_name_in_owner = true
+layout_mode = 1
 
 [node name="FooterLabel" type="Label" parent="." unique_id=512574857]
 unique_name_in_owner = true

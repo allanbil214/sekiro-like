@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Theme" path="res://resources/ui_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/arena_chooser.tscn" id="3_chooser"]
 
 [node name="PauseMenu" type="CanvasLayer"]
 process_mode = 3
@@ -70,6 +71,14 @@ theme_override_font_sizes/font_size = 28
 text = "RESUME"
 unique_name_in_owner = true
 
+[node name="ArenasButton" type="Button" parent="Root/Column/EntryList"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"EntryButton"
+theme_override_font_sizes/font_size = 28
+text = "CHANGE ARENA"
+unique_name_in_owner = true
+
 [node name="OptionsButton" type="Button" parent="Root/Column/EntryList"]
 layout_mode = 2
 size_flags_horizontal = 4
@@ -123,6 +132,10 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_type_variation = &"EntryButton"
 text = "BACK"
+unique_name_in_owner = true
+
+[node name="ArenaChooser" parent="Root" instance=ExtResource("3_chooser")]
+layout_mode = 1
 unique_name_in_owner = true
 
 [node name="HintLabel" type="Label" parent="Root"]

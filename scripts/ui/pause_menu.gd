@@ -3,7 +3,8 @@ extends CanvasLayer
 ## The pause menu (Phase 2, item 2). A scene (`scenes/ui/pause_menu.tscn`) instanced as a child of the
 ## Player, so every arena has it. Esc or gamepad Start (the `pause` action) opens it: the game pauses
 ## (`SceneTree.paused`), the arena stays visible under a dark dim, the mouse is shown. Entries: RESUME,
-## OPTIONS (the same empty placeholder panel as the main menu) and QUIT TO TITLE (a short fade, then the
+## CHANGE ARENA (debug builds only: the arena chooser, then a short fade and the picked arena), OPTIONS
+## (the same empty placeholder panel as the main menu) and QUIT TO TITLE (a short fade, then the
 ## main menu). The look is `resources/ui_theme.tres`; this script is behavior only.
 ## The scene's process mode is "Always", so the menu runs while the tree is paused.
 ## It does not open while the player is dead (the death prompt and the final death), while the
@@ -26,6 +27,7 @@ const REFERENCE_HEIGHT: float = 1080.0
 @onready var _divider: ColorRect = %Divider
 @onready var _entries: VBoxContainer = %EntryList
 @onready var _resume_button: Button = %ResumeButton
+@onready var _arenas_button: Button = %ArenasButton
 @onready var _options_button: Button = %OptionsButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _hint: Label = %HintLabel
@@ -33,6 +35,7 @@ const REFERENCE_HEIGHT: float = 1080.0
 @onready var _panel_heading: Label = %PanelHeading
 @onready var _panel_text: Label = %PanelText
 @onready var _back_button: Button = %BackButton
+@onready var _chooser: ArenaChooser = %ArenaChooser
 @onready var _fade: ColorRect = %FadeRect
 
 var _player: Player
@@ -49,9 +52,11 @@ func _ready() -> void:
 	_root.visible = false
 	_options_panel.visible = false
 	_fade.color.a = 0.0
-	_buttons = [_resume_button, _options_button, _quit_button, _back_button]
+	_buttons = [_resume_button, _arenas_button, _options_button, _quit_button, _back_button]
+	# CHANGE ARENA is a debug tool: only in a debug build, and only if an arena is listed.
+	_arenas_button.visible = OS.is_debug_build() and ArenaLibrary.has_visible()
 	var texts: Array[Control] = [
-		_paused_label, _hint, _resume_button, _options_button, _quit_button,
+		_paused_label, _hint, _resume_button, _arenas_button, _options_button, _quit_button,
 		_back_button, _panel_heading, _panel_text,
 	]
 	for control: Control in texts:
@@ -114,9 +119,11 @@ func _resume() -> void:
 	get_tree().paused = false
 
 
-## Esc or Cancel: close the Options panel if it is showing, else resume.
+## Esc or Cancel: close the arena chooser or the Options panel if one is showing, else resume.
 func _back_or_resume() -> void:
-	if _options_panel.visible:
+	if _chooser.visible:
+		_chooser.request_close()
+	elif _options_panel.visible:
 		_close_options()
 	else:
 		_resume()
@@ -127,9 +134,12 @@ func _connect_buttons() -> void:
 		button.mouse_entered.connect(_on_button_hovered.bind(button))
 		button.focus_entered.connect(_on_button_focused)
 	_resume_button.pressed.connect(_resume)
+	_arenas_button.pressed.connect(_open_arenas)
 	_options_button.pressed.connect(_open_options)
 	_quit_button.pressed.connect(_on_quit_pressed)
 	_back_button.pressed.connect(_close_options)
+	_chooser.arena_chosen.connect(_on_arena_chosen)
+	_chooser.closed.connect(_close_arenas)
 	# Up from the first row wraps to the last, and down from the last wraps to the first.
 	_resume_button.focus_neighbor_top = _resume_button.get_path_to(_quit_button)
 	_quit_button.focus_neighbor_bottom = _quit_button.get_path_to(_resume_button)
@@ -150,6 +160,30 @@ func _focus_quietly(button: Button) -> void:
 	_quiet_focus = true
 	button.grab_focus()
 	_quiet_focus = false
+
+
+func _open_arenas() -> void:
+	if not _is_open or _leaving:
+		return
+	Sfx.play_ui(get_tree(), Sfx.Id.MENU_OK)
+	_entries.visible = false
+	_paused_label.visible = false
+	_divider.visible = false
+	_chooser.open()
+
+
+## The chooser was closed (Back or Esc): back to the entries.
+func _close_arenas() -> void:
+	_paused_label.visible = true
+	_divider.visible = true
+	_entries.visible = true
+	_focus_quietly(_arenas_button)
+
+
+func _on_arena_chosen(arena: ArenaData) -> void:
+	if not _is_open or _leaving:
+		return
+	_start_leaving(arena.scene_path)
 
 
 func _open_options() -> void:
@@ -178,21 +212,27 @@ func _on_quit_pressed() -> void:
 	if not _is_open or _leaving:
 		return
 	Sfx.play_ui(get_tree(), Sfx.Id.MENU_OK)
+	_start_leaving(MAIN_MENU_SCENE)
+
+
+## Fade to black, then leave for the scene at `path` (the main menu, or a picked arena).
+func _start_leaving(path: String) -> void:
 	_leaving = true
 	var tween := create_tween()
 	tween.tween_property(_fade, "color:a", 1.0, fade_out_time)
-	tween.tween_callback(_go_to_title)
+	tween.tween_callback(_change_scene.bind(path))
 
 
-func _go_to_title() -> void:
+func _change_scene(path: String) -> void:
 	get_tree().paused = false
 	Engine.time_scale = 1.0
-	var error := get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+	var error := get_tree().change_scene_to_file(path)
 	if error != OK:
-		push_error("PauseMenu: could not load %s (error %d)." % [MAIN_MENU_SCENE, error])
+		push_error("PauseMenu: could not load %s (error %d)." % [path, error])
 		get_tree().paused = true
 		_fade.color.a = 0.0
 		_leaving = false
+		_chooser.unlock()
 
 
 ## Scale the font sizes, the letter spacing and the rows with the window height.

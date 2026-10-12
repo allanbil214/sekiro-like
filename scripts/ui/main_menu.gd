@@ -13,7 +13,7 @@ const DEFAULT_ARENA: String = "res://scenes/arena/test_arena.tscn"
 ## The height the Theme's font sizes are written for (the same reference as the death screen).
 const REFERENCE_HEIGHT: float = 1080.0
 
-enum Phase { INTRO, TITLE, ENTRIES, OPTIONS, LEAVING }
+enum Phase { INTRO, TITLE, ENTRIES, OPTIONS, ARENAS, LEAVING }
 
 @export_group("Timing")
 ## Seconds of the fade in from black at launch.
@@ -45,6 +45,7 @@ class TextBase extends RefCounted:
 @onready var _subtitle: Label = %SubtitleLabel
 @onready var _entries: VBoxContainer = %EntryList
 @onready var _start_button: Button = %StartButton
+@onready var _arenas_button: Button = %ArenasButton
 @onready var _options_button: Button = %OptionsButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _press: Label = %PressLabel
@@ -52,6 +53,7 @@ class TextBase extends RefCounted:
 @onready var _panel_heading: Label = %PanelHeading
 @onready var _panel_text: Label = %PanelText
 @onready var _back_button: Button = %BackButton
+@onready var _chooser: ArenaChooser = %ArenaChooser
 @onready var _footer: Label = %FooterLabel
 @onready var _version: Label = %VersionLabel
 @onready var _fade: ColorRect = %FadeRect
@@ -67,13 +69,15 @@ var _buttons: Array[Button] = []
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_version.text = _version_text()
-	_buttons = [_start_button, _options_button, _quit_button, _back_button]
+	_buttons = [_start_button, _arenas_button, _options_button, _quit_button, _back_button]
 	_remember_text_bases()
 	resized.connect(_apply_scale)
 	_apply_scale()
 	_connect_buttons()
 	_entries.visible = false
 	_options_panel.visible = false
+	# The ARENAS entry shows only if this build lists at least one arena (see ArenaLibrary).
+	_arenas_button.visible = ArenaLibrary.has_visible()
 
 	_fade.color.a = 1.0
 	var fade_tween := create_tween()
@@ -93,6 +97,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _phase == Phase.OPTIONS and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close_options()
+	elif _phase == Phase.ARENAS and event.is_action_pressed(&"ui_cancel"):
+		get_viewport().set_input_as_handled()
+		_chooser.request_close()
 
 
 ## A key, a mouse button or a gamepad button going down (not mouse motion, not a stick, not key repeat).
@@ -141,9 +148,12 @@ func _connect_buttons() -> void:
 		button.mouse_entered.connect(_on_button_hovered.bind(button))
 		button.focus_entered.connect(_on_button_focused)
 	_start_button.pressed.connect(_on_start_pressed)
+	_arenas_button.pressed.connect(_open_arenas)
 	_options_button.pressed.connect(_open_options)
 	_quit_button.pressed.connect(_on_quit_pressed)
 	_back_button.pressed.connect(_close_options)
+	_chooser.arena_chosen.connect(_on_arena_chosen)
+	_chooser.closed.connect(_close_arenas)
 	# Up from the first row wraps to the last, and down from the last wraps to the first.
 	_start_button.focus_neighbor_top = _start_button.get_path_to(_quit_button)
 	_quit_button.focus_neighbor_bottom = _quit_button.get_path_to(_start_button)
@@ -180,6 +190,30 @@ func _on_quit_pressed() -> void:
 	_leave(get_tree().quit)
 
 
+func _open_arenas() -> void:
+	if _phase != Phase.ENTRIES:
+		return
+	Sfx.play(get_tree(), Sfx.Id.MENU_OK)
+	_phase = Phase.ARENAS
+	_entries.visible = false
+	_chooser.open()
+
+
+## The chooser was closed (Back or Esc): back to the entries.
+func _close_arenas() -> void:
+	if _phase != Phase.ARENAS:
+		return
+	_phase = Phase.ENTRIES
+	_entries.visible = true
+	_focus_quietly(_arenas_button)
+
+
+func _on_arena_chosen(arena: ArenaData) -> void:
+	if _phase != Phase.ARENAS:
+		return
+	_leave(_load_arena.bind(arena.scene_path))
+
+
 func _open_options() -> void:
 	if _phase != Phase.ENTRIES:
 		return
@@ -209,13 +243,14 @@ func _leave(then: Callable) -> void:
 	tween.chain().tween_callback(then)
 
 
-func _load_arena() -> void:
-	var error := get_tree().change_scene_to_file(DEFAULT_ARENA)
+func _load_arena(path: String = DEFAULT_ARENA) -> void:
+	var error := get_tree().change_scene_to_file(path)
 	if error != OK:
-		push_error("MainMenu: could not load %s (error %d)." % [DEFAULT_ARENA, error])
+		push_error("MainMenu: could not load %s (error %d)." % [path, error])
 		_fade.color.a = 0.0
 		_music.volume_db = music_volume_db
-		_phase = Phase.ENTRIES
+		_chooser.unlock()
+		_phase = Phase.ARENAS if _chooser.visible else Phase.ENTRIES
 
 
 func _version_text() -> String:
@@ -227,7 +262,7 @@ func _version_text() -> String:
 func _remember_text_bases() -> void:
 	var controls: Array[Control] = [
 		_kanji, _title, _subtitle, _press, _footer, _version,
-		_start_button, _options_button, _quit_button, _back_button, _panel_heading, _panel_text,
+		_start_button, _arenas_button, _options_button, _quit_button, _back_button, _panel_heading, _panel_text,
 	]
 	for control: Control in controls:
 		var base := TextBase.new()
