@@ -37,15 +37,11 @@ extends CharacterBody3D
 ##
 ## It uses the same Combatant rules as the player (HP, 2 bars, posture, deathblow, guard): an empty
 ## bar or a posture break stuns it (pale, frozen) until the deathblow window closes.
+## The defense decisions (the plan, the streaks, the riposte timer) are in EnemyDefense (Phase 1.5, item 5b).
 ## Needs the nodes listed in the Step 7 instructions (a missing one is an error on purpose).
 
 enum Phase { IDLE, CHASE, ATTACK, RECOVER, YIELD, STUNNED, FLINCH, POSE, PERILOUS, COUNTERED }
 enum Peril { NONE, THRUST, SWEEP, GRAB }
-
-## The hit streak (see EnemyAIData.hit_streak_limit) resets after this long (s) without a hit.
-const STREAK_RESET_TIME: float = 3.0
-## Random jitter (s) on when a planned deflect presses, so it is not machine-perfect.
-const PRESS_JITTER: float = 0.03
 
 @export var ai: EnemyAIData
 @export var weapon: WeaponData
@@ -125,32 +121,10 @@ var _stun_material: StandardMaterial3D
 var _spawn_position: Vector3 = Vector3.ZERO
 var _spawn_yaw: float = 0.0
 # Defense state.
-var _since_hit: float = 999.0
-var _hit_streak: int = 0
+## The defense decisions (Phase 1.5, item 5b): the plan, the streaks, the riposte timer.
+var _defense: EnemyDefense
 var _flinch_immunity: float = 0.0
 var _burst_armored: bool = false
-var _guarded_streak: int = 0
-var _break_threshold: int = 1
-var _break_armed: bool = false
-var _break_riposte: bool = false
-var _since_guard_reaction: float = 999.0
-var _press_lead: float = 0.0
-var _since_player_attack: float = 999.0
-var _guard_hold: float = 0.0
-var _seen_action: ActionData
-var _seen_time: float = 0.0
-var _threat_active: bool = false
-var _threat_action: ActionData
-var _threat_time: float = 0.0
-var _last_attack_action: ActionData
-var _repeat_count: int = 0
-var _react_timer: float = 0.0
-var _plan_guard: bool = false
-var _plan_deflect: bool = false
-var _plan_repulse: bool = false
-var _pressed: bool = false
-var _riposte_pending: bool = false
-var _riposte_timer: float = 0.0
 var _pose_timer: float = 0.0
 var _pose_cooldown: float = 0.0
 var _base_posture_regen: float = 15.0
@@ -177,6 +151,10 @@ var _crouch: float = 0.0
 var _bobble_droop: float = 0.0
 var _bobble_sign: float = 1.0
 var _visual_dirty: bool = false
+
+
+func _init() -> void:
+	_defense = EnemyDefense.new(self)
 
 
 func _ready() -> void:
@@ -235,7 +213,7 @@ func _ready() -> void:
 		sword_visual.idle_color = Color(ai.blade_color, 1.0)
 	sword_visual.setup(look_weapon, ai.blade_back_length)
 	_think_timer = 0.5
-	_roll_break_threshold()
+	_defense.roll_break_threshold()
 
 
 func _exit_tree() -> void:
@@ -247,14 +225,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if global_position.y < -30.0:
 		_return_to_spawn()
-	_since_hit += delta
-	if _since_hit > STREAK_RESET_TIME:
-		_hit_streak = 0
+	_defense.tick(delta)
 	_flinch_immunity = maxf(_flinch_immunity - delta, 0.0)
-	_since_guard_reaction += delta
-	if _since_guard_reaction > STREAK_RESET_TIME and (_guarded_streak > 0 or _break_armed):
-		_break_armed = false
-		_reset_guard_streak()
 	_pose_cooldown = maxf(_pose_cooldown - delta, 0.0)
 	_peril_cooldown = maxf(_peril_cooldown - delta, 0.0)
 	_head_bounce_time = maxf(_head_bounce_time - delta, 0.0)
@@ -278,8 +250,9 @@ func _physics_process(delta: float) -> void:
 			_stand_down()
 		elif _stood_down:
 			_stand_down_ended()
-	_update_defense(delta, distance, has_target)
-	_update_riposte(delta, has_target)
+	_defense.update(delta, distance, has_target, _player_action_state(has_target))
+	if _defense.tick_riposte(delta, has_target):
+		_start_burst(ai.riposte_burst_count, true)
 	match phase:
 		Phase.IDLE:
 			_decelerate(delta)
@@ -474,14 +447,14 @@ func _start_recover() -> void:
 func _start_flinch() -> void:
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_FLINCH, global_position + Vector3.UP * 1.2)
 	_abort_attack()
-	_riposte_pending = false
+	_defense.riposte_pending = false
 	_phase_timer = ai.hit_stun_time
 	_set_phase(Phase.FLINCH)
 
 
 ## Riposte armor: from the deflect that earned the riposte until its burst ends.
 func _is_armored() -> bool:
-	return ai.riposte_armor and (_riposte_pending or (phase == Phase.ATTACK and _burst_armored))
+	return ai.riposte_armor and (_defense.riposte_pending or (phase == Phase.ATTACK and _burst_armored))
 
 
 ## Would a landed (unguarded) hit flinch it right now? Never during its own hit window.
@@ -514,12 +487,12 @@ func _should_flinch() -> bool:
 func _can_pose() -> bool:
 	return ai.pose_enabled and _pose_cooldown <= 0.0 and not combatant.posture_full \
 			and combatant.posture >= ai.posture_pose_threshold * combatant.max_posture \
-			and _since_player_attack >= ai.pose_idle_time
+			and _defense.since_player_attack >= ai.pose_idle_time
 
 
 func _start_pose() -> void:
 	Sfx.play_at(get_tree(), Sfx.Id.AURA_START, global_position + Vector3.UP * 1.2)
-	_drop_guard()
+	drop_guard()
 	_pose_timer = 0.0
 	combatant.posture_regen = _base_posture_regen * ai.pose_regen_factor
 	aura.visible = true
@@ -545,97 +518,14 @@ func _end_pose() -> void:
 		_set_phase(Phase.CHASE)
 
 
-# --- Defense (guard, deflect, repulse, riposte) --------------------------------------------------
+# --- Defense actuators (the decisions are in EnemyDefense) ----------------------------------------
 
-func _phase_allows_guard(p: Phase) -> bool:
-	return p == Phase.IDLE or p == Phase.CHASE or p == Phase.YIELD
-
-
-## Read the player's current attack. A new threat rolls the plan (guard or not, deflect or not,
-## repulse or not) and a reaction delay; then the plan is carried out while the threat lasts.
-func _update_defense(delta: float, distance: float, has_target: bool) -> void:
-	var idle_before := _since_player_attack
-	var state: ActionState = null
-	var player_node := _player as Player
-	if has_target and player_node != null and player_node.state_machine != null:
-		state = player_node.state_machine.current as ActionState
-	var attack: ActionData = null
-	if state != null:
-		attack = state.action
-	var attacking := attack != null and attack.kind == ActionData.Kind.ATTACK \
-			and attack.damage > 0.0 and state.action_time < attack.active_hit.y
-	if attacking:
-		_since_player_attack = 0.0
-	else:
-		_since_player_attack += delta
-	# A charge holds the player's clock still: that is not a hit coming yet.
-	var frozen := attacking and attack == _seen_action and is_equal_approx(state.action_time, _seen_time)
-	_seen_action = attack if attacking else null
-	_seen_time = state.action_time if attacking else 0.0
-	var threat := attacking and not frozen and distance <= ai.threat_range
-	var time_to_hit: float = INF
-	if threat:
-		time_to_hit = maxf((attack.active_hit.x - state.action_time) / maxf(state.speed_scale, 0.01), 0.0)
-		if not _threat_active or attack != _threat_action or state.action_time < _threat_time:
-			_begin_threat(attack, idle_before)
-		_threat_time = state.action_time
-		_threat_action = attack
-	_threat_active = threat
-	var can_guard := _phase_allows_guard(phase)
-	if threat and _plan_guard and can_guard:
-		_react_timer -= delta
-		# A planned deflect presses on time whatever the reaction delay; only a plain guard waits for it.
-		var pressing := _plan_deflect and not _pressed and time_to_hit <= _press_lead
-		if _react_timer <= 0.0 or pressing:
-			_guard_hold = ai.guard_hold_time
-			_raise_guard(false, false)
-			if pressing:
-				_pressed = true
-				_raise_guard(true, _plan_repulse)
-				if debug_log and OS.is_debug_build():
-					print("[Enemy] deflect press (%s), %.2f s before the hit" % [
-						"repulse" if _plan_repulse else "normal", time_to_hit])
-		return
-	if _guarding:
-		_guard_hold -= delta
-		if _guard_hold <= 0.0 or not can_guard:
-			_drop_guard()
-
-
-func _begin_threat(attack: ActionData, idle_before: float) -> void:
-	if idle_before > 3.0 or attack != _last_attack_action:
-		_repeat_count = 0
-	else:
-		_repeat_count += 1
-	_last_attack_action = attack
-	_pressed = false
-	var pressured := _since_hit <= ai.retry_window
-	# Retry: after a landed hit the guard comes up at once (no reaction delay).
-	_react_timer = 0.0 if pressured else randf_range(ai.reaction_delay.x, ai.reaction_delay.y)
-	_press_lead = maxf(combatant.next_window() * 0.5 + randf_range(-PRESS_JITTER, PRESS_JITTER), 0.0)
-	var guard_chance := ai.pressured_guard_chance if pressured else ai.neutral_guard_chance
-	var deflect_chance := ai.pressured_deflect_chance if pressured else ai.neutral_deflect_chance
-	guard_chance = clampf(guard_chance + ai.repeat_attack_guard_bonus * float(_repeat_count), 0.0, 1.0)
-	_plan_guard = randf() < guard_chance
-	var forced := ai.hit_streak_limit > 0 and _hit_streak >= ai.hit_streak_limit
-	if forced:
-		_plan_guard = true
-	var breaking := _break_armed
-	_break_armed = false
-	_break_riposte = breaking
-	if breaking:
-		_plan_guard = true
-	_plan_deflect = _plan_guard and (breaking or randf() < deflect_chance)
-	_plan_repulse = _plan_deflect and randf() < ai.repulse_chance
-	if debug_log and OS.is_debug_build():
-		print("[Enemy] threat (%s, repeat %d, streak %d%s): guard=%s deflect=%s repulse=%s react %.2f s" % [
-			"pressured" if pressured else "neutral", _repeat_count, _hit_streak,
-			(", forced guard" if forced else "") + (", BREAK-OUT" if breaking else ""),
-			_plan_guard, _plan_deflect, _plan_repulse, _react_timer])
+func is_guarding() -> bool:
+	return _guarding
 
 
 ## Raise the guard (stance); with `press`, also open a deflect window (a repulse window if asked).
-func _raise_guard(press: bool, repulse: bool) -> void:
+func raise_guard(press: bool, repulse: bool) -> void:
 	var fresh := not _guarding
 	_guarding = true
 	combatant.guarding = true
@@ -647,11 +537,11 @@ func _raise_guard(press: bool, repulse: bool) -> void:
 			sword_visual.play_guard_press()
 
 
-func _drop_guard() -> void:
+func drop_guard() -> void:
 	if not _guarding:
 		return
 	_guarding = false
-	_guard_hold = 0.0
+	_defense.guard_hold = 0.0
 	combatant.guarding = false
 	sword_visual.end_combo()
 
@@ -660,54 +550,21 @@ func _guard_facing() -> Vector3:
 	return -global_transform.basis.z
 
 
-func _update_riposte(delta: float, has_target: bool) -> void:
-	if not _riposte_pending:
-		return
-	if not has_target or not _phase_allows_guard(phase):
-		_riposte_pending = false
-		return
-	_riposte_timer -= delta
-	if _riposte_timer <= 0.0:
-		_riposte_pending = false
-		if debug_log and OS.is_debug_build():
-			print("[Enemy] riposte")
-		_start_burst(ai.riposte_burst_count, true)
-
-
-## Pressure break-out: how many of the player's hits in a row it takes before the next defense is
-## forced (mostly pressure_break_hits, sometimes a random lower number).
-func _roll_break_threshold() -> void:
-	var hits := ai.pressure_break_hits
-	if hits <= 1 or randf() >= ai.pressure_break_early_chance:
-		_break_threshold = maxi(hits, 1)
-	else:
-		_break_threshold = randi_range(1, hits - 1)
-
-
-func _reset_guard_streak() -> void:
-	_guarded_streak = 0
-	_roll_break_threshold()
-
-
-func _count_guarded_hit() -> void:
-	_since_guard_reaction = 0.0
-	if ai.pressure_break_hits <= 0:
-		return
-	_guarded_streak += 1
-	if _guarded_streak >= _break_threshold:
-		_break_armed = true
-		if debug_log and OS.is_debug_build():
-			print("[Enemy] pressure: %d guarded hits in a row, next defense is a break-out" % _guarded_streak)
-		_reset_guard_streak()
+## The player's current action state (null when there is no target), for EnemyDefense.
+func _player_action_state(has_target: bool) -> ActionState:
+	var player_node := _player as Player
+	if has_target and player_node != null and player_node.state_machine != null:
+		return player_node.state_machine.current as ActionState
+	return null
 
 
 # --- Attacks (the weapon's ground combo) --------------------------------------------------------
 
 func _start_burst(counts: Vector2i, armored: bool = false) -> void:
-	_drop_guard()
-	_riposte_pending = false
+	drop_guard()
+	_defense.riposte_pending = false
 	_burst_armored = armored
-	_reset_guard_streak()
+	_defense.reset_guard_streak()
 	_burst_total = clampi(randi_range(counts.x, counts.y), 1, weapon.combo.size())
 	_set_phase(Phase.ATTACK)
 	_begin_attack(0)
@@ -885,9 +742,9 @@ func _peril_repeated(kind: int) -> bool:
 
 
 func _start_perilous(kind: int) -> void:
-	_drop_guard()
-	_riposte_pending = false
-	_reset_guard_streak()
+	drop_guard()
+	_defense.riposte_pending = false
+	_defense.reset_guard_streak()
 	_peril_kind = kind
 	_peril_time = 0.0
 	_peril_history.append(kind)
@@ -1070,8 +927,8 @@ func _stand_down() -> void:
 		return
 	_stood_down = true
 	_abort_attack()
-	_drop_guard()
-	_riposte_pending = false
+	drop_guard()
+	_defense.riposte_pending = false
 	_end_pose()
 	if phase != Phase.FLINCH and phase != Phase.COUNTERED and phase != Phase.STUNNED:
 		_set_phase(Phase.IDLE)
@@ -1130,8 +987,8 @@ func _set_phase(new_phase: Phase) -> void:
 	if debug_log and OS.is_debug_build() and new_phase != phase:
 		print("[Enemy] %s -> %s" % [Phase.keys()[phase], Phase.keys()[new_phase]])
 	phase = new_phase
-	if not _phase_allows_guard(new_phase):
-		_drop_guard()
+	if not EnemyDefense.phase_allows_guard(new_phase):
+		drop_guard()
 
 
 func _return_to_spawn() -> void:
@@ -1144,12 +1001,10 @@ func _return_to_spawn() -> void:
 
 ## An unguarded hit landed: the recoil wobble always, a flinch if this moment allows it.
 func _on_damaged(hit: HitData, _amount: float) -> void:
-	_since_hit = 0.0
-	_hit_streak += 1
+	_defense.on_unguarded_hit()
 	_recoil = 1.0
 	_recoil_scale = 1.0
 	_recoil_direction = hit.direction
-	_reset_guard_streak()
 	var flinch := _should_flinch()
 	if phase == Phase.POSE:
 		_end_pose()
@@ -1163,17 +1018,12 @@ func _on_guarded(hit: HitData, _chip: float) -> void:
 
 func _on_deflected(hit: HitData) -> void:
 	_guard_reaction(hit, true)
-	if _break_riposte or randf() < ai.riposte_chance:
-		_riposte_pending = true
-		_riposte_timer = ai.riposte_delay
-	_break_riposte = false
+	_defense.on_deflected()
 
 
 ## A lighter wobble, the blade flick and flash (as the player's guard), and the guard stays up a bit.
 func _guard_reaction(hit: HitData, deflect: bool) -> void:
-	_hit_streak = 0
-	_count_guarded_hit()
-	_guard_hold = maxf(_guard_hold, ai.guard_hold_time)
+	_defense.on_guard_reaction()
 	_recoil = 1.0
 	_recoil_scale = deflect_recoil_scale if deflect else guard_recoil_scale
 	_recoil_direction = hit.direction
@@ -1187,8 +1037,8 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 ## Stunned (empty bar or posture break): drop any swing, guard, and pose, and turn pale.
 func _on_deathblow_opened() -> void:
 	_abort_attack()
-	_drop_guard()
-	_riposte_pending = false
+	drop_guard()
+	_defense.riposte_pending = false
 	_end_pose()
 	_set_phase(Phase.STUNNED)
 	body.material_override = _stun_material
@@ -1222,8 +1072,8 @@ func _on_died() -> void:
 		# Step 11d: the VictoryScreen (group "victory_screen") shows the boss-slain banner.
 		get_tree().call_group(Groups.VICTORY_SCREEN, "show_victory", ai.victory_kanji, ai.victory_text)
 	_abort_attack()
-	_drop_guard()
-	_riposte_pending = false
+	drop_guard()
+	_defense.riposte_pending = false
 	_end_pose()
 	_end_stun_bobble()
 	body.material_override = _base_material
@@ -1236,14 +1086,9 @@ func _on_died() -> void:
 	visual.visible = true
 	bar.visible = true
 	body_shape.set_deferred("disabled", false)
-	_since_hit = 999.0
-	_hit_streak = 0
+	_defense.reset_for_respawn()
 	_flinch_immunity = 0.0
-	_break_armed = false
-	_break_riposte = false
 	_burst_armored = false
-	_reset_guard_streak()
-	_since_player_attack = 999.0
 	_peril_cooldown = 0.0
 	_head_bounce_time = 0.0
 	_peril_history.clear()
