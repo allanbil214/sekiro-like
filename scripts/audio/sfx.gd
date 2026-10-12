@@ -52,6 +52,11 @@ static func play(tree: SceneTree, id: Id, volume_offset_db: float = 0.0, pitch_m
 	_start(tree, id, false, Vector3.ZERO, volume_offset_db, pitch_multiplier)
 
 
+## Play a menu sound that keeps playing while the game is paused (the pause menu).
+static func play_ui(tree: SceneTree, id: Id, volume_offset_db: float = 0.0) -> void:
+	_start(tree, id, false, Vector3.ZERO, volume_offset_db, 1.0, true)
+
+
 ## Play a sound at a point in the world.
 static func play_at(tree: SceneTree, id: Id, point: Vector3, volume_offset_db: float = 0.0,
 		pitch_multiplier: float = 1.0) -> void:
@@ -101,7 +106,7 @@ static func _ensure_loaded() -> void:
 
 
 static func _start(tree: SceneTree, id: Id, positional: bool, point: Vector3, volume_offset: float,
-		pitch_multiplier: float) -> void:
+		pitch_multiplier: float, always: bool = false) -> void:
 	if tree == null:
 		return
 	_ensure_loaded()
@@ -131,6 +136,7 @@ static func _start(tree: SceneTree, id: Id, positional: bool, point: Vector3, vo
 	var volume := slot.volume_db + _data.master_volume_db + volume_offset
 	var pitch := maxf(randf_range(slot.pitch_min, slot.pitch_max) * pitch_multiplier, 0.05)
 	var voice := _acquire(scene, positional)
+	voice.process_mode = Node.PROCESS_MODE_ALWAYS if always else Node.PROCESS_MODE_INHERIT
 	voice.set_meta(&"busy", true)
 	voice.set_meta(&"group", slot.group)
 	if positional:

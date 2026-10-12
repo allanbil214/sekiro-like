@@ -122,6 +122,11 @@ func _make_label(font: Font) -> Label:
 	return label
 
 
+## True while the boss-slain screen is showing (the pause menu does not open then).
+func is_active() -> bool:
+	return _active
+
+
 ## Called by a boss Enemy when it dies of its final deathblow. `kanji` is stacked one character per line.
 func show_victory(kanji: String, word: String) -> void:
 	if _player.combatant.dead:

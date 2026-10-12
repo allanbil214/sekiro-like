@@ -16,7 +16,7 @@
 
 | # | Item | Kind | Status |
 |---|---|---|---|
-| 1 | Main menu | feature | [ ] |
+| 1 | Main menu | feature | [x] done and tested 2026-10-12 |
 | 2 | Pause menu | feature | [ ] |
 | 3 | Arena chooser, fall zone and three base arenas (3a fall zone, 3b arena data and chooser, 3c the arenas) | feature | [ ] |
 | 4 | Migrate the in-game UI to scenes (the death and victory screens first; the HUD waits for real art) | refactor | [ ] |
@@ -38,8 +38,14 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Feel:** a fade in from black at launch and a fade out when START is pressed; a soft brush-stroke highlight on the selected row (a gradient texture, no image file); keyboard, mouse and gamepad (the built-in `ui_*` actions: up and down to move, accept to confirm, cancel to go back); the layout scales with the window height like the death screen.
 - **Flow:** the menu shows the mouse cursor; the arena's camera rig captures it when the arena loads. Dying still reloads the current arena only.
 - **Built as scenes:** `main_menu.tscn` (Control nodes and containers) with a script for the behavior, using the shared `ui_theme.tres` made here. Claude writes the scene as text, so a small property may need a fix in the editor; the layout and look are then tuned there.
-- **No sound yet:** the sound table has no menu sounds; adding move and confirm sounds is a sound extra (needs wavs and two `Sfx` ids).
-- **Full check still to do** at build time: the exact files, the editor step (the main scene setting) and the zip name.
+- **Changed while building (user, 2026-10-12):**
+  - A Sekiro-style **"PRESS ANY BUTTON"** title screen comes before the entries (any key, mouse button or gamepad button).
+  - **Menu sounds** were added after all: `Sfx.Id.MENU_MOVE`, `MENU_OK`, `MENU_BACK` (the existing `audio/menu/` wavs).
+  - **Menu music:** `audio/music/main_menu.ogg` (OGG, not the 25 MB wav; loop ticked in the Import dock), an `AudioStreamPlayer` named `Music` in the scene, faded in with the title and out on START or QUIT.
+  - **Fonts:** system fonts only (Palatino Linotype, Book Antiqua, Georgia; Yu Mincho for the kanji). A bundled free-license pair is a later polish (Cinzel for Latin, Zen Antique or Shippori Mincho for the kanji).
+  - **Highlight:** a radial gradient that fades on all four sides.
+  - **QUIT** fades out and then closes.
+- **Built:** files `scenes/ui/main_menu.tscn`, `scripts/ui/main_menu.gd`, `resources/ui_theme.tres`, plus the three menu ids in `scripts/audio/sfx.gd` and `audio/sfx_data.tres`. Editor steps: the main scene setting, the project version `0.1`, the music stream on the `Music` node.
 
 ### 2. Pause menu
 - **What:** a pause menu with Resume, Options (the same empty panel) and Quit to Title. Item 3 adds a debug-only "Change arena" entry.
@@ -78,6 +84,6 @@ The open entries stay in section 13 of `docs/handoff.md`, which remains the sing
 
 - Saves, a real map, quests and the game flow around them (START becomes NEW GAME when they exist).
 - An Options screen with real settings (volume, sensitivity, key remapping).
-- Menu sounds and music.
+- Music in the arenas and any sound work beyond the main menu's.
 - A bundled title font and a drawn logo.
 - Any change to the combat tuning or to `Enemy`'s own behavior.
