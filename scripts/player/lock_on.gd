@@ -130,7 +130,7 @@ func release() -> void:
 
 func get_debug_text() -> String:
 	var in_range := 0
-	for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+	for node: Node in get_tree().get_nodes_in_group(Groups.ENEMY):
 		var enemy := node as Node3D
 		if enemy != null and _is_valid_target(enemy) and _flat_distance(enemy) <= acquire_range:
 			in_range += 1
@@ -232,7 +232,7 @@ func _set_target(node: Node3D) -> void:
 ## Alive enemies in range with a clear line to them.
 func _candidates() -> Array[Node3D]:
 	var found: Array[Node3D] = []
-	for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+	for node: Node in get_tree().get_nodes_in_group(Groups.ENEMY):
 		var enemy := node as Node3D
 		if enemy == null or not _is_valid_target(enemy):
 			continue
@@ -316,7 +316,7 @@ func _has_line_of_sight(node: Node3D) -> bool:
 	var from := _player.global_position + Vector3.UP * los_eye_height
 	var query := PhysicsRayQueryParameters3D.create(from, _point(node), Layers.WORLD)
 	var skip: Array[RID] = [_player.get_rid()]
-	for other: Node in get_tree().get_nodes_in_group(&"enemy"):
+	for other: Node in get_tree().get_nodes_in_group(Groups.ENEMY):
 		var body := other as CollisionObject3D
 		if body != null:
 			skip.append(body.get_rid())

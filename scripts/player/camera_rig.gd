@@ -62,7 +62,7 @@ var _noise: FastNoiseLite
 
 func _ready() -> void:
 	top_level = true
-	add_to_group("camera_rig")
+	add_to_group(Groups.CAMERA_RIG)
 	_noise = FastNoiseLite.new()
 	_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	_noise.seed = randi()

@@ -82,7 +82,7 @@ var _stun_material: StandardMaterial3D
 
 
 func _ready() -> void:
-	add_to_group(&"enemy")
+	add_to_group(Groups.ENEMY)
 	combatant.health_bars = health_bars
 	combatant.boss = boss
 	combatant.deathblow_window = deathblow_window
@@ -122,7 +122,7 @@ func _physics_process(delta: float) -> void:
 		# Stunned: no swings, no turning, until the window closes.
 		return
 	if _player == null:
-		_player = get_tree().get_first_node_in_group("player") as Node3D
+		_player = get_tree().get_first_node_in_group(Groups.PLAYER) as Node3D
 	if _player == null:
 		return
 	# Step 10: stand down while the player is dead (the death prompt).

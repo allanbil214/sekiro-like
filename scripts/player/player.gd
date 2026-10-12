@@ -292,7 +292,7 @@ func _ready() -> void:
 	_headroom_shape = CapsuleShape3D.new()
 	_headroom_shape.radius = 0.38
 	_headroom_shape.height = stand_height - 0.07
-	add_to_group("player")
+	add_to_group(Groups.PLAYER)
 	heal_charges = max_heal_charges
 	resurrections_left = max_resurrections
 	_visual_rest = visual.position
@@ -660,7 +660,7 @@ func _update_personal_space(delta: float) -> void:
 			or current is LedgeClimbState:
 		return
 	var push := Vector3.ZERO
-	for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+	for node: Node in get_tree().get_nodes_in_group(Groups.ENEMY):
 		var other := node as Node3D
 		if other == null or other == self:
 			continue
@@ -864,7 +864,7 @@ func _update_enemy_head() -> void:
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
 		var body := collision.get_collider() as Node3D
-		if body == null or not body.is_in_group(&"enemy") or collision.get_normal().y < 0.35:
+		if body == null or not body.is_in_group(Groups.ENEMY) or collision.get_normal().y < 0.35:
 			continue
 		if global_position.y < body.global_position.y + head_min_height:
 			continue
@@ -898,7 +898,7 @@ func find_deathblow_target() -> Node3D:
 	var best_distance := deathblow_range
 	var facing := get_facing_direction()
 	facing.y = 0.0
-	for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+	for node: Node in get_tree().get_nodes_in_group(Groups.ENEMY):
 		var enemy := node as Node3D
 		var enemy_combatant := Combatant.of(enemy)
 		if enemy == null or enemy_combatant == null or not enemy_combatant.deathblow_open:

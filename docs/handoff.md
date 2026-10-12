@@ -10,6 +10,7 @@
 > | `docs/work-agreements.md` | always |
 > | `docs/step3-combat-spec.md` | when working on Step 3 (attacks, sheathing) |
 > | `docs/design-later-steps.md` | when starting Step 4 or later (hitboxes, guard, posture, enemy, clash, lock-on, heal) |
+| `docs/phase-1-5-plan.md` | when working on Phase 1.5 (the cleanup and hardening items between Phase 1 and Phase 2) |
 > | `docs/archive/build-log.md` | **never** (history; Claude only appends to it) |
 >
 > Plus a fresh snapshot (section 12). Start a new chat per phase.
@@ -200,6 +201,8 @@ Moved. The numbers for **built** features live in the Player and SwordVisual exp
 
 12. **Cleanup refactor** (the last Phase 1 step; agreed 2026-10-12; design in `docs/design-later-steps.md`, 3.13). Four parts, in this order: **12A** remove the "create the node in code" fallbacks, **12B** state-name constants (`StateName`), **12C** wall and ledge sensing out of `player.gd` into `LedgeSensor`, **12D** a shared action-clock core that is not typed to `Player`, so the enemy can reuse it. Pure refactor: no gameplay change, no tuning. All four parts are built and tested (2026-10-12), so **Step 12 is done**.
 
+13. **Phase 1.5: hardening and cleanup** (between Phase 1 and Phase 2; agreed 2026-10-12; plan, order and rules in `docs/phase-1-5-plan.md`). Nine items, built one at a time, each tested before the next. Items 4 and 7 (the `Groups` constants) are done.
+
 *Note: traversal (2b-2d) comes before combat by the user's choice, which delays the combat loop. Move it later if scope becomes a problem.*
 
 ---
@@ -253,7 +256,11 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
   - [x] 12D. `ActionRunner` (`scripts/combat/action_runner.gd`, a `RefCounted` that knows neither `Player` nor `Enemy`): the action clock (`time`), `hit_is_active()`, `open_hit()` / `end_hit()` (the hitbox swing), `make_hit()` (the `HitData` fields copied from the `ActionData`), and the movement fade (`in_move_window()`, `move_fade_factor()`). The action is passed on every call because the player's states swap `action` mid-state. `ActionState.runner` and `Enemy._runner` own one each; `ActionState.action_time` and `Enemy._action_time` are properties that forward to the runner, so the rest of the code reads as before. What differs stays with the owner: sounds, `_active_speed_factor` vs `_attack_speed`, the perilous and grab overrides, chain timing. The states were not retyped away from `Player` (the enemy does not use the state machine, so it would gain nothing) **(done and tested by the user 2026-10-12: combo bursts, perilous thrust, sweep and grab, guard and deflect, own attacks, deathblow)**
   - The 3a-1 leftovers (cancels, lunge, ledge stop), 11c (camera shake) and 11g (crouch vignette) were also marked tested with Step 12 (the user had tested them, 2026-10-12).
 
-**Current state:** Steps 1 to 7, 9, and 10 are built and tested (Step 8, the clash, was dropped), plus the 2026-10-09 follow-ups (the sweep duck and the snappy jump; see the bullets after 7d), plus the 2026-10-08 follow-ups (attack phase speeds, the enemy bar as one entity with a row of life dots, the guard break; see the bullets after 7d). **7c-2 (the grab) is built and tested, so the whole of Step 7 is done.** The enemy guards, deflects, ripostes, poses, and uses perilous thrust, sweep, and grab; the `Dummy` is still a test target. You can lock onto the enemy or the dummy and switch between them. **Step 11 (polish) is under way: 11d (the boss-slain screen, the heal arm, the death-reload fix), 11c (camera shake and the `Fx` helper), and 11b (sparks and effects, the blood jet) are done. 11e (shockwaves), 11f (the swing trail), and 11g (the crouch vignette) are done. 11a (sound) is done too, so Step 11 and Phase 1 are complete; **Step 12, the cleanup refactor (12A to 12D), is done and tested (2026-10-12), so Phase 1 is complete.** What is left is the Phase 2 backlog (section 13).** Start a **new chat** for each phase and paste the files listed at the top of this handoff, plus a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
+- [ ] 13. Phase 1.5, hardening and cleanup (see `docs/phase-1-5-plan.md`; items numbered as in that file):
+  - [x] 4 and 7. `Groups` constants (`scripts/combat/groups.gd`: `PLAYER`, `ENEMY`, `DANGER_SYMBOL`, `CAMERA_RIG`, `VICTORY_SCREEN`) replace the group-name strings: 17 places in `player.gd`, `enemy.gd`, `dummy.gd`, `lock_on.gd`, `camera_rig.gd`, `danger_symbol.gd`, `victory_screen.gd`, `fx.gd` **(done and tested by the user 2026-10-12)**
+  - [ ] 3 debug prints in debug builds only, 2 typed trail points, 1 shared list of living enemies, 6 typed data instead of name strings, 9 pooling for `Fx` particles, 5a to 5c splitting `sword_visual.gd`, `enemy.gd`, `player.gd` (8 is a deferral to Phase 2, nothing to build)
+
+**Current state:** Steps 1 to 7, 9, and 10 are built and tested (Step 8, the clash, was dropped), plus the 2026-10-09 follow-ups (the sweep duck and the snappy jump; see the bullets after 7d), plus the 2026-10-08 follow-ups (attack phase speeds, the enemy bar as one entity with a row of life dots, the guard break; see the bullets after 7d). **7c-2 (the grab) is built and tested, so the whole of Step 7 is done.** The enemy guards, deflects, ripostes, poses, and uses perilous thrust, sweep, and grab; the `Dummy` is still a test target. You can lock onto the enemy or the dummy and switch between them. **Step 11 (polish) is under way: 11d (the boss-slain screen, the heal arm, the death-reload fix), 11c (camera shake and the `Fx` helper), and 11b (sparks and effects, the blood jet) are done. 11e (shockwaves), 11f (the swing trail), and 11g (the crouch vignette) are done. 11a (sound) is done too, so Step 11 and Phase 1 are complete; **Step 12, the cleanup refactor (12A to 12D), is done and tested (2026-10-12), so Phase 1 is complete.** What is left is **Phase 1.5** (`docs/phase-1-5-plan.md`; items 4 and 7 are done) and then the Phase 2 backlog (section 13).** Start a **new chat** for each phase and paste the files listed at the top of this handoff, plus a fresh snapshot (`python pack_for_claude.py`). Send a full check before building each phase.
 
 ### What the finished steps built (details: `docs/archive/build-log.md`; each script's header comment describes its behavior)
 
@@ -298,6 +305,7 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - Input checked by **action name** only.
 - State names come from the `StateName` constants (`StateName.AIR`), never typed as strings. A state looks up another with `machine.get_state(StateName.ATTACK) as AttackState`.
 - Wall and ledge sensing goes through `player.ledge_sensor` (`LedgeSensor`), not through `Player`.
+- Group names come from the `Groups` constants (`Groups.ENEMY`), never typed as strings (a typo in a string finds nothing and fails silently).
 - Running an `ActionData` (clock, hit window, swing, hit data, movement fade) goes through `ActionRunner`, for the player and the enemy alike. A new enemy type reuses it.
 - Timings in **seconds**, never frames.
 - **Never scale a `CollisionShape3D` node.** Set sizes on the shape resource itself (radius, height, size).

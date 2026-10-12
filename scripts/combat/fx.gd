@@ -55,7 +55,7 @@ static func play(tree: SceneTree, kind: Kind, point: Vector3 = Vector3.ZERO, dir
 		return
 	var trauma: float = TRAUMA.get(kind, 0.0)
 	if trauma > 0.0:
-		tree.call_group("camera_rig", "add_trauma", trauma, direction)
+		tree.call_group(Groups.CAMERA_RIG, "add_trauma", trauma, direction)
 	_sound(tree, kind, point)
 	var scene := tree.current_scene
 	if scene != null:

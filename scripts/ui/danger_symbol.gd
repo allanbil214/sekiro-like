@@ -17,7 +17,7 @@ var _pop: float = 0.0
 
 
 func _ready() -> void:
-	add_to_group(&"danger_symbol")
+	add_to_group(Groups.DANGER_SYMBOL)
 	text = "!"
 	billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	no_depth_test = true

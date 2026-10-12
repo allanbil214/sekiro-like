@@ -82,7 +82,7 @@ var _slow: bool = false
 
 func _ready() -> void:
 	layer = 19
-	add_to_group("victory_screen")
+	add_to_group(Groups.VICTORY_SCREEN)
 	_player = get_parent() as Player
 	_root = Control.new()
 	_root.name = "Root"

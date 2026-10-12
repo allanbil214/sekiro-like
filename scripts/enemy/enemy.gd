@@ -188,7 +188,7 @@ func _ready() -> void:
 		push_error("Enemy: the SwordVisual has no Hitbox assigned (set its Hitbox export in the Inspector).")
 		set_physics_process(false)
 		return
-	add_to_group(&"enemy")
+	add_to_group(Groups.ENEMY)
 	_gravity = float(ProjectSettings.get_setting("physics/3d/default_gravity")) * gravity_multiplier
 	_spawn_position = global_position
 	_spawn_yaw = rotation.y
@@ -1037,7 +1037,7 @@ func _show_symbol() -> void:
 	if _symbol_shown:
 		return
 	if _symbol == null or not is_instance_valid(_symbol):
-		_symbol = get_tree().get_first_node_in_group(&"danger_symbol") as DangerSymbol
+		_symbol = get_tree().get_first_node_in_group(Groups.DANGER_SYMBOL) as DangerSymbol
 	if _symbol == null:
 		if not _symbol_missing_warned:
 			_symbol_missing_warned = true
@@ -1082,7 +1082,7 @@ func _stand_down_ended() -> void:
 
 func _find_player() -> void:
 	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player") as Node3D
+		_player = get_tree().get_first_node_in_group(Groups.PLAYER) as Node3D
 
 
 func _player_dead() -> bool:
@@ -1215,7 +1215,7 @@ func _on_died() -> void:
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_DEATH, global_position + Vector3.UP * 1.0)
 	if boss and ai != null:
 		# Step 11d: the VictoryScreen (group "victory_screen") shows the boss-slain banner.
-		get_tree().call_group("victory_screen", "show_victory", ai.victory_kanji, ai.victory_text)
+		get_tree().call_group(Groups.VICTORY_SCREEN, "show_victory", ai.victory_kanji, ai.victory_text)
 	_abort_attack()
 	_drop_guard()
 	_riposte_pending = false
