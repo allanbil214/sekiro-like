@@ -191,7 +191,7 @@ func tick_guard(delta: float, guard_up: bool, acting: bool) -> void:
 func _reset_spam(reason: String) -> void:
 	if press_count <= 0 and shrink_steps <= 0:
 		return
-	if debug_log:
+	if debug_log and OS.is_debug_build():
 		print("[Guard] spam run reset by %s (was %d presses, %d steps)" % [reason, press_count, shrink_steps])
 	press_count = 0
 	shrink_steps = 0
@@ -226,7 +226,7 @@ func press_guard(repulse: bool = false) -> float:
 	current_window = window
 	deflect_left = window
 	_spam_idle = 0.0
-	if debug_log:
+	if debug_log and OS.is_debug_build():
 		print("[Guard] press #%d: window %.2f s" % [press_count, window])
 	return window
 
@@ -238,7 +238,7 @@ func take_hit(hit: HitData) -> float:
 	var outcome := _resolve(hit)
 	hit.outcome = outcome
 	last_outcome = outcome
-	if debug_log and guarding:
+	if debug_log and OS.is_debug_build() and guarding:
 		print("[Guard] hit -> %s (window left %.2f s)" % [["HIT", "GUARD", "DEFLECT"][outcome], deflect_left])
 	if outcome == HitData.Outcome.DEFLECT:
 		_reset_spam("a deflect")

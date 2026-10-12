@@ -16,7 +16,7 @@
 |---|---|---|---|
 | 1 | Shared list of living enemies (no group search per frame) | performance | [ ] |
 | 2 | Typed trail points in `hitbox.gd` | performance, safety | [ ] |
-| 3 | Debug prints only in debug builds | tidy | [ ] |
+| 3 | Debug prints (and the hitbox debug draw) only in debug builds | tidy | [x] (done 2026-10-12) |
 | 4 | Group names as constants | tidy, safety | [x] (done 2026-10-12) |
 | 5 | Split the big files: 5a `sword_visual.gd`, 5b `enemy.gd`, 5c `player.gd` | structure | [ ] |
 | 6 | Typed data instead of name strings | safety | [ ] |
@@ -24,7 +24,7 @@
 | 8 | Delay bigger refactors to Phase 2 | decision | not built |
 | 9 | Object pooling for `Fx` particles | performance | [ ] |
 
-Suggested order: 4 (with 7, **done**), 3, 2, 1, 6, 9, then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
+Suggested order: 4 (with 7, **done**), 3 (**done**), 2, 1, 6, 9, then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
 
 ## 3. The items
 
@@ -43,6 +43,7 @@ Suggested order: 4 (with 7, **done**), 3, 2, 1, 6, 9, then the big splits 5a, 5b
 ### 3. Debug prints only in debug builds
 - **What:** the `print(...)` calls in `combatant.gd` and `enemy.gd` look to be behind debug flags already (checked while building). Add a guard on `OS.is_debug_build()` so a release build prints nothing.
 - **Risk:** very low.
+- **Done 2026-10-12:** the 11 prints (3 in `combatant.gd`, 8 in `enemy.gd`) now check `debug_log and OS.is_debug_build()`; the `push_error` and `push_warning` calls stay in every build. `Hitbox.debug_draw` was included at the user's request: the box shows only when it is ticked and the build is a debug build (editor and debug exports look the same as before). See the build log, "Phase 1.5, item 3".
 
 ### 4. Group names as constants
 - **What:** group names are typed as strings, mixed between `"player"` and `&"enemy"` (`player`, `enemy`, `danger_symbol`, `camera_rig`, `victory_screen`). Constants replace them, like `StateName` (12B). See item 7 for where they live.

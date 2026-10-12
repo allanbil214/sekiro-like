@@ -905,3 +905,9 @@ Done and tested by the user (a parse error in `death_screen.gd` was fixed on the
 **Files.** New: `scripts/combat/groups.gd`. Edited (17 places): `player.gd` (4), `enemy.gd` (4), `dummy.gd` (2), `lock_on.gd` (3), `camera_rig.gd`, `danger_symbol.gd`, `victory_screen.gd`, `fx.gd` (1 each). The scenes had no group entries, so no scene or editor change.
 **Rules not obvious from the code.** `&"player"` in `LockOn._lost_reason()` is a reason code for why the lock ended, not a group, and was left alone. The per-frame `get_nodes_in_group(Groups.ENEMY)` searches stay; replacing them with a shared list is item 1.
 **Tested by the user (2026-10-12):** no change in behavior. **Not done.** The other Phase 1.5 items. **Noticed, not fixed.** Nothing.
+
+### Phase 1.5, item 3: debug output only in debug builds (2026-10-12)
+**Decisions.** The 11 debug `print(...)` calls (3 in `combatant.gd`, 8 in `enemy.gd`) were already behind the `debug_log` export (off by default). Each check is now `debug_log and OS.is_debug_build()` (the string formatting is still skipped when it fails), so a release export prints nothing even if a flag was left ticked. At the user's request the item also covers `Hitbox.debug_draw` (default true): `_debug_mesh.visible = debug_draw and OS.is_debug_build()`, so a release export never draws the hit box; the editor and debug exports look as before.
+**Files.** Edited: `combatant.gd`, `enemy.gd`, `hitbox.gd` (the `debug_draw` comment says it is debug builds only).
+**Rules not obvious from the code.** `push_error` and `push_warning` (in `sfx.gd`, `enemy.gd`, `state_machine.gd`) report real setup mistakes and stay in every build. `DebugOverlay` was not touched (it has its own `show_debug_text`, off by default).
+**Tested by the user (2026-10-12):** no change in the editor. **Not done.** A release export was not tried. **Noticed, not fixed.** Nothing.

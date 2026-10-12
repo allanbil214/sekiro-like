@@ -17,7 +17,7 @@ signal hit_landed(hurtbox: Hurtbox, hit: HitData)
 ## The box is tested at least every this many meters of travel (smaller = safer, slower).
 @export var sweep_step_distance: float = 0.15
 @export var max_sweep_steps: int = 12
-## Draw the box while the hit window is open.
+## Draw the box while the hit window is open (debug builds only; a release export never draws it).
 @export var debug_draw: bool = true
 
 @export_group("Swing trail (Step 11f)")
@@ -110,7 +110,7 @@ func begin_swing(length_scale: float, show_extension: bool = false) -> void:
 	_active = true
 	_has_last = false
 	_trail_new_strip = true
-	_debug_mesh.visible = debug_draw
+	_debug_mesh.visible = debug_draw and OS.is_debug_build()
 	var extra := _length * (length_scale - 1.0)
 	var glow := show_extension and extra > 0.01
 	for beam: MeshInstance3D in [_glow_halo, _glow_core]:

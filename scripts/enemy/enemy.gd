@@ -587,7 +587,7 @@ func _update_defense(delta: float, distance: float, has_target: bool) -> void:
 			if pressing:
 				_pressed = true
 				_raise_guard(true, _plan_repulse)
-				if debug_log:
+				if debug_log and OS.is_debug_build():
 					print("[Enemy] deflect press (%s), %.2f s before the hit" % [
 						"repulse" if _plan_repulse else "normal", time_to_hit])
 		return
@@ -622,7 +622,7 @@ func _begin_threat(attack: ActionData, idle_before: float) -> void:
 		_plan_guard = true
 	_plan_deflect = _plan_guard and (breaking or randf() < deflect_chance)
 	_plan_repulse = _plan_deflect and randf() < ai.repulse_chance
-	if debug_log:
+	if debug_log and OS.is_debug_build():
 		print("[Enemy] threat (%s, repeat %d, streak %d%s): guard=%s deflect=%s repulse=%s react %.2f s" % [
 			"pressured" if pressured else "neutral", _repeat_count, _hit_streak,
 			(", forced guard" if forced else "") + (", BREAK-OUT" if breaking else ""),
@@ -664,7 +664,7 @@ func _update_riposte(delta: float, has_target: bool) -> void:
 	_riposte_timer -= delta
 	if _riposte_timer <= 0.0:
 		_riposte_pending = false
-		if debug_log:
+		if debug_log and OS.is_debug_build():
 			print("[Enemy] riposte")
 		_start_burst(ai.riposte_burst_count, true)
 
@@ -691,7 +691,7 @@ func _count_guarded_hit() -> void:
 	_guarded_streak += 1
 	if _guarded_streak >= _break_threshold:
 		_break_armed = true
-		if debug_log:
+		if debug_log and OS.is_debug_build():
 			print("[Enemy] pressure: %d guarded hits in a row, next defense is a break-out" % _guarded_streak)
 		_reset_guard_streak()
 
@@ -718,7 +718,7 @@ func _begin_attack(index: int) -> void:
 	var to_player := _flat_to_player()
 	_lunge_dir = to_player.normalized() if to_player.length_squared() > 0.0001 else -global_transform.basis.z
 	sword_visual.begin_action(_action)
-	if debug_log:
+	if debug_log and OS.is_debug_build():
 		print("[Enemy] attack %d of %d" % [index + 1, _burst_total])
 
 
@@ -889,7 +889,7 @@ func _start_perilous(kind: int) -> void:
 	if _peril_history.size() > 4:
 		_peril_history.pop_front()
 	_set_phase(Phase.PERILOUS)
-	if debug_log:
+	if debug_log and OS.is_debug_build():
 		print("[Enemy] perilous %s" % Peril.keys()[kind])
 	if kind == Peril.THRUST:
 		# The telegraph is the player's own charge: the pull back and the orange glow.
@@ -988,7 +988,7 @@ func _on_posture_broken() -> void:
 
 func _countered(posture: float, stun: float, label: String, jump_over: bool) -> void:
 	Fx.play(get_tree(), Fx.Kind.HEAD_STOMP if jump_over else Fx.Kind.MIKIRI, global_position + Vector3.UP * (1.8 if jump_over else 0.05))
-	if debug_log:
+	if debug_log and OS.is_debug_build():
 		print("[Enemy] %s! +%.0f posture, stun %.1f s" % [label, posture, stun])
 	_abort_attack()
 	sword_visual.end_combo()
@@ -1122,7 +1122,7 @@ func _decelerate(delta: float) -> void:
 
 
 func _set_phase(new_phase: Phase) -> void:
-	if debug_log and new_phase != phase:
+	if debug_log and OS.is_debug_build() and new_phase != phase:
 		print("[Enemy] %s -> %s" % [Phase.keys()[phase], Phase.keys()[new_phase]])
 	phase = new_phase
 	if not _phase_allows_guard(new_phase):
