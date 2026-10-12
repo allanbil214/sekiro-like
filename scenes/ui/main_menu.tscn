@@ -1,0 +1,222 @@
+[gd_scene format=3 uid="uid://dh8cwyrtntakq"]
+
+[ext_resource type="Theme" path="res://resources/ui_theme.tres" id="1_theme"]
+[ext_resource type="Script" uid="uid://ce058rqejajm5" path="res://scripts/ui/main_menu.gd" id="2_script"]
+[ext_resource type="AudioStream" uid="uid://cwbl1s5e7nqsy" path="res://audio/music/main_menu.ogg" id="3_1g8jr"]
+
+[sub_resource type="Gradient" id="Gradient_vignette"]
+offsets = PackedFloat32Array(0, 0.55, 1)
+colors = PackedColorArray(0.22, 0.12, 0.05, 0.6, 0.1, 0.055, 0.02, 0.3, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_vignette"]
+gradient = SubResource("Gradient_vignette")
+width = 512
+height = 512
+fill = 1
+fill_from = Vector2(0.5, 0.42)
+fill_to = Vector2(1, 0.42)
+
+[node name="MainMenu" type="Control" unique_id=1099294060]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1758225982]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Vignette" type="TextureRect" parent="." unique_id=676747864]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_vignette")
+expand_mode = 1
+
+[node name="KanjiLabel" type="Label" parent="." unique_id=1579098694]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 0.92
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"KanjiLabel"
+text = "道"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TitleBlock" type="VBoxContainer" parent="." unique_id=1568203553]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.3
+anchor_right = 0.95
+anchor_bottom = 0.64
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="TitleBlock" unique_id=945649468]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "UNTITLED GAME"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="TitleBlock" unique_id=1114973076]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubtitleLabel"
+text = "STILL A PROTOTYPE"
+horizontal_alignment = 1
+
+[node name="EntryList" type="VBoxContainer" parent="." unique_id=704822641]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.3
+anchor_top = 0.7
+anchor_right = 0.7
+anchor_bottom = 0.9
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="StartButton" type="Button" parent="EntryList" unique_id=705556769]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"EntryButton"
+text = "START"
+
+[node name="OptionsButton" type="Button" parent="EntryList" unique_id=1659677986]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"EntryButton"
+text = "OPTIONS"
+
+[node name="QuitButton" type="Button" parent="EntryList" unique_id=618255095]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"EntryButton"
+text = "QUIT"
+
+[node name="PressLabel" type="Label" parent="." unique_id=1560473738]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.2
+anchor_top = 0.76
+anchor_right = 0.8
+anchor_bottom = 0.84
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"PressLabel"
+text = "PRESS ANY BUTTON"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OptionsPanel" type="PanelContainer" parent="." unique_id=560531120]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.32
+anchor_top = 0.32
+anchor_right = 0.68
+anchor_bottom = 0.68
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"OptionsPanel"
+
+[node name="Rows" type="VBoxContainer" parent="OptionsPanel" unique_id=57576251]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="PanelHeading" type="Label" parent="OptionsPanel/Rows" unique_id=1328473492]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PanelHeading"
+text = "OPTIONS"
+horizontal_alignment = 1
+
+[node name="PanelText" type="Label" parent="OptionsPanel/Rows" unique_id=1566039050]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PanelText"
+text = "Nothing here yet."
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="OptionsPanel/Rows" unique_id=1651570158]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"EntryButton"
+text = "BACK"
+
+[node name="FooterLabel" type="Label" parent="." unique_id=512574857]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.2
+anchor_top = 0.93
+anchor_right = 0.8
+anchor_bottom = 0.97
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"FooterLabel"
+text = "A prototype. Nothing here is final."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="VersionLabel" type="Label" parent="." unique_id=813727359]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.7
+anchor_top = 0.93
+anchor_right = 0.98
+anchor_bottom = 0.97
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"FooterLabel"
+text = "Ver. 0.1"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="FadeRect" type="ColorRect" parent="." unique_id=1948827665]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Music" type="AudioStreamPlayer" parent="." unique_id=1313244232]
+unique_name_in_owner = true
+stream = ExtResource("3_1g8jr")
