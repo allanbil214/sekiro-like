@@ -8,7 +8,7 @@
 
 | Phase | Content | Status |
 |---|---|---|
-| **3a-1** | Ground 5-attack combo, loop, TAE-style chain/cancel, follow-through flourish, blending, lunge, sword visual (arm swing, body twist, arm lead), `WeaponData` | **built**; the user approved the look; cancels, lunge, and the ledge stop not formally tested yet |
+| **3a-1** | Ground 5-attack combo, loop, TAE-style chain/cancel, follow-through flourish, blending, lunge, sword visual (arm swing, body twist, arm lead), `WeaponData` | **built and tested**; cancels, lunge, and the ledge stop confirmed 2026-10-12 |
 | **3a-2** | Hold detection, charged zigzag thrust, chaining in and out of the thrust | **built and tested by the user**; the zigzag connects to the combo (section 5) |
 | **3b-1** | Dash attack: tap = slash that continues into the combo, hold = simple thrust | **built**; the user tuned the lunge speeds and the slash angle (section 7.9) |
 | **3b-2** | Crouch and slide attacks (a 3:00 to 9:00 / 9:00 to 3:00 loop that keeps you crouched; hold = the upward slash, alternating sides), crouch visuals for the sword | **built and tested by the user**; as built differs from the first design (section 7.10) |
