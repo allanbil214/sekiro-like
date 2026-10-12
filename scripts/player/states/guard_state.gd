@@ -54,27 +54,27 @@ func physics_update(delta: float) -> void:
 			player.reset_air_actions()
 		if player.input_buffer.consume(&"jump"):
 			player.start_jump()
-			machine.transition_to(&"Air")
+			machine.transition_to(StateName.AIR)
 			return
 		if player.input_buffer.consume(&"dodge"):
-			machine.transition_to(&"Dodge")
+			machine.transition_to(StateName.DODGE)
 			return
 		if player.has_combo() and player.input_buffer.consume(&"attack"):
-			machine.transition_to(&"Attack")
+			machine.transition_to(StateName.ATTACK)
 			return
 	else:
 		_airborne = true
 		player.apply_gravity(delta)
 		if player.try_air_jump():
-			machine.transition_to(&"WallJump")
+			machine.transition_to(StateName.WALL_JUMP)
 			return
 		if player.weapon != null and player.input_buffer.has_pressed(&"attack") \
 				and not player.is_near_ground():
-			var air_attack := machine.get_node_or_null("AirAttack") as AirAttackState
+			var air_attack := machine.get_node_or_null(NodePath(StateName.AIR_ATTACK)) as AirAttackState
 			if air_attack != null and air_attack.start():
 				player.input_buffer.consume(&"attack")
 				return
 	player.apply_horizontal_movement(delta, player.get_move_speed())
 	player.face_input(delta)
 	if not Input.is_action_pressed("guard") and combatant.deflect_left <= 0.0:
-		machine.transition_to(&"Locomotion" if on_floor else &"Air")
+		machine.transition_to(StateName.LOCOMOTION if on_floor else StateName.AIR)

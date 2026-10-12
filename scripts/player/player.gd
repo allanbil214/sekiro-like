@@ -735,7 +735,7 @@ func _on_guard_broken(hit: HitData) -> void:
 	Fx.play(get_tree(), Fx.Kind.GUARD_BREAK, hit.point, hit.direction)
 	_recoil_scale = guard_break_recoil_scale
 	if state_machine.current is GuardState:
-		state_machine.transition_to(&"Locomotion" if is_on_floor() else &"Air")
+		state_machine.transition_to(StateName.LOCOMOTION if is_on_floor() else StateName.AIR)
 	_guard_lockout = guard_break_lockout
 	if hit.grab and is_on_floor() and grab_kneel_time > 0.0:
 		_grab_kneel_left = grab_kneel_time
@@ -807,9 +807,9 @@ func _update_repulse() -> void:
 	_repulse_pending = false
 	var current := state_machine.current
 	if current is AttackState:
-		state_machine.transition_to(&"Crouch" if is_crouched else &"Locomotion")
+		state_machine.transition_to(StateName.CROUCH if is_crouched else StateName.LOCOMOTION)
 	elif current is AirAttackState or current is HelmSplitterState:
-		state_machine.transition_to(&"Air")
+		state_machine.transition_to(StateName.AIR)
 	if sword_visual != null:
 		var local_dir := Basis(Vector3.UP, visual.rotation.y).inverse() * -_repulse_direction
 		sword_visual.play_guard_hit(true, local_dir.x)
@@ -834,7 +834,7 @@ func _update_stagger() -> void:
 	var hang := current as LedgeHangState
 	if hang != null:
 		hang.knock_off()
-	state_machine.transition_to(&"Stagger")
+	state_machine.transition_to(StateName.STAGGER)
 
 
 ## Lean the body forward (radians; 0 = upright). Eases in and out. Used by the stagger.
@@ -927,7 +927,7 @@ func _try_deathblow() -> void:
 		return
 	input_buffer.consume(&"attack")
 	deathblow_target = target
-	state_machine.transition_to(&"Deathblow")
+	state_machine.transition_to(StateName.DEATHBLOW)
 
 
 ## Push the player away along `direction` by about `distance` metres, easing out over `time` seconds
@@ -957,7 +957,7 @@ func _update_death() -> void:
 	if current is LedgeClimbState:
 		return
 	_death_pending = false
-	state_machine.transition_to(&"Dead")
+	state_machine.transition_to(StateName.DEAD)
 
 
 ## Called by DeadState when the player chooses to resurrect: spends one, comes back at a share of the
@@ -984,7 +984,7 @@ func _try_heal() -> void:
 		return
 	if is_crouched and not can_stand():
 		return
-	state_machine.transition_to(&"Heal")
+	state_machine.transition_to(StateName.HEAL)
 
 
 ## One of the player's attacks connected: restart the auto-sheathe timer and request the hitstop.
@@ -1015,7 +1015,7 @@ func _update_auto_sheathe(delta: float) -> void:
 	if sheathed or weapon == null or auto_sheathe_time <= 0.0:
 		return
 	var current := state_machine.get_current_name()
-	if current != &"Locomotion" and current != &"Crouch":
+	if current != StateName.LOCOMOTION and current != StateName.CROUCH:
 		return
 	sheathe_idle += delta
 	if sheathe_idle >= auto_sheathe_time:
@@ -1198,8 +1198,8 @@ func ledge_grab_state() -> StringName:
 	var wants_hang := Input.is_action_pressed("interact") or input_buffer.has_pressed(&"interact")
 	if wants_hang and ledge_hang_fits:
 		input_buffer.consume(&"interact")
-		return &"LedgeHang"
-	return &"LedgeClimb"
+		return StateName.LEDGE_HANG
+	return StateName.LEDGE_CLIMB
 
 
 ## While hanging: finds the ledge top along the wall at the given feet position (near the

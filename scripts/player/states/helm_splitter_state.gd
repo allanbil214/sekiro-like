@@ -48,7 +48,7 @@ func start(dive: ActionData, opening: bool = false) -> bool:
 		return false
 	_pending = dive
 	_pending_opening = opening
-	machine.transition_to(&"HelmSplitter")
+	machine.transition_to(StateName.HELM_SPLITTER)
 	return true
 
 
@@ -66,10 +66,10 @@ func enter(previous: StringName) -> void:
 func exit(next: StringName) -> void:
 	super.exit(next)
 	# Stand up, unless we are going to Crouch (callers check headroom first).
-	if next != &"Crouch":
+	if next != StateName.CROUCH:
 		player.set_crouched(false)
 	# Chaining into the ground combo carries the sword's pose over; anything else lets it rest.
-	if next != &"Attack" and player.sword_visual != null:
+	if next != StateName.ATTACK and player.sword_visual != null:
 		player.sword_visual.end_combo()
 
 
@@ -139,7 +139,7 @@ func _begin_land() -> void:
 func _update_land() -> void:
 	# Walked off an edge during the wind-down.
 	if not player.is_on_floor():
-		machine.transition_to(&"Air" if player.can_stand() else &"Crouch")
+		machine.transition_to(StateName.AIR if player.can_stand() else StateName.CROUCH)
 		return
 	if player.sword_visual != null:
 		player.sword_visual.update_action(action, action_time)
@@ -152,7 +152,7 @@ func _update_land() -> void:
 		if not player.can_stand():
 			_queued = false
 			return
-		var attack := machine.get_node_or_null("Attack") as AttackState
+		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
 		if attack != null and attack.try_continue_combo(1):
 			return
 		_queued = false
@@ -171,25 +171,25 @@ func _on_action_finished() -> void:
 	if _phase != Phase.LAND:
 		return
 	if not player.can_stand():
-		machine.transition_to(&"Crouch")
+		machine.transition_to(StateName.CROUCH)
 	elif player.is_on_floor():
-		machine.transition_to(&"Locomotion")
+		machine.transition_to(StateName.LOCOMOTION)
 	else:
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 
 
 func _try_cancel() -> bool:
 	# Dodge and jump stand you up, so they need headroom (otherwise the press is discarded).
 	var headroom := player.can_stand()
 	if player.input_buffer.consume(&"dodge") and headroom:
-		machine.transition_to(&"Dodge")
+		machine.transition_to(StateName.DODGE)
 		return true
 	if player.input_buffer.consume(&"jump") and headroom:
 		player.start_jump()
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 		return true
 	if Input.is_action_just_pressed("crouch"):
-		machine.transition_to(&"Crouch")
+		machine.transition_to(StateName.CROUCH)
 		return true
 	return false
 

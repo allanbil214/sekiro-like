@@ -60,7 +60,7 @@ func _try_guard_cancel() -> bool:
 	if player.is_crouched and not player.can_stand():
 		player.input_buffer.clear(&"guard")
 		return false
-	machine.transition_to(&"Guard")
+	machine.transition_to(StateName.GUARD)
 	return true
 
 
@@ -173,7 +173,7 @@ func _on_action_update(_delta: float) -> void:
 
 
 func _on_action_finished() -> void:
-	machine.transition_to(&"Locomotion")
+	machine.transition_to(StateName.LOCOMOTION)
 
 
 ## Multiplies the action's damage (a charged attack overrides this).

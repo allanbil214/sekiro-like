@@ -13,26 +13,26 @@ extends State
 func physics_update(delta: float) -> void:
 	if not player.is_on_floor():
 		player.coyote_timer = player.coyote_time
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 		return
 	if player.input_buffer.consume(&"jump"):
 		player.start_jump()
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 		return
 	if player.input_buffer.has_pressed(&"guard"):
-		machine.transition_to(&"Guard")
+		machine.transition_to(StateName.GUARD)
 		return
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
-		var attack := machine.get_node_or_null("Attack") as AttackState
+		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.dash_attack):
 			player.input_buffer.consume(&"attack")
 			return
 	var has_input := player.get_move_input().length_squared() > 0.01
 	if has_input and Input.is_action_just_pressed("crouch"):
-		machine.transition_to(&"Slide")
+		machine.transition_to(StateName.SLIDE)
 		return
 	if not Input.is_action_pressed("dodge") or not has_input:
-		machine.transition_to(&"Locomotion")
+		machine.transition_to(StateName.LOCOMOTION)
 		return
 	player.apply_horizontal_movement(delta, player.dash_speed)
 	if face_move_when_locked:

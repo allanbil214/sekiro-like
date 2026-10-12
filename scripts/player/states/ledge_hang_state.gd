@@ -27,7 +27,7 @@ func enter(_previous: StringName) -> void:
 
 
 func exit(next: StringName) -> void:
-	if next != &"LedgeClimb":
+	if next != StateName.LEDGE_CLIMB:
 		player.release_arms()
 
 
@@ -52,7 +52,7 @@ func physics_update(delta: float) -> void:
 			player.ledge_stand_pos = probe["stand_position"]
 			player.ledge_top_y = probe["top_y"]
 			player.ledge_wall_normal = _normal
-			machine.transition_to(&"LedgeClimb")
+			machine.transition_to(StateName.LEDGE_CLIMB)
 		return
 	_shimmy(want, delta)
 
@@ -77,14 +77,14 @@ func _shimmy(want: Vector3, delta: float) -> void:
 
 func _drop() -> void:
 	_block_regrab()
-	machine.transition_to(&"Air")
+	machine.transition_to(StateName.AIR)
 
 
 func _leap() -> void:
 	_block_regrab()
 	player.wall_normal = _normal
 	player.wall_jump_forced_away = true
-	machine.transition_to(&"WallJump")
+	machine.transition_to(StateName.WALL_JUMP)
 
 
 func _block_regrab() -> void:

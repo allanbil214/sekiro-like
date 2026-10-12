@@ -6,29 +6,29 @@ extends State
 func physics_update(delta: float) -> void:
 	if not player.is_on_floor():
 		player.coyote_timer = player.coyote_time
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 		return
 	if player.input_buffer.consume(&"jump"):
 		player.start_jump()
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 		return
 	if player.input_buffer.consume(&"dodge"):
-		machine.transition_to(&"Dodge")
+		machine.transition_to(StateName.DODGE)
 		return
 	if player.input_buffer.has_pressed(&"guard"):
-		machine.transition_to(&"Guard")
+		machine.transition_to(StateName.GUARD)
 		return
 	# Sheathed: the attack is the draw slash (iai).
 	if player.sheathed and player.input_buffer.has_pressed(&"attack"):
-		var attack := machine.get_node_or_null("Attack") as AttackState
+		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
 		if attack != null and attack.try_start_draw():
 			player.input_buffer.consume(&"attack")
 			return
 	if player.has_combo() and player.input_buffer.consume(&"attack"):
-		machine.transition_to(&"Attack")
+		machine.transition_to(StateName.ATTACK)
 		return
 	if Input.is_action_just_pressed("crouch"):
-		machine.transition_to(&"Crouch")
+		machine.transition_to(StateName.CROUCH)
 		return
 	if Input.is_action_just_pressed("sheathe"):
 		player.toggle_sheathe()

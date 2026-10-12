@@ -47,4 +47,4 @@ func _on_action_finished() -> void:
 	player.global_position = _target
 	player.velocity = Vector3.ZERO
 	player.reset_air_actions()
-	machine.transition_to(&"Locomotion")
+	machine.transition_to(StateName.LOCOMOTION)

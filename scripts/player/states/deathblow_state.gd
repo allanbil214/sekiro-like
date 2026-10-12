@@ -81,7 +81,7 @@ func _on_action_update(_delta: float) -> void:
 		return
 	if _executed and action.can_cancel(action_time):
 		if player.input_buffer.consume(&"dodge"):
-			machine.transition_to(&"Dodge")
+			machine.transition_to(StateName.DODGE)
 
 
 func _allows_guard_cancel() -> bool:

@@ -95,7 +95,7 @@ func _resurrect() -> void:
 	player.relock_target = null
 	var on_floor := player.is_on_floor()
 	# Leave the state first (exit() ends the lock-out), then lock the same enemy again if it is alive.
-	machine.transition_to(&"Locomotion" if on_floor else &"Air")
+	machine.transition_to(StateName.LOCOMOTION if on_floor else StateName.AIR)
 	if target != null and is_instance_valid(target):
 		player.lock_on.lock_onto(target)
 	player.resurrected.emit()

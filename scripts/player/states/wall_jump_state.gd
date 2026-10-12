@@ -46,14 +46,14 @@ func _on_action_enter(_previous: StringName) -> void:
 func _on_action_update(_delta: float) -> void:
 	if player.is_on_floor() and player.velocity.y <= 0.0:
 		player.reset_air_actions()
-		machine.transition_to(&"Locomotion")
+		machine.transition_to(StateName.LOCOMOTION)
 		return
 	if player.try_ledge_grab():
 		machine.transition_to(player.ledge_grab_state())
 		return
 	if action.can_cancel(action_time) and player.try_air_jump():
-		machine.transition_to(&"WallJump")
+		machine.transition_to(StateName.WALL_JUMP)
 
 
 func _on_action_finished() -> void:
-	machine.transition_to(&"Air")
+	machine.transition_to(StateName.AIR)

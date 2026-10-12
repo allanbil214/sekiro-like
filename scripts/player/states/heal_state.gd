@@ -50,7 +50,7 @@ func _on_damaged(_hit: HitData, amount: float) -> void:
 func physics_update(delta: float) -> void:
 	var on_floor := player.is_on_floor()
 	if _interrupted:
-		machine.transition_to(&"Locomotion" if on_floor else &"Air")
+		machine.transition_to(StateName.LOCOMOTION if on_floor else StateName.AIR)
 		return
 	elapsed += delta
 	player.heal_arm.set_progress(elapsed / maxf(duration, 0.01))
@@ -64,20 +64,20 @@ func physics_update(delta: float) -> void:
 	if on_floor:
 		if player.input_buffer.consume(&"jump"):
 			player.start_jump()
-			machine.transition_to(&"Air")
+			machine.transition_to(StateName.AIR)
 			return
 		if player.input_buffer.consume(&"dodge"):
-			machine.transition_to(&"Dodge")
+			machine.transition_to(StateName.DODGE)
 			return
 		if player.input_buffer.has_pressed(&"guard"):
-			machine.transition_to(&"Guard")
+			machine.transition_to(StateName.GUARD)
 			return
 		if player.has_combo() and player.input_buffer.consume(&"attack"):
-			machine.transition_to(&"Attack")
+			machine.transition_to(StateName.ATTACK)
 			return
 	else:
 		if player.input_buffer.has_pressed(&"guard"):
-			machine.transition_to(&"Guard")
+			machine.transition_to(StateName.GUARD)
 			return
 		player.input_buffer.clear(&"jump")
 		player.input_buffer.clear(&"dodge")
@@ -87,4 +87,4 @@ func physics_update(delta: float) -> void:
 		player.combatant.heal(player.heal_amount)
 		Fx.play(player.get_tree(), Fx.Kind.HEAL, player.global_position + Vector3.UP * 0.9)
 		player.heal_charges = maxi(player.heal_charges - 1, 0)
-		machine.transition_to(&"Locomotion" if on_floor else &"Air")
+		machine.transition_to(StateName.LOCOMOTION if on_floor else StateName.AIR)

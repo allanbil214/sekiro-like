@@ -43,7 +43,7 @@ func physics_update(delta: float) -> void:
 	player.input_buffer.clear(&"attack")
 	player.input_buffer.clear(&"guard")
 	if elapsed >= dodge_locked_time and on_floor and player.input_buffer.consume(&"dodge"):
-		machine.transition_to(&"Dodge")
+		machine.transition_to(StateName.DODGE)
 		return
 	if elapsed >= duration:
-		machine.transition_to(&"Locomotion")
+		machine.transition_to(StateName.LOCOMOTION)

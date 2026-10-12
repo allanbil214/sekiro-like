@@ -11,7 +11,7 @@ var _dust_timer: float = 0.0
 func exit(next: StringName) -> void:
 	super.exit(next)
 	player.stop_slide_arms()
-	if next != &"Crouch" and next != &"Attack":
+	if next != StateName.CROUCH and next != StateName.ATTACK:
 		player.set_crouched(false)
 
 
@@ -31,7 +31,7 @@ func _on_action_enter(_previous: StringName) -> void:
 func _on_action_update(delta: float) -> void:
 	if not player.is_on_floor():
 		player.coyote_timer = player.coyote_time
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 		return
 	_dust_timer -= delta
 	if _dust_timer <= 0.0:
@@ -40,7 +40,7 @@ func _on_action_update(delta: float) -> void:
 	if not action.can_cancel(action_time):
 		return
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
-		var attack := machine.get_node_or_null("Attack") as AttackState
+		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.crouch_attack):
 			player.input_buffer.consume(&"attack")
 			return
@@ -49,16 +49,16 @@ func _on_action_update(delta: float) -> void:
 		if headroom:
 			player.input_buffer.consume(&"jump")
 			player.start_jump()
-			machine.transition_to(&"Air")
+			machine.transition_to(StateName.AIR)
 			return
 		player.input_buffer.clear(&"jump")
 	if player.input_buffer.has_pressed(&"dodge"):
 		if headroom:
 			player.input_buffer.consume(&"dodge")
-			machine.transition_to(&"Dodge")
+			machine.transition_to(StateName.DODGE)
 			return
 		player.input_buffer.clear(&"dodge")
 
 
 func _on_action_finished() -> void:
-	machine.transition_to(&"Crouch")
+	machine.transition_to(StateName.CROUCH)

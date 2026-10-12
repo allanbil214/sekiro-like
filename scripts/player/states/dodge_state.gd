@@ -31,18 +31,18 @@ func _on_action_update(_delta: float) -> void:
 		return
 	if player.is_on_floor() and player.input_buffer.consume(&"jump"):
 		player.start_jump()
-		machine.transition_to(&"Air")
+		machine.transition_to(StateName.AIR)
 		return
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
-		var attack := machine.get_node_or_null("Attack") as AttackState
+		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.dash_attack):
 			player.input_buffer.consume(&"attack")
 			return
 	if player.input_buffer.consume(&"dodge"):
-		machine.transition_to(&"Dodge")
+		machine.transition_to(StateName.DODGE)
 		return
 	if player.get_move_input().length_squared() > 0.01:
 		if Input.is_action_pressed("dodge"):
-			machine.transition_to(&"Dash")
+			machine.transition_to(StateName.DASH)
 		else:
-			machine.transition_to(&"Locomotion")
+			machine.transition_to(StateName.LOCOMOTION)

@@ -100,21 +100,21 @@ func enter(previous: StringName) -> void:
 		_rose = false
 		_thrust_side_left = false
 		action = combo[combo_index]
-	elif previous == &"Attack" and _rose:
+	elif previous == StateName.ATTACK and _rose:
 		# The upward slash stood you up: carry on with the combo from attack 1.
 		_rose = false
 		_is_variant = false
 		_thrust_side_left = false
 		combo_index = 0
 		action = combo[0]
-	elif previous == &"Attack" and _is_variant and _crouch_context \
+	elif previous == StateName.ATTACK and _is_variant and _crouch_context \
 			and _variant_root == player.weapon.draw_attack and player.weapon.crouch_attack != null:
 		# A crouched draw slash: the next tap is the crouch loop (you stay crouched).
 		_thrust_side_left = _side_left_after_previous()
 		_variant_root = player.weapon.crouch_attack
 		action = _variant_root
 		combo_index = 0
-	elif previous == &"Attack" and _is_variant and _variant_root != null \
+	elif previous == StateName.ATTACK and _is_variant and _variant_root != null \
 			and _variant_root.combo_next != null:
 		# A variant loop (the crouch attacks): follow combo_next, then back to the first.
 		# A hold out of it starts on the side where the previous attack ended.
@@ -126,7 +126,7 @@ func enter(previous: StringName) -> void:
 		combo_index = 0
 	else:
 		_is_variant = false
-		if previous == &"Attack":
+		if previous == StateName.ATTACK:
 			# `action` still holds the attack we are chaining from.
 			_thrust_side_left = _side_left_after_previous()
 			combo_index = (combo_index + 1) % combo.size()
@@ -147,7 +147,7 @@ func try_start_variant(variant: ActionData) -> bool:
 		return false
 	_pending_variant = variant
 	_pending_uncounted = false
-	machine.transition_to(&"Attack")
+	machine.transition_to(StateName.ATTACK)
 	return true
 
 
@@ -158,7 +158,7 @@ func try_start_draw() -> bool:
 		return false
 	_pending_variant = player.weapon.draw_attack
 	_pending_uncounted = true
-	machine.transition_to(&"Attack")
+	machine.transition_to(StateName.ATTACK)
 	return true
 
 
@@ -168,19 +168,19 @@ func try_continue_combo(index: int) -> bool:
 	if player.weapon == null or player.weapon.combo.is_empty():
 		return false
 	_pending_index = index
-	machine.transition_to(&"Attack")
+	machine.transition_to(StateName.ATTACK)
 	return true
 
 
 func exit(next: StringName) -> void:
 	super.exit(next)
-	if next != &"Attack":
+	if next != StateName.ATTACK:
 		combo_index = 0
 		_thrust_side_left = false
 		_phase = Phase.NORMAL
 		_rose = false
 		# Leaving a crouch attack for anything but Crouch: stand up (Crouch keeps you crouched).
-		if _crouch_context and next != &"Crouch":
+		if _crouch_context and next != StateName.CROUCH:
 			player.set_crouched(false)
 		_crouch_context = false
 		if player.sword_visual != null:
@@ -261,7 +261,7 @@ func _on_action_enter(_previous: StringName) -> void:
 ## Crouch attacks end back in Crouch (you stay crouched); everything else ends standing.
 func _on_action_finished() -> void:
 	if _crouch_context:
-		machine.transition_to(&"Crouch")
+		machine.transition_to(StateName.CROUCH)
 	else:
 		super()
 
@@ -289,7 +289,7 @@ func _on_action_update(delta: float) -> void:
 	if _try_cancel():
 		return
 	if _queued and action_time >= _chain_time():
-		machine.transition_to(&"Attack")
+		machine.transition_to(StateName.ATTACK)
 
 
 ## A charged thrust or iai hits harder (the stored charge multiplier).
@@ -475,14 +475,14 @@ func _try_cancel() -> bool:
 		return _try_cancel_crouched()
 	if player.is_on_floor():
 		if player.input_buffer.consume(&"dodge"):
-			machine.transition_to(&"Dodge")
+			machine.transition_to(StateName.DODGE)
 			return true
 		if player.input_buffer.consume(&"jump"):
 			player.start_jump()
-			machine.transition_to(&"Air")
+			machine.transition_to(StateName.AIR)
 			return true
 		if Input.is_action_just_pressed("crouch"):
-			machine.transition_to(&"Crouch")
+			machine.transition_to(StateName.CROUCH)
 			return true
 	return false
 
@@ -494,21 +494,21 @@ func _try_cancel_crouched() -> bool:
 	if player.input_buffer.has_pressed(&"dodge"):
 		if headroom:
 			player.input_buffer.consume(&"dodge")
-			machine.transition_to(&"Dodge")
+			machine.transition_to(StateName.DODGE)
 			return true
 		player.input_buffer.clear(&"dodge")
 	if player.input_buffer.has_pressed(&"jump"):
 		if headroom:
 			player.input_buffer.consume(&"jump")
 			player.start_jump()
-			machine.transition_to(&"Air")
+			machine.transition_to(StateName.AIR)
 			return true
 		player.input_buffer.clear(&"jump")
 	if headroom:
 		var wants_stand := not Input.is_action_pressed("crouch") if player.crouch_is_hold \
 				else Input.is_action_just_pressed("crouch")
 		if wants_stand:
-			machine.transition_to(&"Locomotion")
+			machine.transition_to(StateName.LOCOMOTION)
 			return true
 	return false
 
