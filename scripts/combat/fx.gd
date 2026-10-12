@@ -450,7 +450,14 @@ static func _soft() -> Texture2D:
 	return _soft_texture
 
 
+## Color ramps and scale curves are cached by their values and shared (nothing changes them after an
+## emitter gets one), so a burst no longer builds a new Gradient and Curve (Phase 1.5, item 11).
 static func _ramp(colors: Array[Color]) -> Gradient:
+	var key := "ramp"
+	for color in colors:
+		key += ":" + color.to_html(true)
+	if _cache.has(key):
+		return _cache[key]
 	var gradient := Gradient.new()
 	var count := colors.size()
 	var packed_colors := PackedColorArray()
@@ -460,11 +467,16 @@ static func _ramp(colors: Array[Color]) -> Gradient:
 		offsets.append(float(i) / float(maxi(count - 1, 1)))
 	gradient.colors = packed_colors
 	gradient.offsets = offsets
+	_cache[key] = gradient
 	return gradient
 
 
 static func _curve(from_value: float, to_value: float) -> Curve:
+	var key := "curve:%s:%s" % [from_value, to_value]
+	if _cache.has(key):
+		return _cache[key]
 	var curve := Curve.new()
 	curve.add_point(Vector2(0.0, from_value))
 	curve.add_point(Vector2(1.0, to_value))
+	_cache[key] = curve
 	return curve

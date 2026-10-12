@@ -23,8 +23,10 @@
 | 7 | `Groups` constants file | same as 4 | [x] (done with 4) |
 | 8 | Delay bigger refactors to Phase 2 | decision | not built |
 | 9 | Object pooling for `Fx` particles | performance | [x] (done 2026-10-12) |
+| 10 | Object pooling for `Sfx` voices (added 2026-10-12 at the user's request) | performance | [x] (done 2026-10-12) |
+| 11 | Cache the `Fx` color ramps and scale curves (added 2026-10-12 at the user's request) | performance | [x] (done 2026-10-12) |
 
-Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6 (**done**), 9 (**done**), then the big splits 5a (**done**), 5b (**done**), 5c (**done**). Every item except 8 is built. Item 8 is not built.
+Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6 (**done**), 9 (**done**), then the big splits 5a (**done**), 5b (**done**), 5c (**done**). Every item except 8 is built (10 and 11 were added after the first review). Item 8 is not built.
 
 ## 3. The items
 
@@ -83,6 +85,14 @@ Same method as 12C and 12D: move self-contained code into a helper (default: a `
 - **Risk:** medium (a missed reset shows as the wrong color, count, or sparks that never stop). Test every effect: hits, guard, deflect, heal, resurrect, dust, the blood jet, shockwaves, rings.
 - **Open:** whether the tweened rings and the blood jet that follows the enemy are pooled too (default: no, they stay as they are).
 - **Done 2026-10-12:** two pools of `CPUParticles3D` in `fx.gd`, by emitter type (`Fx.Pool.SPARKS` for the spark streaks, `Fx.Pool.PUFFS` for mist, dust, motes and glow) instead of one per `Fx.Kind`, because one kind builds several differently set emitters. A pool is made on first use with 8 emitters, grows by one when dry, and frees an emitter that finishes while 64 are idle; a scene reload empties it. `_acquire()` resets the properties the builders do not always set; `_release()` runs on `finished`. The rings and the blood jet's tween are not pooled (the jet's pulses are). No speed-up was measured or expected at 1 enemy plus the dummy (see the build log, "Phase 1.5, item 9").
+
+### 10. Object pooling for `Sfx` voices (added 2026-10-12)
+- **What:** `Sfx._start()` made a new `AudioStreamPlayer` or `AudioStreamPlayer3D` for every sound and freed it when it finished. Now a finished voice goes back to an idle list (flat and positional kinds apart) and the next sound reuses it.
+- **Done 2026-10-12:** `sfx.gd` only. Pools grow on demand (no prewarm) and keep at most `POOL_MAX_IDLE` (32) idle voices per kind; a scene reload empties them (`_sync_scene`). Each voice remembers its cut-off group (`busy` and `group` meta); `_release()` erases `_voices[group]` when a voice is released, so a reused voice is never cut by mistake, and a second release of the same voice does nothing. Loops still play until a sound of the same group replaces them. The public calls and `sfx_data.tres` are unchanged. No speed-up was measured or expected at this scale (see the build log, "Phase 1.5, items 10 and 11").
+
+### 11. Cache the `Fx` color ramps and scale curves (added 2026-10-12)
+- **What:** `Fx._ramp()` and `Fx._curve()` built a new `Gradient` and `Curve` for every burst.
+- **Done 2026-10-12:** both are cached in `Fx._cache` by their values (`ramp:` plus the colors, `curve:` plus the two numbers) and shared; nothing changes them after an emitter gets one.
 
 ## 4. Not in this phase
 
