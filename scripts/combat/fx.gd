@@ -5,8 +5,10 @@ extends RefCounted
 ## event has a single call site. `point` is where it happened (HitData.point or a body position) and
 ## `direction` is the horizontal direction of the blow (HitData.direction, attacker to target); both are
 ## optional. The shake finds the camera through the group "camera_rig" (CameraRig.add_trauma). The
-## effects are short CPUParticles3D bursts and expanding rings made at runtime and freed when they end
-## (no scenes); everything is parented to the current scene, so a scene reload clears them.
+## effects are short CPUParticles3D bursts and expanding rings made at runtime (no scenes); everything is
+## parented to the current scene, so a scene reload clears them. The particle emitters are pooled
+## (Phase 1.5, item 9): a finished emitter goes back to an idle list and the next burst reuses it, with
+## every property set again; the rings are still made and freed per effect.
 
 enum Kind {
 	HIT_LANDED, HIT_LANDED_CHARGED, DEFLECT, DEFLECT_PERILOUS, GUARD, GUARD_BREAK, REPULSE, HURT,
@@ -45,6 +47,17 @@ const DEATHBLOW_PULSE_INTERVAL: float = 0.1
 
 static var _soft_texture: Texture2D
 static var _cache: Dictionary = {}
+
+## Emitter pools (item 9): one for the spark streaks, one for the soft puffs (mist, dust, motes, glow).
+## A pool is built on first use with POOL_START emitters, grows by one when it runs dry, and frees an
+## emitter that finishes while POOL_MAX_IDLE are already idle.
+enum Pool { SPARKS, PUFFS }
+const POOL_START: int = 8
+const POOL_MAX_IDLE: int = 64
+
+static var _idle: Array[Array] = [[], []]
+static var _pool_ready: Array[bool] = [false, false]
+static var _pool_scene: Node
 
 
 ## `attach` (optional): a node the effect's source follows while it lasts (the deathblow's blood jet
@@ -181,7 +194,7 @@ static func _spawn(scene: Node, kind: Kind, point: Vector3, direction: Vector3, 
 static func _sparks(scene: Node, point: Vector3, direction: Vector3, amount: int, life: float, speed: Vector2,
 		spread: float, length: float, colors: Array[Color], width: float = 0.012, gravity: float = 7.0,
 		additive: bool = true) -> void:
-	var p := CPUParticles3D.new()
+	var p := _acquire(scene, Pool.SPARKS)
 	p.amount = amount
 	p.lifetime = life
 	p.explosiveness = 1.0
@@ -196,7 +209,7 @@ static func _sparks(scene: Node, point: Vector3, direction: Vector3, amount: int
 	p.damping_max = 3.0
 	p.color_ramp = _ramp(colors)
 	p.scale_amount_curve = _curve(1.0, 0.2)
-	_launch(scene, p, point)
+	_launch(p, point)
 
 
 ## The deathblow's blood jet: a series of pulses out of the wound toward the player (`flat` is the
@@ -236,14 +249,16 @@ static func _blood_pulse(scene: Node, point: Vector3, local: Vector3, attach: No
 static func _puffs(scene: Node, point: Vector3, direction: Vector3, amount: int, life: float, size: float,
 		speed: Vector2, spread: float, colors: Array[Color], additive: bool, gravity_y: float, damping: float,
 		start_scale: float, end_scale: float, explosiveness: float, radius: float) -> void:
-	var p := CPUParticles3D.new()
+	var p := _acquire(scene, Pool.PUFFS)
 	p.amount = amount
 	p.lifetime = life
 	p.explosiveness = explosiveness
-	var mesh := QuadMesh.new()
+	var mesh := p.mesh as QuadMesh
+	if mesh == null:
+		mesh = QuadMesh.new()
+		p.mesh = mesh
 	mesh.size = Vector2(size, size)
 	mesh.material = _puff_material(additive)
-	p.mesh = mesh
 	if radius > 0.0:
 		p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 		p.emission_sphere_radius = radius
@@ -256,7 +271,7 @@ static func _puffs(scene: Node, point: Vector3, direction: Vector3, amount: int,
 	p.damping_max = damping * 1.5
 	p.color_ramp = _ramp(colors)
 	p.scale_amount_curve = _curve(start_scale, end_scale)
-	_launch(scene, p, point)
+	_launch(p, point)
 
 
 static func _mist(scene: Node, point: Vector3, direction: Vector3, amount: int, life: float, size: float, spread: float) -> void:
@@ -325,13 +340,60 @@ static func dust(tree: SceneTree, point: Vector3, amount: int, size: float) -> v
 		_dust(tree.current_scene, point, amount, size, Vector3.ZERO)
 
 
-static func _launch(scene: Node, particles: CPUParticles3D, point: Vector3) -> void:
-	particles.one_shot = true
-	particles.emitting = false
-	particles.finished.connect(particles.queue_free)
-	scene.add_child(particles)
+## Starts a configured emitter at `point`; when it finishes, `_release` puts it back in its pool.
+static func _launch(particles: CPUParticles3D, point: Vector3) -> void:
 	particles.global_position = point
-	particles.emitting = true
+	particles.restart()
+
+
+# --- Emitter pools (Phase 1.5, item 9) --------------------------------------------------------
+
+## Takes an idle emitter of `pool` (or makes one) with the properties the building blocks do not always
+## set put back to their defaults; the caller sets everything else (amount, lifetime, mesh, direction,
+## spread, velocities, gravity, damping, color ramp, scale curve, explosiveness).
+static func _acquire(scene: Node, pool: Pool) -> CPUParticles3D:
+	if _pool_scene != scene:
+		# A new scene (a reload): the old emitters went with the old scene.
+		_idle = [[], []]
+		_pool_ready = [false, false]
+		_pool_scene = scene
+	var idle: Array = _idle[pool]
+	if idle.is_empty() and not _pool_ready[pool]:
+		_pool_ready[pool] = true
+		for i in POOL_START:
+			idle.append(_make_emitter(scene, pool))
+	var p: CPUParticles3D = null
+	while p == null and not idle.is_empty():
+		var candidate: Variant = idle.pop_back()
+		if is_instance_valid(candidate) and (candidate as CPUParticles3D).is_inside_tree():
+			p = candidate as CPUParticles3D
+	if p == null:
+		p = _make_emitter(scene, pool)
+	p.emitting = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_POINT
+	p.emission_sphere_radius = 1.0
+	p.particle_flag_align_y = false
+	return p
+
+
+static func _make_emitter(scene: Node, pool: Pool) -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.emitting = false
+	p.finished.connect(_release.bind(p, pool))
+	scene.add_child(p)
+	return p
+
+
+static func _release(p: CPUParticles3D, pool: Pool) -> void:
+	if not is_instance_valid(p):
+		return
+	var idle: Array = _idle[pool]
+	if p.get_parent() != _pool_scene or idle.size() >= POOL_MAX_IDLE:
+		p.queue_free()
+		return
+	p.emitting = false
+	idle.append(p)
 
 
 # --- Shared resources (built once) ------------------------------------------------------------

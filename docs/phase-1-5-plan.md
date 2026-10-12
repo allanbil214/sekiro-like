@@ -22,9 +22,9 @@
 | 6 | Typed data instead of name strings (6A input actions, 6B lock-on reason) | safety | [x] (done 2026-10-12) |
 | 7 | `Groups` constants file | same as 4 | [x] (done with 4) |
 | 8 | Delay bigger refactors to Phase 2 | decision | not built |
-| 9 | Object pooling for `Fx` particles | performance | [ ] |
+| 9 | Object pooling for `Fx` particles | performance | [x] (done 2026-10-12) |
 
-Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6 (**done**), 9, then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
+Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6 (**done**), 9 (**done**), then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
 
 ## 3. The items
 
@@ -79,6 +79,7 @@ Same method as 12C and 12D: move self-contained code into a helper (default: a `
 - **Why:** less creating and freeing of nodes in long fights, and a base for many enemies. At today's spawn rate the gain is small, so it is measured.
 - **Risk:** medium (a missed reset shows as the wrong color, count, or sparks that never stop). Test every effect: hits, guard, deflect, heal, resurrect, dust, the blood jet, shockwaves, rings.
 - **Open:** whether the tweened rings and the blood jet that follows the enemy are pooled too (default: no, they stay as they are).
+- **Done 2026-10-12:** two pools of `CPUParticles3D` in `fx.gd`, by emitter type (`Fx.Pool.SPARKS` for the spark streaks, `Fx.Pool.PUFFS` for mist, dust, motes and glow) instead of one per `Fx.Kind`, because one kind builds several differently set emitters. A pool is made on first use with 8 emitters, grows by one when dry, and frees an emitter that finishes while 64 are idle; a scene reload empties it. `_acquire()` resets the properties the builders do not always set; `_release()` runs on `finished`. The rings and the blood jet's tween are not pooled (the jet's pulses are). No speed-up was measured or expected at 1 enemy plus the dummy (see the build log, "Phase 1.5, item 9").
 
 ## 4. Not in this phase
 
