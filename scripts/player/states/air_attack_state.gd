@@ -82,7 +82,7 @@ func _on_action_update(delta: float) -> void:
 	# Landing resets the air actions (and the loop), even while the swing plays out.
 	if player.is_on_floor() and player.velocity.y <= 0.0:
 		player.reset_air_actions()
-	if not Input.is_action_pressed("attack"):
+	if not Input.is_action_pressed(Actions.ATTACK):
 		_released = true
 	_apply_hold_gravity(delta)
 	# Decision point (end of the wind-up): still holding = the helm splitter.
@@ -160,14 +160,14 @@ func _can_draw() -> bool:
 
 func _try_cancel() -> bool:
 	if player.is_on_floor():
-		if player.input_buffer.consume(&"dodge"):
+		if player.input_buffer.consume(Actions.DODGE):
 			machine.transition_to(StateName.DODGE)
 			return true
-		if player.input_buffer.consume(&"jump"):
+		if player.input_buffer.consume(Actions.JUMP):
 			player.start_jump()
 			machine.transition_to(StateName.AIR)
 			return true
-		if Input.is_action_just_pressed("crouch"):
+		if Input.is_action_just_pressed(Actions.CROUCH):
 			machine.transition_to(StateName.CROUCH)
 			return true
 		return false
@@ -183,7 +183,7 @@ func _try_cancel() -> bool:
 func _accept_attack_press() -> void:
 	if _queued:
 		return
-	if _in_buffer_window() and player.input_buffer.consume(&"attack"):
+	if _in_buffer_window() and player.input_buffer.consume(Actions.ATTACK):
 		_queued = true
 
 

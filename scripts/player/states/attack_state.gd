@@ -267,7 +267,7 @@ func _on_action_finished() -> void:
 
 
 func _on_action_update(delta: float) -> void:
-	if _phase == Phase.NORMAL and not Input.is_action_pressed("attack"):
+	if _phase == Phase.NORMAL and not Input.is_action_pressed(Actions.ATTACK):
 		_released = true
 	# The decision point is the end of the wind-up: still holding attack = charge a thrust.
 	if _phase == Phase.NORMAL and not _is_thrust and not _decided \
@@ -328,7 +328,7 @@ func _hold_target() -> ActionData:
 ## The wind-up just ended: hold = swap in the hold action, otherwise carry on as a slash.
 func _decide() -> void:
 	var target := _hold_target()
-	if target != null and not _released and Input.is_action_pressed("attack"):
+	if target != null and not _released and Input.is_action_pressed(Actions.ATTACK):
 		_hold_action = target
 		_iai_hold = action == player.weapon.draw_attack
 		_hold_wait = 0.0
@@ -367,7 +367,7 @@ func _update_hold(delta: float) -> void:
 		player.face_input(delta)
 	if _try_cancel():
 		return
-	var held := Input.is_action_pressed("attack")
+	var held := Input.is_action_pressed(Actions.ATTACK)
 	if _phase == Phase.WAITING:
 		_hold_wait += delta
 		if player.sword_visual != null:
@@ -474,14 +474,14 @@ func _try_cancel() -> bool:
 	if _crouch_context and player.is_on_floor():
 		return _try_cancel_crouched()
 	if player.is_on_floor():
-		if player.input_buffer.consume(&"dodge"):
+		if player.input_buffer.consume(Actions.DODGE):
 			machine.transition_to(StateName.DODGE)
 			return true
-		if player.input_buffer.consume(&"jump"):
+		if player.input_buffer.consume(Actions.JUMP):
 			player.start_jump()
 			machine.transition_to(StateName.AIR)
 			return true
-		if Input.is_action_just_pressed("crouch"):
+		if Input.is_action_just_pressed(Actions.CROUCH):
 			machine.transition_to(StateName.CROUCH)
 			return true
 	return false
@@ -491,22 +491,22 @@ func _try_cancel() -> bool:
 ## crouch (or releasing it, in hold mode) stands you up.
 func _try_cancel_crouched() -> bool:
 	var headroom := player.can_stand()
-	if player.input_buffer.has_pressed(&"dodge"):
+	if player.input_buffer.has_pressed(Actions.DODGE):
 		if headroom:
-			player.input_buffer.consume(&"dodge")
+			player.input_buffer.consume(Actions.DODGE)
 			machine.transition_to(StateName.DODGE)
 			return true
-		player.input_buffer.clear(&"dodge")
-	if player.input_buffer.has_pressed(&"jump"):
+		player.input_buffer.clear(Actions.DODGE)
+	if player.input_buffer.has_pressed(Actions.JUMP):
 		if headroom:
-			player.input_buffer.consume(&"jump")
+			player.input_buffer.consume(Actions.JUMP)
 			player.start_jump()
 			machine.transition_to(StateName.AIR)
 			return true
-		player.input_buffer.clear(&"jump")
+		player.input_buffer.clear(Actions.JUMP)
 	if headroom:
-		var wants_stand := not Input.is_action_pressed("crouch") if player.crouch_is_hold \
-				else Input.is_action_just_pressed("crouch")
+		var wants_stand := not Input.is_action_pressed(Actions.CROUCH) if player.crouch_is_hold \
+				else Input.is_action_just_pressed(Actions.CROUCH)
 		if wants_stand:
 			machine.transition_to(StateName.LOCOMOTION)
 			return true
@@ -518,7 +518,7 @@ func _try_cancel_crouched() -> bool:
 func _accept_attack_press() -> void:
 	if _queued:
 		return
-	if _in_buffer_window() and player.input_buffer.consume(&"attack"):
+	if _in_buffer_window() and player.input_buffer.consume(Actions.ATTACK):
 		_queued = true
 
 

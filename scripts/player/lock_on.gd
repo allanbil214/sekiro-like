@@ -17,6 +17,9 @@ signal target_changed(node: Node3D)
 ## No target and nothing to lock, with recenter_when_no_target on: turn the camera to this yaw.
 signal recenter_requested(yaw: float)
 
+## Why a lock ended (see `_lost_reason`).
+enum LostReason { NONE, DEAD, PLAYER, RANGE, LOS }
+
 @export_group("Acquire and release")
 ## How far (m) an enemy can be to be locked or switched to.
 @export var acquire_range: float = 20.0
@@ -142,7 +145,7 @@ func get_debug_text() -> String:
 func _unhandled_input(event: InputEvent) -> void:
 	if locked_out:
 		return
-	if not event.is_action_pressed(&"lock_on") or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if not event.is_action_pressed(Actions.LOCK_ON) or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
 	if has_target():
 		release()
@@ -158,7 +161,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	_cooldown_left = maxf(_cooldown_left - delta, 0.0)
 	_flick_x = move_toward(_flick_x, 0.0, flick_decay_px_per_s * delta)
-	var stick := Input.get_axis(&"look_left", &"look_right")
+	var stick := Input.get_axis(Actions.LOOK_LEFT, Actions.LOOK_RIGHT)
 	var stick_flick := 0
 	if absf(stick) >= stick_flick_threshold and absf(_stick_previous) < 0.5:
 		stick_flick = 1 if stick > 0.0 else -1
@@ -167,9 +170,9 @@ func _physics_process(delta: float) -> void:
 		_flick_x = 0.0
 		return
 	var reason := _lost_reason(delta)
-	if reason != &"":
+	if reason != LostReason.NONE:
 		release()
-		if reason == &"dead" and auto_lock_next:
+		if reason == LostReason.DEAD and auto_lock_next:
 			var relock := _nearest_to_player()
 			if relock != null:
 				_set_target(relock)
@@ -204,21 +207,21 @@ func _process(_delta: float) -> void:
 
 # --- Rules -------------------------------------------------------------------------------------
 
-## Why the lock must end now: &"dead", &"player", &"range", &"los", or &"" to keep it.
-func _lost_reason(delta: float) -> StringName:
+## Why the lock must end now (`LostReason.NONE` keeps it).
+func _lost_reason(delta: float) -> LostReason:
 	if not is_instance_valid(target) or not _is_valid_target(target):
-		return &"dead"
+		return LostReason.DEAD
 	if _player.combatant.dead:
-		return &"player"
+		return LostReason.PLAYER
 	if _flat_distance(target) > release_range:
-		return &"range"
+		return LostReason.RANGE
 	if _has_line_of_sight(target):
 		_los_lost = 0.0
 	else:
 		_los_lost += delta
 		if _los_lost >= los_lost_time:
-			return &"los"
-	return &""
+			return LostReason.LOS
+	return LostReason.NONE
 
 
 func _set_target(node: Node3D) -> void:

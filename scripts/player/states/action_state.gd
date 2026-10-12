@@ -59,12 +59,12 @@ func physics_update(delta: float) -> void:
 ## fires once the window closes, if it is still fresh). A crouched action under a low ceiling
 ## ignores it (guard stands you up).
 func _try_guard_cancel() -> bool:
-	if not _allows_guard_cancel() or not player.input_buffer.has_pressed(&"guard"):
+	if not _allows_guard_cancel() or not player.input_buffer.has_pressed(Actions.GUARD):
 		return false
 	if _hit_is_active():
 		return false
 	if player.is_crouched and not player.can_stand():
-		player.input_buffer.clear(&"guard")
+		player.input_buffer.clear(Actions.GUARD)
 		return false
 	machine.transition_to(StateName.GUARD)
 	return true

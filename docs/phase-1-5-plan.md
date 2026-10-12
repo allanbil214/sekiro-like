@@ -19,12 +19,12 @@
 | 3 | Debug prints (and the hitbox debug draw) only in debug builds | tidy | [x] (done 2026-10-12) |
 | 4 | Group names as constants | tidy, safety | [x] (done 2026-10-12) |
 | 5 | Split the big files: 5a `sword_visual.gd`, 5b `enemy.gd`, 5c `player.gd` | structure | [ ] |
-| 6 | Typed data instead of name strings | safety | [ ] |
+| 6 | Typed data instead of name strings (6A input actions, 6B lock-on reason) | safety | [x] (done 2026-10-12) |
 | 7 | `Groups` constants file | same as 4 | [x] (done with 4) |
 | 8 | Delay bigger refactors to Phase 2 | decision | not built |
 | 9 | Object pooling for `Fx` particles | performance | [ ] |
 
-Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6, 9, then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
+Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6 (**done**), 9, then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
 
 ## 3. The items
 
@@ -63,9 +63,10 @@ Same method as 12C and 12D: move self-contained code into a helper (default: a `
 - **Open:** the exact split of each file, decided after reading it.
 
 ### 6. Typed data instead of name strings
-- **What:** where code compares or looks up things by string (for example the names `ActionData.hold_action` and `animation` select), use enums or resource references.
-- **Open:** a survey comes first. Claude lists every such place and proposes which are worth changing. Any change that needs a `.tres` edit is shown as a diff against the latest snapshot first (work agreement, section 3), and tuned values stay.
-- **Risk:** medium (touches data files).
+- **Survey (2026-10-12):** `hold_action` is already an `ActionData` reference, and `kind`, the `Fx` kinds, the `Sfx` ids, the enemy phases and the state names are already enums or constants. What was left: **6A** the Input Map action names (119 lines, 141 places in 21 files, mixed `&"attack"` and `"attack"`); **6B** `LockOn._lost_reason()` returning `&"dead"`, `&"player"`, `&"range"`, `&"los"`, `&""`; **6C** `Sfx.swing_id()` choosing the swing sound by `ActionData.animation` name (three name lists); **6D** duck typing by name (`call_group(..., "add_trauma")`, `node.get("combatant")`, `get("lock_point_height")`, the sound slots matched by name in `sfx_data.tres`).
+- **Done 2026-10-12 (6A and 6B):** `Actions` (`scripts/player/actions.gd`, `StringName` constants for all 17 Input Map actions) replaces the literals everywhere; `ui_cancel` (a built-in) and the hurtbox profile name `"crouch"` in `player.gd` are not actions and stay. `LockOn.LostReason { NONE, DEAD, PLAYER, RANGE, LOS }` replaces the string reason codes. See the build log, "Phase 1.5, item 6".
+- **Not done on purpose:** 6C (a `swing_sound` field on `ActionData` set in about 13 `.tres` files; `animation` is meant to become the real animation name, so the coupling is fragile, but it touches tuned data for a small gain; do it if it ever bites). 6D (no clean fix in GDScript; the sound slots already warn on a mismatch).
+- **Risk:** medium (many files, but each change is a literal swapped for a constant).
 
 ### 7. `Groups` constants file
 - **What:** the home of the item 4 constants: `scripts/combat/groups.gd` (`class_name Groups`, next to `layers.gd`). Built together with item 4 (done 2026-10-12).

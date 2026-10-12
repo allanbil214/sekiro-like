@@ -22,7 +22,7 @@ func enter(_previous: StringName) -> void:
 	player.sheathe_idle = 0.0
 	player.walk_only = true
 	player.combatant.guarding = true
-	player.input_buffer.consume(&"guard")
+	player.input_buffer.consume(Actions.GUARD)
 	player.combatant.press_guard()
 	_airborne = not player.is_on_floor()
 	Sfx.play(player.get_tree(), Sfx.Id.GUARD_RAISE)
@@ -43,7 +43,7 @@ func exit(_next: StringName) -> void:
 func physics_update(delta: float) -> void:
 	var combatant := player.combatant
 	# A fresh press: a new window, even mid-deflect.
-	if player.input_buffer.consume(&"guard"):
+	if player.input_buffer.consume(Actions.GUARD):
 		combatant.press_guard()
 		if player.sword_visual != null:
 			player.sword_visual.play_guard_press()
@@ -52,14 +52,14 @@ func physics_update(delta: float) -> void:
 		if _airborne:
 			_airborne = false
 			player.reset_air_actions()
-		if player.input_buffer.consume(&"jump"):
+		if player.input_buffer.consume(Actions.JUMP):
 			player.start_jump()
 			machine.transition_to(StateName.AIR)
 			return
-		if player.input_buffer.consume(&"dodge"):
+		if player.input_buffer.consume(Actions.DODGE):
 			machine.transition_to(StateName.DODGE)
 			return
-		if player.has_combo() and player.input_buffer.consume(&"attack"):
+		if player.has_combo() and player.input_buffer.consume(Actions.ATTACK):
 			machine.transition_to(StateName.ATTACK)
 			return
 	else:
@@ -68,13 +68,13 @@ func physics_update(delta: float) -> void:
 		if player.try_air_jump():
 			machine.transition_to(StateName.WALL_JUMP)
 			return
-		if player.weapon != null and player.input_buffer.has_pressed(&"attack") \
+		if player.weapon != null and player.input_buffer.has_pressed(Actions.ATTACK) \
 				and not player.is_near_ground():
 			var air_attack := machine.get_state(StateName.AIR_ATTACK) as AirAttackState
 			if air_attack != null and air_attack.start():
-				player.input_buffer.consume(&"attack")
+				player.input_buffer.consume(Actions.ATTACK)
 				return
 	player.apply_horizontal_movement(delta, player.get_move_speed())
 	player.face_input(delta)
-	if not Input.is_action_pressed("guard") and combatant.deflect_left <= 0.0:
+	if not Input.is_action_pressed(Actions.GUARD) and combatant.deflect_left <= 0.0:
 		machine.transition_to(StateName.LOCOMOTION if on_floor else StateName.AIR)

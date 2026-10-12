@@ -39,25 +39,25 @@ func _on_action_update(delta: float) -> void:
 		Fx.play(player.get_tree(), Fx.Kind.SLIDE_DUST, player.global_position, -_move_dir)
 	if not action.can_cancel(action_time):
 		return
-	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
+	if player.weapon != null and player.input_buffer.has_pressed(Actions.ATTACK):
 		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.crouch_attack):
-			player.input_buffer.consume(&"attack")
+			player.input_buffer.consume(Actions.ATTACK)
 			return
 	var headroom := player.can_stand()
-	if player.input_buffer.has_pressed(&"jump"):
+	if player.input_buffer.has_pressed(Actions.JUMP):
 		if headroom:
-			player.input_buffer.consume(&"jump")
+			player.input_buffer.consume(Actions.JUMP)
 			player.start_jump()
 			machine.transition_to(StateName.AIR)
 			return
-		player.input_buffer.clear(&"jump")
-	if player.input_buffer.has_pressed(&"dodge"):
+		player.input_buffer.clear(Actions.JUMP)
+	if player.input_buffer.has_pressed(Actions.DODGE):
 		if headroom:
-			player.input_buffer.consume(&"dodge")
+			player.input_buffer.consume(Actions.DODGE)
 			machine.transition_to(StateName.DODGE)
 			return
-		player.input_buffer.clear(&"dodge")
+		player.input_buffer.clear(Actions.DODGE)
 
 
 func _on_action_finished() -> void:

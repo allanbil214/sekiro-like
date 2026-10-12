@@ -80,7 +80,7 @@ func _on_action_update(_delta: float) -> void:
 			player.notify_combat()
 		return
 	if _executed and action.can_cancel(action_time):
-		if player.input_buffer.consume(&"dodge"):
+		if player.input_buffer.consume(Actions.DODGE):
 			machine.transition_to(StateName.DODGE)
 
 

@@ -332,7 +332,7 @@ func _physics_process(delta: float) -> void:
 	input_buffer.tick(delta)
 	if _guard_lockout > 0.0:
 		_guard_lockout -= delta
-		input_buffer.clear(&"guard")
+		input_buffer.clear(Actions.GUARD)
 	_update_grab_kneel(delta)
 	combatant.tick_guard(delta, state_machine.current is GuardState, state_machine.current is ActionState)
 	combatant.tick_posture(delta, _posture_regen_paused())
@@ -375,7 +375,7 @@ func _physics_process(delta: float) -> void:
 
 ## Movement input in world space, relative to the camera. Length 0 to 1.
 func get_move_input() -> Vector3:
-	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var input_dir := Input.get_vector(Actions.MOVE_LEFT, Actions.MOVE_RIGHT, Actions.MOVE_FORWARD, Actions.MOVE_BACK)
 	var cam_basis := Basis(Vector3.UP, camera_rig.global_rotation.y)
 	return cam_basis * Vector3(input_dir.x, 0.0, input_dir.y)
 
@@ -918,7 +918,7 @@ func find_deathblow_target() -> Node3D:
 
 ## A fresh attack press next to a stunned enemy is a deathblow, not a normal attack.
 func _try_deathblow() -> void:
-	if weapon == null or not input_buffer.has_pressed(&"attack") or not is_on_floor():
+	if weapon == null or not input_buffer.has_pressed(Actions.ATTACK) or not is_on_floor():
 		return
 	var current := state_machine.current
 	if current is StaggerState or current is DeathblowState or current is DeadState or current is AirState \
@@ -933,7 +933,7 @@ func _try_deathblow() -> void:
 	var target := find_deathblow_target()
 	if target == null:
 		return
-	input_buffer.consume(&"attack")
+	input_buffer.consume(Actions.ATTACK)
 	deathblow_target = target
 	state_machine.transition_to(StateName.DEATHBLOW)
 
@@ -981,7 +981,7 @@ func resurrect() -> void:
 ## Start the heal if `heal` was just pressed and the player is in a state that allows it (Locomotion,
 ## Crouch, or Dash). Crouched under a low ceiling cannot heal (it stands you up first).
 func _try_heal() -> void:
-	if not Input.is_action_just_pressed(&"heal"):
+	if not Input.is_action_just_pressed(Actions.HEAL):
 		return
 	if heal_charges <= 0 or combatant.dead or combatant.vulnerable:
 		return
@@ -1058,9 +1058,9 @@ func is_near_ground() -> bool:
 ## Returns true if a wall jump should start (wall_normal is set; the caller transitions
 ## to WallJump). Otherwise it may play the reach, and returns false.
 func try_air_jump() -> bool:
-	if not input_buffer.has_pressed(&"jump") or is_near_ground():
+	if not input_buffer.has_pressed(Actions.JUMP) or is_near_ground():
 		return false
-	input_buffer.consume(&"jump")
+	input_buffer.consume(Actions.JUMP)
 	if wall_jumps_used < max_wall_jumps:
 		var wall := ledge_sensor.find_wall()
 		if not wall.is_empty():

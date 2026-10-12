@@ -8,29 +8,29 @@ func physics_update(delta: float) -> void:
 		player.coyote_timer = player.coyote_time
 		machine.transition_to(StateName.AIR)
 		return
-	if player.input_buffer.consume(&"jump"):
+	if player.input_buffer.consume(Actions.JUMP):
 		player.start_jump()
 		machine.transition_to(StateName.AIR)
 		return
-	if player.input_buffer.consume(&"dodge"):
+	if player.input_buffer.consume(Actions.DODGE):
 		machine.transition_to(StateName.DODGE)
 		return
-	if player.input_buffer.has_pressed(&"guard"):
+	if player.input_buffer.has_pressed(Actions.GUARD):
 		machine.transition_to(StateName.GUARD)
 		return
 	# Sheathed: the attack is the draw slash (iai).
-	if player.sheathed and player.input_buffer.has_pressed(&"attack"):
+	if player.sheathed and player.input_buffer.has_pressed(Actions.ATTACK):
 		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		if attack != null and attack.try_start_draw():
-			player.input_buffer.consume(&"attack")
+			player.input_buffer.consume(Actions.ATTACK)
 			return
-	if player.has_combo() and player.input_buffer.consume(&"attack"):
+	if player.has_combo() and player.input_buffer.consume(Actions.ATTACK):
 		machine.transition_to(StateName.ATTACK)
 		return
-	if Input.is_action_just_pressed("crouch"):
+	if Input.is_action_just_pressed(Actions.CROUCH):
 		machine.transition_to(StateName.CROUCH)
 		return
-	if Input.is_action_just_pressed("sheathe"):
+	if Input.is_action_just_pressed(Actions.SHEATHE):
 		player.toggle_sheathe()
 	player.apply_horizontal_movement(delta, player.get_move_speed())
 	player.face_input(delta)

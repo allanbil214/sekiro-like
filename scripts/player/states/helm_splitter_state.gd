@@ -181,14 +181,14 @@ func _on_action_finished() -> void:
 func _try_cancel() -> bool:
 	# Dodge and jump stand you up, so they need headroom (otherwise the press is discarded).
 	var headroom := player.can_stand()
-	if player.input_buffer.consume(&"dodge") and headroom:
+	if player.input_buffer.consume(Actions.DODGE) and headroom:
 		machine.transition_to(StateName.DODGE)
 		return true
-	if player.input_buffer.consume(&"jump") and headroom:
+	if player.input_buffer.consume(Actions.JUMP) and headroom:
 		player.start_jump()
 		machine.transition_to(StateName.AIR)
 		return true
-	if Input.is_action_just_pressed("crouch"):
+	if Input.is_action_just_pressed(Actions.CROUCH):
 		machine.transition_to(StateName.CROUCH)
 		return true
 	return false
@@ -199,5 +199,5 @@ func _accept_attack_press() -> void:
 		return
 	var window := action.buffer_window
 	var open := window == Vector2.ZERO or (action_time >= window.x and action_time <= window.y)
-	if open and player.input_buffer.consume(&"attack"):
+	if open and player.input_buffer.consume(Actions.ATTACK):
 		_queued = true

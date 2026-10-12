@@ -19,7 +19,7 @@ func enter(_previous: StringName) -> void:
 	_snap_time = 0.0
 	player.velocity = Vector3.ZERO
 	player.coyote_timer = 0.0
-	player.input_buffer.clear(&"jump")
+	player.input_buffer.clear(Actions.JUMP)
 	player.snap_facing(-_normal)
 	player.reset_air_actions()
 	player.play_climb_arms()
@@ -38,15 +38,15 @@ func physics_update(delta: float) -> void:
 		var u := smoothstep(0.0, 1.0, clampf(_snap_time / maxf(player.hang_snap_time, 0.001), 0.0, 1.0))
 		player.global_position = _start.lerp(player.ledge_hang_pos, u)
 		return
-	if Input.is_action_just_pressed("crouch"):
+	if Input.is_action_just_pressed(Actions.CROUCH):
 		_drop()
 		return
-	if player.input_buffer.consume(&"jump"):
+	if player.input_buffer.consume(Actions.JUMP):
 		_leap()
 		return
 	var want := player.get_move_input()
 	want.y = 0.0
-	if Input.is_action_just_pressed("interact"):
+	if Input.is_action_just_pressed(Actions.INTERACT):
 		var probe := player.ledge_sensor.probe_hang_ledge(player.global_position, _normal)
 		if not probe.is_empty() and probe["fits"]:
 			player.ledge_stand_pos = probe["stand_position"]

@@ -18,7 +18,7 @@ func enter(_previous: StringName) -> void:
 	player.invulnerable = false
 	player.walk_only = false
 	player.combatant.vulnerable = true
-	for action_name: StringName in [&"jump", &"dodge", &"attack", &"guard"]:
+	for action_name: StringName in [Actions.JUMP, Actions.DODGE, Actions.ATTACK, Actions.GUARD]:
 		player.input_buffer.clear(action_name)
 	if player.sword_visual != null:
 		player.sword_visual.end_combo()
@@ -39,10 +39,10 @@ func physics_update(delta: float) -> void:
 	if not on_floor:
 		player.apply_gravity(delta)
 	player.decelerate(delta)
-	player.input_buffer.clear(&"jump")
-	player.input_buffer.clear(&"attack")
-	player.input_buffer.clear(&"guard")
-	if elapsed >= dodge_locked_time and on_floor and player.input_buffer.consume(&"dodge"):
+	player.input_buffer.clear(Actions.JUMP)
+	player.input_buffer.clear(Actions.ATTACK)
+	player.input_buffer.clear(Actions.GUARD)
+	if elapsed >= dodge_locked_time and on_floor and player.input_buffer.consume(Actions.DODGE):
 		machine.transition_to(StateName.DODGE)
 		return
 	if elapsed >= duration:

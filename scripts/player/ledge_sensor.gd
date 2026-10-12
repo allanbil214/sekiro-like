@@ -49,8 +49,8 @@ func find_ledge() -> Dictionary:
 		return {}
 	if Time.get_ticks_msec() < player.ledge_block_until_ms:
 		return {}
-	if player.ledge_requires_jump_held and not (Input.is_action_pressed("jump")
-			or Input.is_action_pressed("interact") or player.input_buffer.has_pressed(&"interact")):
+	if player.ledge_requires_jump_held and not (Input.is_action_pressed(Actions.JUMP)
+			or Input.is_action_pressed(Actions.INTERACT) or player.input_buffer.has_pressed(Actions.INTERACT)):
 		return {}
 	var want := player.get_move_input()
 	want.y = 0.0
@@ -136,9 +136,9 @@ func try_ledge_grab() -> bool:
 ## Which state a found ledge leads to: hang if interact is held (or was just pressed) and
 ## the hanging body fits there, otherwise the auto-climb.
 func ledge_grab_state() -> StringName:
-	var wants_hang := Input.is_action_pressed("interact") or player.input_buffer.has_pressed(&"interact")
+	var wants_hang := Input.is_action_pressed(Actions.INTERACT) or player.input_buffer.has_pressed(Actions.INTERACT)
 	if wants_hang and player.ledge_hang_fits:
-		player.input_buffer.consume(&"interact")
+		player.input_buffer.consume(Actions.INTERACT)
 		return StateName.LEDGE_HANG
 	return StateName.LEDGE_CLIMB
 

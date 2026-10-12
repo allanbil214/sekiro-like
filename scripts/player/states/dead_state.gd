@@ -39,7 +39,7 @@ func enter(_previous: StringName) -> void:
 	player.walk_only = false
 	player.combatant.guarding = false
 	player.combatant.vulnerable = false
-	for action_name: StringName in [&"jump", &"dodge", &"attack", &"guard", &"interact"]:
+	for action_name: StringName in [Actions.JUMP, Actions.DODGE, Actions.ATTACK, Actions.GUARD, Actions.INTERACT]:
 		player.input_buffer.clear(action_name)
 	if player.sword_visual != null:
 		player.sword_visual.end_combo()
@@ -65,7 +65,7 @@ func physics_update(delta: float) -> void:
 	if not player.is_on_floor():
 		player.apply_gravity(delta)
 	player.decelerate(delta)
-	for action_name: StringName in [&"jump", &"dodge", &"attack", &"guard"]:
+	for action_name: StringName in [Actions.JUMP, Actions.DODGE, Actions.ATTACK, Actions.GUARD]:
 		player.input_buffer.clear(action_name)
 	if _dying:
 		_dying_time += delta
@@ -81,9 +81,9 @@ func physics_update(delta: float) -> void:
 		return
 	if _can_resurrect:
 		# Fresh presses only: a button held since before the prompt does not count.
-		if Input.is_action_just_pressed(&"attack"):
+		if Input.is_action_just_pressed(Actions.ATTACK):
 			_resurrect()
-		elif Input.is_action_just_pressed(&"guard"):
+		elif Input.is_action_just_pressed(Actions.GUARD):
 			_die()
 	elif elapsed >= final_death_time:
 		_die()

@@ -15,23 +15,23 @@ func physics_update(delta: float) -> void:
 		player.coyote_timer = player.coyote_time
 		machine.transition_to(StateName.AIR)
 		return
-	if player.input_buffer.consume(&"jump"):
+	if player.input_buffer.consume(Actions.JUMP):
 		player.start_jump()
 		machine.transition_to(StateName.AIR)
 		return
-	if player.input_buffer.has_pressed(&"guard"):
+	if player.input_buffer.has_pressed(Actions.GUARD):
 		machine.transition_to(StateName.GUARD)
 		return
-	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
+	if player.weapon != null and player.input_buffer.has_pressed(Actions.ATTACK):
 		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.dash_attack):
-			player.input_buffer.consume(&"attack")
+			player.input_buffer.consume(Actions.ATTACK)
 			return
 	var has_input := player.get_move_input().length_squared() > 0.01
-	if has_input and Input.is_action_just_pressed("crouch"):
+	if has_input and Input.is_action_just_pressed(Actions.CROUCH):
 		machine.transition_to(StateName.SLIDE)
 		return
-	if not Input.is_action_pressed("dodge") or not has_input:
+	if not Input.is_action_pressed(Actions.DODGE) or not has_input:
 		machine.transition_to(StateName.LOCOMOTION)
 		return
 	player.apply_horizontal_movement(delta, player.dash_speed)

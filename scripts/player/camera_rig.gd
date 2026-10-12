@@ -100,7 +100,7 @@ func _process(delta: float) -> void:
 		_recentering = false
 		_aim_at_lock_target(delta)
 	else:
-		var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+		var look := Input.get_vector(Actions.LOOK_LEFT, Actions.LOOK_RIGHT, Actions.LOOK_UP, Actions.LOOK_DOWN)
 		_yaw -= look.x * stick_sensitivity * delta
 		_pitch -= look.y * stick_sensitivity * delta
 		if _recentering:

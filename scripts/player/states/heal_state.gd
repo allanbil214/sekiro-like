@@ -23,10 +23,10 @@ func enter(_previous: StringName) -> void:
 	player.invulnerable = false
 	if player.is_crouched:
 		player.set_crouched(false)
-	player.input_buffer.consume(&"dodge")
-	player.input_buffer.consume(&"jump")
-	player.input_buffer.consume(&"attack")
-	player.input_buffer.consume(&"guard")
+	player.input_buffer.consume(Actions.DODGE)
+	player.input_buffer.consume(Actions.JUMP)
+	player.input_buffer.consume(Actions.ATTACK)
+	player.input_buffer.consume(Actions.GUARD)
 	if not player.combatant.damaged.is_connected(_on_damaged):
 		player.combatant.damaged.connect(_on_damaged)
 	player.heal_arm.begin()
@@ -62,25 +62,25 @@ func physics_update(delta: float) -> void:
 		player.apply_gravity(delta)
 	# Free cancels.
 	if on_floor:
-		if player.input_buffer.consume(&"jump"):
+		if player.input_buffer.consume(Actions.JUMP):
 			player.start_jump()
 			machine.transition_to(StateName.AIR)
 			return
-		if player.input_buffer.consume(&"dodge"):
+		if player.input_buffer.consume(Actions.DODGE):
 			machine.transition_to(StateName.DODGE)
 			return
-		if player.input_buffer.has_pressed(&"guard"):
+		if player.input_buffer.has_pressed(Actions.GUARD):
 			machine.transition_to(StateName.GUARD)
 			return
-		if player.has_combo() and player.input_buffer.consume(&"attack"):
+		if player.has_combo() and player.input_buffer.consume(Actions.ATTACK):
 			machine.transition_to(StateName.ATTACK)
 			return
 	else:
-		if player.input_buffer.has_pressed(&"guard"):
+		if player.input_buffer.has_pressed(Actions.GUARD):
 			machine.transition_to(StateName.GUARD)
 			return
-		player.input_buffer.clear(&"jump")
-		player.input_buffer.clear(&"dodge")
+		player.input_buffer.clear(Actions.JUMP)
+		player.input_buffer.clear(Actions.DODGE)
 	player.apply_horizontal_movement(delta, player.get_move_speed())
 	player.face_input(delta)
 	if elapsed >= duration:

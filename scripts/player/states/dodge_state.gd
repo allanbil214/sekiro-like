@@ -29,20 +29,20 @@ func _on_action_enter(_previous: StringName) -> void:
 func _on_action_update(_delta: float) -> void:
 	if not action.can_cancel(action_time):
 		return
-	if player.is_on_floor() and player.input_buffer.consume(&"jump"):
+	if player.is_on_floor() and player.input_buffer.consume(Actions.JUMP):
 		player.start_jump()
 		machine.transition_to(StateName.AIR)
 		return
-	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
+	if player.weapon != null and player.input_buffer.has_pressed(Actions.ATTACK):
 		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.dash_attack):
-			player.input_buffer.consume(&"attack")
+			player.input_buffer.consume(Actions.ATTACK)
 			return
-	if player.input_buffer.consume(&"dodge"):
+	if player.input_buffer.consume(Actions.DODGE):
 		machine.transition_to(StateName.DODGE)
 		return
 	if player.get_move_input().length_squared() > 0.01:
-		if Input.is_action_pressed("dodge"):
+		if Input.is_action_pressed(Actions.DODGE):
 			machine.transition_to(StateName.DASH)
 		else:
 			machine.transition_to(StateName.LOCOMOTION)
