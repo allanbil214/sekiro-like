@@ -151,6 +151,13 @@ var sheathed: bool = false
 @export var max_resurrections: int = 2
 @export_range(0.05, 1.0) var resurrect_health_fraction: float = 0.5
 @export var resurrect_invulnerable_time: float = 2.0
+@export_group("Fall zone (Phase 2, 3a)")
+## A fall out of the world (FallZone): the screen fades to black over fall_fade_out (s), the player is put
+## back at its start, then fades back in over fall_fade_in (s). Invulnerable for fall_invulnerable_time (s)
+## after the fade-in. The health lost is FallZone.damage_fraction of the max (never lethal).
+@export var fall_fade_out: float = 0.35
+@export var fall_fade_in: float = 0.35
+@export var fall_invulnerable_time: float = 1.0
 ## Hit wobble (cosmetic): the whole Visual shifts this far (m) away from the attacker, tilts this far
 ## (radians), and eases back over this many seconds.
 @export var hit_recoil_distance: float = 0.15
@@ -205,6 +212,13 @@ var resurrections_left: int = 0
 ## The enemy that was locked when the player died (DeadState re-locks it on a resurrection).
 var relock_target: Node3D
 var _death_pending: bool = false
+## Where the player started (recorded in _ready) and which way it faced: the fall respawn point.
+var _spawn_position: Vector3 = Vector3.ZERO
+var _spawn_yaw: float = 0.0
+## The fall respawn: black out, teleport, fade back in. The player is locked (no states, no movement).
+enum FallPhase { NONE, FADE_OUT, FADE_IN }
+var _fall_phase: FallPhase = FallPhase.NONE
+var _fall_timer: float = 0.0
 var _revive_invulnerable_left: float = 0.0
 ## Set by actions during their i-frame window (read by the damage system in Step 4).
 var invulnerable: bool = false
@@ -266,10 +280,13 @@ var sword_visual: SwordVisual
 @onready var _nose: MeshInstance3D = $Visual/Nose
 ## The left arm that lifts the gourd while healing (Step 11, HealState drives it).
 @onready var heal_arm: HealArm = $Visual/HealArm
+@onready var screen_fade: ScreenFade = $ScreenFade
 
 
 func _ready() -> void:
 	input_buffer = InputBuffer.new(input_buffer_time)
+	_spawn_position = global_position
+	_spawn_yaw = visual.rotation.y
 	ledge_sensor = LedgeSensor.new(self)
 	_forced = PlayerForcedMovement.new(self)
 	_reaction = PlayerBodyReaction.new(self)
@@ -310,6 +327,8 @@ func _physics_process(delta: float) -> void:
 	combatant.tick_posture(delta, _posture_regen_paused())
 	_revive_invulnerable_left = maxf(_revive_invulnerable_left - delta, 0.0)
 	_update_death()
+	if _update_fall_respawn(delta):
+		return
 	_update_stagger()
 	_update_repulse()
 	_try_deathblow()
@@ -841,6 +860,61 @@ func _update_death() -> void:
 		return
 	_death_pending = false
 	state_machine.transition_to(StateName.DEAD)
+
+
+## A FallZone calls this every frame the player is inside it. Starts the fall respawn: the control is
+## locked, a share of max health is lost (never lethal), the hurt sound plays and the screen fades out.
+## Ignored while dead, in a deathblow, or already respawning (it triggers once that ends, if the player
+## is still inside the zone).
+func begin_fall_respawn(damage_fraction: float) -> void:
+	if _fall_phase != FallPhase.NONE or combatant.dead or _death_pending:
+		return
+	var current := state_machine.current
+	if current is DeadState or current is DeathblowState:
+		return
+	combatant.take_flat_damage(combatant.max_health * damage_fraction, false)
+	Sfx.play(get_tree(), Sfx.Id.PLAYER_HURT)
+	_revive_invulnerable_left = fall_fade_out + fall_fade_in + fall_invulnerable_time
+	velocity = Vector3.ZERO
+	_fall_phase = FallPhase.FADE_OUT
+	_fall_timer = fall_fade_out
+	screen_fade.fade_out(fall_fade_out)
+
+
+## Runs the fall respawn from _physics_process. Returns true while the player is locked (the rest of
+## the frame is skipped).
+func _update_fall_respawn(delta: float) -> bool:
+	if _fall_phase == FallPhase.NONE:
+		return false
+	_fall_timer -= delta
+	if _fall_phase == FallPhase.FADE_OUT:
+		if _fall_timer <= 0.0:
+			_teleport_to_spawn()
+			_fall_phase = FallPhase.FADE_IN
+			_fall_timer = fall_fade_in
+			screen_fade.fade_in(fall_fade_in)
+		return true
+	if _fall_timer <= 0.0:
+		_fall_phase = FallPhase.NONE
+		return false
+	return true
+
+
+## Under black: back to the start spot and facing, velocity and knockback cleared, a normal state, and
+## the camera put straight behind (no swoop).
+func _teleport_to_spawn() -> void:
+	global_position = _spawn_position
+	velocity = Vector3.ZERO
+	_forced.velocity = Vector3.ZERO
+	_forced.decel = 0.0
+	visual.rotation.y = _spawn_yaw
+	coyote_timer = 0.0
+	invulnerable = false
+	reset_air_actions()
+	for action in input_buffer.tracked:
+		input_buffer.clear(action)
+	state_machine.transition_to(StateName.LOCOMOTION)
+	(camera_rig as CameraRig).snap_to_target()
 
 
 ## Called by DeadState when the player chooses to resurrect: spends one, comes back at a share of the

@@ -978,3 +978,39 @@ Done and tested by the user (a parse error in `death_screen.gd` was fixed on the
 - `DEFAULT_ARENA` is one constant in `main_menu.gd`. If the load fails it logs an error, undoes the fade and returns to the entries.
 **Not done:** NEW GAME and CONTINUE (needs saves), real Options, ARENAS, the pause menu (item 2), music in the arenas, a bundled font (suggested: Cinzel, and Zen Antique or Shippori Mincho; all free OFL), a drawn logo. Not run headless; tested by the user.
 **Noticed, not changed:** the slots `aura_start`, `death_toll` and `die_confirm` already reuse `back.wav` and `ok.wav`, so tuning those wavs also changes those sounds.
+
+
+### Phase 2 item 2: Pause menu (2026-10-12)
+**Decisions (user, 2026-10-12):** the mock was a short centered column (PAUSED, a thin gold divider, RESUME, OPTIONS, QUIT TO TITLE) over the frozen arena dimmed to 65 percent, matching the main menu; text smaller than the main menu (entries 28, heading 22 at 1080 px high). A new input action `pause` (Esc, gamepad Start; `Actions.PAUSE`) opens it and, while open, resumes (or closes the Options panel first); the gamepad's Cancel does the same through `ui_cancel`. The game pauses with `SceneTree.paused`. Quit to Title fades 0.4 s, unpauses, resets `Engine.time_scale` and loads `main_menu.tscn` (its normal flow, with "press any button"); no confirmation (nothing to lose until saves exist). OPTIONS shows a copy of the empty placeholder panel (the tested main menu was left untouched). The debug-only "Change arena" row is item 3.
+**Files:** new `scenes/ui/pause_menu.tscn` (written as text), `scripts/ui/pause_menu.gd`, `scripts/ui/ui_text_scaler.gd`; changed `scripts/player/actions.gd` (`PAUSE`), `scripts/ui/victory_screen.gd` (`is_active()`), `scripts/audio/sfx.gd` (`play_ui()` and an `always` flag on `_start()`). Editor steps: the `pause` action in the Input Map, and the scene instanced as the last child of Player in `player.tscn`. `ui_theme.tres` and the main menu were not changed.
+**Rules that are not obvious from the code:**
+- `PauseMenu` is a `CanvasLayer` (layer 30, above the death screen at 20) with process mode Always (set in the scene). The `pause` event is read in `_input` and marked handled, so `CameraRig._unhandled_input` (which frees the mouse on `ui_cancel`) never gets the Esc press; that old behavior now only happens where the pause menu refuses to open.
+- It refuses to open while `Player.combatant.dead` or the state is `DeadState`, while `VictoryScreen.is_active()` (that screen counts wall-clock time with `Time.get_ticks_msec`, so pausing under it would make the banner jump), and while `Engine.time_scale` is not 1 (hitstop, slow motion; the window is milliseconds and a second press works).
+- `Sfx` voices are normal nodes in the current scene and freeze with a paused tree, so `Sfx.play_ui()` sets the voice's `process_mode` to Always (every `_start()` sets it explicitly, so a pooled voice never keeps the wrong mode).
+- Text sizes are `theme_override_font_sizes` on the nodes in the scene (the Theme is shared and was left alone); `UiTextScaler.add()` reads the size and letter spacing (including such an override) and `apply(size.y / 1080)` sets them. The main menu has its own copy of this logic in `MainMenu.TextBase`.
+- The mouse mode before the pause is stored and restored on resume, so it works wherever the mouse was.
+**Not done:** the debug-only "Change arena" entry (item 3), merging the two Options panels, the main menu adopting `UiTextScaler`, a confirmation on Quit to Title (when saves exist). Not run headless; tested by the user.
+**Noticed, not changed:** `scripts/ui/crouch_vignette.gd` has CRLF line endings while the other scripts are LF.
+
+### Phase 2 item 3a: fall zone (2026-10-12)
+Done and tested by the user 2026-10-12 (jump off the edge, the 1 HP floor, dead, deathblow, locked on, other states). Not run headless (not asked); look and feel tested by the user.
+
+**What exists**
+- `FallZone` (`scripts/combat/fall_zone.gd`, an `Area3D`): every physics frame it asks each overlapping body, and calls `Player.begin_fall_respawn(damage_fraction)` for the Player (other bodies are ignored, so enemies are untouched; `Enemy` keeps its own "below -30 m" check). It sets `collision_layer = 0` and `monitorable = false` in `_ready()`; its mask stays on layer 1. `damage_fraction` is an `@export` (0.25). Checking every frame, not a one-time signal, means a fall during a deathblow or while dead triggers once that ends and the player is still inside.
+- `ScreenFade` (`scripts/ui/screen_fade.gd`, a `CanvasLayer` at layer 25, a direct child of Player; one black `ColorRect` made in code like `CrouchVignette`, never blocks the mouse): `fade_out(time)` and `fade_in(time)`, reusable for checkpoints. Under the pause menu (30), above the HUD, death screen and vignette.
+- `Combatant.take_flat_damage(amount, can_kill = true)`: health loss that is not a hit (no `HitData`, so no `damaged` signal, wobble, hitstop or posture; the multipliers do not apply). With `can_kill` false it leaves at least 1 HP (or what is left if already below 1). Emits `health_changed`; returns the health lost.
+- `Player.begin_fall_respawn()`, `_update_fall_respawn()`, `_teleport_to_spawn()`, with the phases `FallPhase.NONE / FADE_OUT / FADE_IN`. Exports under "Fall zone (Phase 2, 3a)": `fall_fade_out` 0.35 s, `fall_fade_in` 0.35 s, `fall_invulnerable_time` 1.0 s. `_spawn_position` and `_spawn_yaw` (the Visual's yaw) are recorded in `_ready()`.
+- `CameraRig.snap_to_target()`: puts the rig at its follow goal at once (yaw and pitch kept), called under black so the camera does not swoop.
+
+**Rules that are not obvious from the code**
+- The penalty (25 percent of max health, never lethal), the hurt sound (`Sfx.Id.PLAYER_HURT`, no `Fx`, so no sparks or camera shake) and the fade-out start the moment the zone is touched.
+- The `_update_fall_respawn()` gate sits in `Player._physics_process` right after `_update_death()`: while the phase is not NONE the rest of the frame is skipped (no states, no `move_and_slide()`), so the player is locked and frozen where it touched the zone, for the fade-out and the fade-in.
+- Invulnerability reuses `_revive_invulnerable_left` (the resurrection mechanism), set at the touch to `fall_fade_out + fall_fade_in + fall_invulnerable_time`, so the full 1.0 s follows the fade-in.
+- Under black: position and the Visual's yaw back to the start, `velocity`, the knockback push (`_forced`) and `coyote_timer` cleared, `invulnerable` false, `reset_air_actions()`, the tracked input buffer cleared, a transition to `Locomotion` (its `exit()` ends any attack, guard, crouch or heal), then the camera snap.
+- Ignored while dead (`combatant.dead`, `_death_pending`, `DeadState`), in `DeathblowState`, or already respawning. A dead player keeps falling; resurrecting while still below the zone triggers the fall once.
+- The lock-on is not touched.
+
+**Files:** new `scripts/combat/fall_zone.gd`, `scripts/ui/screen_fade.gd`; modified `scripts/player/player.gd`, `scripts/combat/combatant.gd`, `scripts/player/camera_rig.gd` (additions only). Editor: a `ScreenFade` `CanvasLayer` under Player in `player.tscn`, a `FallZone` `Area3D` with a `BoxShape3D` (about 600 x 4 x 600 at y = -12) in `test_arena.tscn`. Zip: `sekiro-like_fall-zone.zip`.
+
+**Not done:** checkpoints (the start position is the respawn), anything for enemies, fall damage by height, any effect or sound beyond the hurt sound. The `FallZone` exists in `test_arena.tscn` only; 3c's new arenas each need their own.
+**Noticed, not fixed:** nothing.

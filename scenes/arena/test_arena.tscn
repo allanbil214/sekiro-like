@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_btlyn"]
 [ext_resource type="PackedScene" path="res://scenes/enemy/dummy.tscn" id="2_kti05"]
 [ext_resource type="PackedScene" uid="uid://bwl4ivdc22duh" path="res://scenes/enemy/enemy.tscn" id="2_wt5dk"]
+[ext_resource type="Script" uid="uid://cckm17n0luvoa" path="res://scripts/combat/fall_zone.gd" id="4_kaasr"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -20,6 +21,9 @@ glow_enabled = true
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lh4ft"]
 albedo_color = Color(0, 1, 1, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wynvb"]
+size = Vector3(600, 4, 600)
 
 [node name="TestArena" type="Node3D" unique_id=1990398739]
 
@@ -114,3 +118,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0031356812, 0.3244261, 1.3
 use_collision = true
 size = Vector3(3, 0.97335684, 0.64642334)
 material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="FallZone" type="Area3D" parent="." unique_id=1163396095]
+script = ExtResource("4_kaasr")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone" unique_id=1127990186]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, 0)
+shape = SubResource("BoxShape3D_wynvb")

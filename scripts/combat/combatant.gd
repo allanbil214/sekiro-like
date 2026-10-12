@@ -274,6 +274,18 @@ func take_hit(hit: HitData) -> float:
 	return amount
 
 
+## Lose health that is not a hit (a fall): no HitData, so no `damaged` signal, wobble, hitstop, or
+## posture, and the multipliers do not apply. With `can_kill` false it always leaves at least 1 HP
+## (or what is left, if already below 1). Returns the health actually lost.
+func take_flat_damage(amount: float, can_kill: bool = true) -> float:
+	if dead or amount <= 0.0:
+		return 0.0
+	var floor_health := 0.0 if can_kill else minf(1.0, health)
+	var lost := minf(amount, maxf(health - floor_health, 0.0))
+	_lose_health(lost)
+	return lost
+
+
 ## The Combatant of a node that exposes one as `combatant` (the player, the dummy), or null.
 static func of(node: Object) -> Combatant:
 	if node == null:

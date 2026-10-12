@@ -17,8 +17,8 @@
 | # | Item | Kind | Status |
 |---|---|---|---|
 | 1 | Main menu | feature | [x] done and tested 2026-10-12 |
-| 2 | Pause menu | feature | [ ] |
-| 3 | Arena chooser, fall zone and three base arenas (3a fall zone, 3b arena data and chooser, 3c the arenas) | feature | [ ] |
+| 2 | Pause menu | feature | [x] done and tested 2026-10-12 |
+| 3 | Arena chooser, fall zone and three base arenas (3a fall zone, 3b arena data and chooser, 3c the arenas) | feature | [ ] 3a done and tested 2026-10-12; 3b and 3c not started |
 | 4 | Migrate the in-game UI to scenes (the death and victory screens first; the HUD waits for real art) | refactor | [ ] |
 | 5 and later | The open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
@@ -51,11 +51,16 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **What:** a pause menu with Resume, Options (the same empty panel) and Quit to Title. Item 3 adds a debug-only "Change arena" entry.
 - **The game pauses** while it is open (unlike FromSoft; user, 2026-10-12).
 - **Built as a scene** with the shared Theme and a process mode that keeps it running while the tree is paused.
-- **Open, settled at this item's full check:** which key opens it and how it shares Esc with the camera rig's `ui_cancel` mouse handling; that the pause must not run during the death screen or a resurrection prompt; what "Quit to Title" does to the scene state; that Hitstop and slow motion (real-time timers) behave while paused.
+- **Settled and built (user, 2026-10-12):**
+  - **Key:** a new `pause` action on Esc and gamepad Start. It is consumed in `_input`, so the camera rig's Esc handling never sees it; the mouse is shown while paused and the previous mode restored on resume. Inside Options, Esc closes the panel first.
+  - **Not while:** the player is dead (prompt or final death), the boss-slain screen shows, or the time scale is not 1 (hitstop, slow motion).
+  - **Quit to Title:** a 0.4 s fade, then unpause, time scale 1 and the main menu's normal flow; no confirmation until saves exist.
+  - **Look:** a centered column over a 65 percent dim, PAUSED in gold, smaller text than the main menu (entries 28, heading 22). Its own copy of the empty Options panel (to be merged with the main menu's when real settings exist).
+  - **Sound:** the main menu's sounds through `Sfx.play_ui()` (voices that run while paused).
 
 ### 3. Arena chooser, fall zone and three base arenas
 - **Why:** to test an enemy type or a movement setup without changing the Inspector, and later to offer arena gameplay as a side game or bonus mode (so an arena can carry a real name, description and image).
-- **3a. Fall zone** (built and tested first, because it changes gameplay). A reusable `FallZone` (an `Area3D` placed under the playable area of each arena). Sekiro-style, not an instant death:
+- **3a. Fall zone** (**built and tested 2026-10-12**; the build log, "Phase 2 item 3a", has what exists; the defaults below were kept: 25 percent, 0.35 s fades, 1.0 s invulnerability, a hurt sound, the camera snapped under black). A reusable `FallZone` (an `Area3D` placed under the playable area of each arena). Sekiro-style, not an instant death:
   - **Respawn point:** the player's own starting position and facing, recorded in `Player._ready()` the way `Enemy` records its spawn. A real map's checkpoints can replace it later.
   - **Penalty:** a share of max health, 25 percent as an `@export`, applied as ordinary damage through the `Combatant`. Falling cannot kill: it always leaves at least 1 HP (a safety net, not a death trap).
   - **On respawn:** a short fade to black and back, the velocity and any knockback cleared, the player put back in a normal state, and about a second of invulnerability (the resurrection one is reused).

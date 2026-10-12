@@ -41,6 +41,7 @@
 [ext_resource type="Script" uid="uid://dt6isbua3gv8c" path="res://scripts/ui/victory_screen.gd" id="38_5q8fn"]
 [ext_resource type="Script" uid="uid://c6i12djbtmd6b" path="res://scripts/ui/crouch_vignette.gd" id="40_7obkq"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="41_vo27k"]
+[ext_resource type="Script" uid="uid://egjv0nkgkfv0" path="res://scripts/ui/screen_fade.gd" id="42_genst"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -206,3 +207,6 @@ script = ExtResource("38_5q8fn")
 script = ExtResource("40_7obkq")
 
 [node name="PauseMenu" parent="." unique_id=1999046858 instance=ExtResource("41_vo27k")]
+
+[node name="ScreenFade" type="CanvasLayer" parent="." unique_id=263334789]
+script = ExtResource("42_genst")

@@ -120,6 +120,12 @@ func _process(delta: float) -> void:
 	global_position = global_position.lerp(goal, 1.0 - exp(-follow_smoothing * delta))
 
 
+## Put the camera at its follow goal at once (no easing). Called after the player is teleported, so the
+## camera does not swoop across the map. The yaw and pitch are kept.
+func snap_to_target() -> void:
+	global_position = target.global_position + Vector3.UP * _height_now
+
+
 ## Add camera trauma (0 to 1; Fx calls this through the group "camera_rig"). `direction` is the world
 ## direction of the blow: the camera is also pushed a little along it (kick).
 func add_trauma(amount: float, direction: Vector3 = Vector3.ZERO) -> void:
