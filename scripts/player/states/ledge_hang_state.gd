@@ -47,7 +47,7 @@ func physics_update(delta: float) -> void:
 	var want := player.get_move_input()
 	want.y = 0.0
 	if Input.is_action_just_pressed("interact"):
-		var probe := player.probe_hang_ledge(player.global_position, _normal)
+		var probe := player.ledge_sensor.probe_hang_ledge(player.global_position, _normal)
 		if not probe.is_empty() and probe["fits"]:
 			player.ledge_stand_pos = probe["stand_position"]
 			player.ledge_top_y = probe["top_y"]
@@ -68,8 +68,8 @@ func _shimmy(want: Vector3, delta: float) -> void:
 	if absf(lateral) < SHIMMY_DEADZONE:
 		return
 	var candidate := player.global_position + tangent * lateral * player.shimmy_speed * delta
-	var probe := player.probe_hang_ledge(candidate, _normal)
-	if probe.is_empty() or not player.can_hang_at(candidate):
+	var probe := player.ledge_sensor.probe_hang_ledge(candidate, _normal)
+	if probe.is_empty() or not player.ledge_sensor.can_hang_at(candidate):
 		return
 	player.global_position = candidate
 	player.ledge_top_y = probe["top_y"]

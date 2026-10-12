@@ -152,7 +152,7 @@ func _update_land() -> void:
 		if not player.can_stand():
 			_queued = false
 			return
-		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
+		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		if attack != null and attack.try_continue_combo(1):
 			return
 		_queued = false

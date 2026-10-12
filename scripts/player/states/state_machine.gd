@@ -45,6 +45,11 @@ func transition_to(state_name: StringName) -> void:
 	current.enter(previous)
 
 
+## The state with this name (see StateName), or null if there is none.
+func get_state(state_name: StringName) -> State:
+	return _states.get(state_name)
+
+
 func get_current_name() -> StringName:
 	if current == null:
 		return &""

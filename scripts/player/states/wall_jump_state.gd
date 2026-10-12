@@ -48,8 +48,8 @@ func _on_action_update(_delta: float) -> void:
 		player.reset_air_actions()
 		machine.transition_to(StateName.LOCOMOTION)
 		return
-	if player.try_ledge_grab():
-		machine.transition_to(player.ledge_grab_state())
+	if player.ledge_sensor.try_ledge_grab():
+		machine.transition_to(player.ledge_sensor.ledge_grab_state())
 		return
 	if action.can_cancel(action_time) and player.try_air_jump():
 		machine.transition_to(StateName.WALL_JUMP)

@@ -121,7 +121,7 @@ func _on_action_finished() -> void:
 ## The next tap: another air attack, or (landed) the ground combo from attack 2.
 func _chain() -> void:
 	if player.is_on_floor():
-		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
+		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		# An air attack counts as combo step 1 (next is attack 2); the draw slash counts as none.
 		if attack != null and attack.try_continue_combo(0 if _is_draw else 1):
 			return
@@ -137,7 +137,7 @@ func _try_helm_splitter() -> bool:
 	var dive := player.weapon.draw_helm_action if _is_draw else action.hold_action
 	if dive == null:
 		return false
-	var helm := machine.get_node_or_null(NodePath(StateName.HELM_SPLITTER)) as HelmSplitterState
+	var helm := machine.get_state(StateName.HELM_SPLITTER) as HelmSplitterState
 	return helm != null and helm.start(dive, _is_draw)
 
 
@@ -148,7 +148,7 @@ func _apply_hold_gravity(delta: float) -> void:
 		return
 	if player.weapon.draw_helm_action == null:
 		return
-	var helm := machine.get_node_or_null(NodePath(StateName.HELM_SPLITTER)) as HelmSplitterState
+	var helm := machine.get_state(StateName.HELM_SPLITTER) as HelmSplitterState
 	if helm == null:
 		return
 	player.velocity += player.get_gravity_now() * (helm.opening_gravity_factor - 1.0) * delta
@@ -171,8 +171,8 @@ func _try_cancel() -> bool:
 			machine.transition_to(StateName.CROUCH)
 			return true
 		return false
-	if player.try_ledge_grab():
-		machine.transition_to(player.ledge_grab_state())
+	if player.ledge_sensor.try_ledge_grab():
+		machine.transition_to(player.ledge_sensor.ledge_grab_state())
 		return true
 	if player.try_air_jump():
 		machine.transition_to(StateName.WALL_JUMP)

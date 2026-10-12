@@ -70,7 +70,7 @@ func physics_update(delta: float) -> void:
 			return
 		if player.weapon != null and player.input_buffer.has_pressed(&"attack") \
 				and not player.is_near_ground():
-			var air_attack := machine.get_node_or_null(NodePath(StateName.AIR_ATTACK)) as AirAttackState
+			var air_attack := machine.get_state(StateName.AIR_ATTACK) as AirAttackState
 			if air_attack != null and air_attack.start():
 				player.input_buffer.consume(&"attack")
 				return

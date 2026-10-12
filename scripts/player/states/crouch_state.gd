@@ -46,7 +46,7 @@ func physics_update(delta: float) -> void:
 			return
 		player.input_buffer.clear(&"guard")
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack"):
-		var attack := machine.get_node_or_null(NodePath(StateName.ATTACK)) as AttackState
+		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.crouch_attack):
 			player.input_buffer.consume(&"attack")
 			return

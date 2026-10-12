@@ -198,7 +198,7 @@ Moved. The numbers for **built** features live in the Player and SwordVisual exp
     - **11a** sound **(done and tested 2026-10-09)**. **11b** sparks and effects (colors per outcome, heal, resurrect, dust, the deathblow blood jet). **(done and tested 2026-10-09)** **11c** camera shake (trauma system) and the `Fx` helper. **(done 2026-10-09)** **11d** boss-slain screen, heal arm, death-reload fix. **(done and tested 2026-10-09)** **11e** shockwave for the helm splitter and the charged iai. **(done and tested 2026-10-09)** **11f** sword swing trail (player and enemy). **(done and tested 2026-10-09)** **11g** subtle crouch vignette. **(done 2026-10-09)**
     - Order: 11c, 11b, 11e, 11f, 11g (all done, and 11a, sound, came last once the wavs existed).
 
-12. **Cleanup refactor** (the last Phase 1 step; agreed 2026-10-12; design in `docs/design-later-steps.md`, 3.13). Four parts, in this order: **12A** remove the "create the node in code" fallbacks, **12B** state-name constants (`StateName`), **12C** wall and ledge sensing out of `player.gd` into `LedgeSensor`, **12D** a shared action-clock core that is not typed to `Player`, so the enemy can reuse it. Pure refactor: no gameplay change, no tuning. 12A is built and tested (2026-10-12); 12B is built (not yet tested).
+12. **Cleanup refactor** (the last Phase 1 step; agreed 2026-10-12; design in `docs/design-later-steps.md`, 3.13). Four parts, in this order: **12A** remove the "create the node in code" fallbacks, **12B** state-name constants (`StateName`), **12C** wall and ledge sensing out of `player.gd` into `LedgeSensor`, **12D** a shared action-clock core that is not typed to `Player`, so the enemy can reuse it. Pure refactor: no gameplay change, no tuning. 12A and 12B are built and tested (2026-10-12); 12C is built (not yet tested).
 
 *Note: traversal (2b-2d) comes before combat by the user's choice, which delays the combat loop. Move it later if scope becomes a problem.*
 
@@ -248,8 +248,8 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 
 - [ ] 12. Cleanup refactor, the last Phase 1 step (see 3.13 in `docs/design-later-steps.md`):
   - [x] 12A. Remove the fallbacks: `Guard` state, `Combatant`, `Hurtbox` (and its `CollisionShape3D`) in `player.gd`, and `Hitbox` in `sword_visual.gd` **(done and tested by the user 2026-10-12)**
-  - [ ] 12B. `StateName` constants (`scripts/player/states/state_name.gd`) replace the state-name strings: 85 `transition_to` calls, the `previous`/`next`/`current` comparisons, the returns of `ledge_grab_state()`, and the 11 `get_node_or_null` lookups (123 places in `player.gd` and 18 state scripts; behavior unchanged, the null checks stay) **(built 2026-10-12; not tested yet)**
-  - [ ] 12C. `LedgeSensor` (wall and ledge sensing out of `player.gd`; the tuned exports stay on `Player`)
+  - [x] 12B. `StateName` constants (`scripts/player/states/state_name.gd`) replace the state-name strings: 85 `transition_to` calls, the `previous`/`next`/`current` comparisons, the returns of `ledge_grab_state()`, and the 11 `get_node_or_null` lookups (123 places in `player.gd` and 18 state scripts; behavior unchanged, the null checks stay) **(done and tested by the user 2026-10-12; fix1 wrapped the `get_node_or_null` constants in `NodePath(...)`, which 12C then replaced with `StateMachine.get_state()`)**
+  - [ ] 12C. `LedgeSensor` (`scripts/player/ledge_sensor.gd`, a `RefCounted` made in `Player._ready()` as `Player.ledge_sensor`): `find_wall`, `find_ledge`, `try_ledge_grab`, `ledge_grab_state`, `probe_hang_ledge`, `can_hang_at` and the two private helpers moved out of `player.gd` (about 230 lines); the tuned exports and the `ledge_*` data fields stay on `Player`; `Player._fits_standing_at` is now public `fits_standing_at` and `Player.get_body_radius()` is new; `StateMachine.get_state(StateName.X)` replaces the 11 `get_node_or_null(NodePath(...))` lookups **(built 2026-10-12; not tested yet)**
   - [ ] 12D. Shared action-clock core, not typed to `Player`, reused by the enemy (needs a read of `enemy.gd` and its own full check first)
   - **When 12 is tested, also mark as tested** (the user said on 2026-10-12 that he already tested them): the 3a-1 leftovers (cancels, lunge, ledge stop), 11c (camera shake) and 11g (crouch vignette). Do this in the same docs zip as the build-log entry for step 12.
 
@@ -296,7 +296,8 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - `@export` and custom `Resource` classes for tunable data.
 - Signals for events between components; autoload only when truly global.
 - Input checked by **action name** only.
-- State names come from the `StateName` constants (`StateName.AIR`), never typed as strings.
+- State names come from the `StateName` constants (`StateName.AIR`), never typed as strings. A state looks up another with `machine.get_state(StateName.ATTACK) as AttackState`.
+- Wall and ledge sensing goes through `player.ledge_sensor` (`LedgeSensor`), not through `Player`.
 - Timings in **seconds**, never frames.
 - **Never scale a `CollisionShape3D` node.** Set sizes on the shape resource itself (radius, height, size).
 - The player scene root is the `CharacterBody3D` itself (no wrapper node).

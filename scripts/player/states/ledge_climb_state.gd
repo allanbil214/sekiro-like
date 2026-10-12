@@ -1,6 +1,6 @@
 class_name LedgeClimbState
 extends ActionState
-## Auto-climb onto a ledge found by Player.try_ledge_grab(). Scripted: the position is
+## Auto-climb onto a ledge found by LedgeSensor.try_ledge_grab(). Scripted: the position is
 ## moved directly (up along the wall, then forward onto the top) over the action's
 ## duration, with the body collision off. The landing spot was checked for room first.
 

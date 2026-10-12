@@ -6,8 +6,8 @@ extends State
 func physics_update(delta: float) -> void:
 	player.coyote_timer = maxf(player.coyote_timer - delta, 0.0)
 	player.apply_gravity(delta)
-	if player.try_ledge_grab():
-		machine.transition_to(player.ledge_grab_state())
+	if player.ledge_sensor.try_ledge_grab():
+		machine.transition_to(player.ledge_sensor.ledge_grab_state())
 		return
 	if player.coyote_timer > 0.0 and player.input_buffer.consume(&"jump"):
 		player.start_jump()
@@ -22,7 +22,7 @@ func physics_update(delta: float) -> void:
 	# so landing turns it into a ground attack instead.
 	if player.weapon != null and player.input_buffer.has_pressed(&"attack") \
 			and not player.is_near_ground():
-		var air_attack := machine.get_node_or_null(NodePath(StateName.AIR_ATTACK)) as AirAttackState
+		var air_attack := machine.get_state(StateName.AIR_ATTACK) as AirAttackState
 		if air_attack != null and air_attack.start():
 			player.input_buffer.consume(&"attack")
 			return
