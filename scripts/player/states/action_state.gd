@@ -9,20 +9,26 @@ extends State
 
 @export var action: ActionData
 
-var action_time: float = 0.0
+## The shared core: the clock, the hit window, the swing, and the movement fade (Step 12D). The
+## action is passed to it on every call because subclasses swap `action` while the state runs.
+var runner: ActionRunner = ActionRunner.new()
+## Seconds from the start of the action (the clock lives in the runner).
+var action_time: float:
+	get:
+		return runner.time
+	set(value):
+		runner.time = value
 var speed_scale: float = 1.0
 
 var _move_dir: Vector3 = Vector3.ZERO
 var _move_speed_multiplier: float = 1.0
-var _hit_was_active: bool = false
 
 
 func enter(previous: StringName) -> void:
-	action_time = 0.0
+	runner.reset()
 	speed_scale = action.speed_scale
 	_move_dir = Vector3.ZERO
 	_move_speed_multiplier = 1.0
-	_hit_was_active = false
 	player.on_action_started(action.kind)
 	_on_action_enter(previous)
 
@@ -95,12 +101,8 @@ func _allows_guard_cancel() -> bool:
 
 
 func _apply_action_movement(delta: float) -> void:
-	var window := action.move_window
-	if _move_dir != Vector3.ZERO and ActionData.in_window(window, action_time):
-		var factor := 1.0
-		if action.move_fade:
-			var progress := clampf((action_time - window.x) / maxf(window.y - window.x, 0.001), 0.0, 1.0)
-			factor = lerpf(1.0, action.move_end_factor, progress)
+	if _move_dir != Vector3.ZERO and runner.in_move_window(action):
+		var factor := runner.move_fade_factor(action)
 		player.set_horizontal_velocity(_move_dir * action.move_speed * _move_speed_multiplier * factor)
 	else:
 		player.decelerate(delta)
@@ -114,32 +116,17 @@ func _update_hit() -> void:
 	if not _hit_is_active():
 		_end_hit()
 		return
-	if not _hit_was_active:
-		hitbox.begin_swing(action.hitbox_length_scale, _shows_extension())
-		_hit_was_active = true
+	if runner.open_hit(hitbox, action, _shows_extension()):
 		Sfx.play(player.get_tree(), Sfx.swing_id(action))
 		_on_hit_window_opened(hitbox)
-	var template := HitData.new()
-	template.attacker = player
-	template.damage = action.damage * _hit_damage_multiplier()
-	template.posture_damage = action.posture_damage * _hit_posture_multiplier()
-	template.hitstop = action.hitstop
-	template.guardable = action.guardable
-	template.deflectable = action.deflectable
-	template.knockback = action.knockback
-	template.action = action
+	var template := runner.make_hit(action, player, _hit_damage_multiplier(), _hit_posture_multiplier())
 	var landed := hitbox.sweep(template)
 	if not landed.is_empty():
 		player.on_hit_landed(landed[0])
 
 
 func _end_hit() -> void:
-	if not _hit_was_active:
-		return
-	_hit_was_active = false
-	var hitbox := _get_hitbox()
-	if hitbox != null:
-		hitbox.end_swing()
+	runner.end_hit(_get_hitbox())
 
 
 func _get_hitbox() -> Hitbox:
@@ -149,8 +136,7 @@ func _get_hitbox() -> Hitbox:
 
 
 func _hit_is_active() -> bool:
-	return action.kind == ActionData.Kind.ATTACK and action.damage > 0.0 \
-			and action.is_hit_active(action_time)
+	return runner.hit_is_active(action)
 
 
 ## The horizontal direction this action is moving the player in (the dodge's direction), or

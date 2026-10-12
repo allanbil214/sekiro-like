@@ -105,12 +105,18 @@ var _phase_timer: float = 0.0
 var _strafe_sign: float = 1.0
 var _strafe_timer: float = 0.0
 var _action: ActionData
-var _action_time: float = 0.0
+## The shared core (Step 12D): the clock, the swing, and the movement fade. `_action_time` is the
+## runner's clock, so the AI code below reads as before.
+var _runner: ActionRunner = ActionRunner.new()
+var _action_time: float:
+	get:
+		return _runner.time
+	set(value):
+		_runner.time = value
 var _combo_index: int = 0
 var _burst_total: int = 0
 var _chain_wait: float = 0.0
 var _lunge_dir: Vector3 = Vector3.ZERO
-var _hit_was_active: bool = false
 var _recoil: float = 0.0
 var _recoil_scale: float = 1.0
 var _recoil_direction: Vector3 = Vector3.ZERO
@@ -770,23 +776,18 @@ func _end_burst() -> void:
 
 
 func _apply_lunge(delta: float, distance: float) -> void:
-	var window := _action.move_window
-	if not ActionData.in_window(window, _action_time) or _lunge_dir == Vector3.ZERO \
+	if not _runner.in_move_window(_action) or _lunge_dir == Vector3.ZERO \
 			or distance <= ai.lunge_min_distance:
 		_decelerate(delta)
 		return
-	var factor := 1.0
-	if _action.move_fade:
-		var progress := clampf((_action_time - window.x) / maxf(window.y - window.x, 0.001), 0.0, 1.0)
-		factor = lerpf(1.0, _action.move_end_factor, progress)
+	var factor := _runner.move_fade_factor(_action)
 	var speed := _action.move_speed * ai.lunge_factor * factor
 	velocity.x = _lunge_dir.x * speed
 	velocity.z = _lunge_dir.z * speed
 
 
 func _hit_is_active() -> bool:
-	return _action != null and _action.kind == ActionData.Kind.ATTACK and _action.damage > 0.0 \
-			and _action.is_hit_active(_action_time)
+	return _runner.hit_is_active(_action)
 
 
 ## Open, sweep, and close the sword's hitbox for the current attack.
@@ -795,20 +796,10 @@ func _update_hit() -> void:
 	if not _hit_is_active():
 		_end_hit()
 		return
-	if not _hit_was_active:
-		hitbox.begin_swing(_action.hitbox_length_scale)
-		_hit_was_active = true
+	if _runner.open_hit(hitbox, _action):
 		if _peril_kind != Peril.GRAB:
 			Sfx.play_at(get_tree(), Sfx.swing_id(_action), global_position + Vector3.UP * 1.2)
-	var template := HitData.new()
-	template.attacker = self
-	template.damage = _action.damage * ai.damage_scale
-	template.posture_damage = _action.posture_damage * ai.posture_scale
-	template.hitstop = _action.hitstop
-	template.guardable = _action.guardable
-	template.deflectable = _action.deflectable
-	template.knockback = _action.knockback
-	template.action = _action
+	var template := _runner.make_hit(_action, self, ai.damage_scale, ai.posture_scale)
 	if _peril_kind != Peril.NONE:
 		# Perilous: its own numbers. A guard does nothing; only the thrust can be deflected, and only by a
 		# press this recent (the sweep is answered by the jump-over).
@@ -833,10 +824,7 @@ func _update_hit() -> void:
 
 
 func _end_hit() -> void:
-	if not _hit_was_active:
-		return
-	_hit_was_active = false
-	sword_visual.hitbox.end_swing()
+	_runner.end_hit(sword_visual.hitbox)
 
 
 ## Drop whatever attack is running (flinch, stun, death).
