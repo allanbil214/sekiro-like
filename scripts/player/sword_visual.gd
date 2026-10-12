@@ -212,19 +212,15 @@ var _anim: Anim = Anim.NONE
 var _anim_time: float = 0.0
 var _guard_from_sheath: bool = false
 var _wobble_left: float = 0.0
-var _deflect_kind: int = -1
-var _deflect_time: float = 0.0
-var _deflect_tip: Vector3 = Vector3.ZERO
-var _deflect_blade: Vector3 = Vector3.ZERO
-var _deflect_edge: Vector3 = Vector3.ZERO
-var _break_time: float = -1.0
-var _break_tip: Vector3 = Vector3.ZERO
-var _break_blade: Vector3 = Vector3.ZERO
-var _break_edge: Vector3 = Vector3.ZERO
+var _poses: SwordGuardPoses
 var _wobble_amp: float = 0.0
 var _wobble_side: float = 1.0
 var _flash: float = 0.0
 var _flash_color: Color = Color.WHITE
+
+
+func _init() -> void:
+	_poses = SwordGuardPoses.new(self)
 
 
 ## Called by the Player in _ready. Builds the arm and blade and puts them at the rest pose.
@@ -361,7 +357,7 @@ func play_sheathe() -> void:
 func play_guard(from_sheath: bool) -> void:
 	if _hand == null:
 		return
-	_break_time = -1.0
+	_poses.cancel_break()
 	_returning = false
 	_charging_visual = false
 	_remember_current()
@@ -369,13 +365,13 @@ func play_guard(from_sheath: bool) -> void:
 	_anim_time = 0.0
 	_guard_from_sheath = from_sheath
 	_wobble_left = 0.0
-	_deflect_kind = -1
+	_poses.cancel_deflect()
 	_set_active(false)
 
 
 ## A fresh guard press while already guarding: a small flick, so a re-press is visible.
 func play_guard_press() -> void:
-	_deflect_kind = -1
+	_poses.cancel_deflect()
 	_start_wobble(deg_to_rad(guard_wobble_angle) * 0.4, 1.0)
 
 
@@ -393,23 +389,14 @@ func play_guard_hit(deflect: bool, side: float) -> void:
 func play_guard_break(side: float) -> void:
 	if _hand == null:
 		return
-	var mirror := side < 0.0
-	var blade := break_blade
-	var edge := break_edge
-	if mirror:
-		blade.x = -blade.x
-		edge.x = -edge.x
-	_deflect_kind = -1
+	_poses.cancel_deflect()
 	_charging_visual = false
 	_anim = Anim.NONE
 	_remember_current()
 	_return_time = 0.0
 	_returning = true
 	_set_active(false)
-	_break_time = 0.0
-	_break_tip = pose_to_point(break_pose, mirror)
-	_break_blade = blade.normalized()
-	_break_edge = edge.normalized()
+	_poses.start_break(side)
 	_start_wobble(deg_to_rad(deflect_wobble_angle) * 1.2, side)
 	_flash = 1.0
 	_flash_color = break_flash_color
@@ -418,21 +405,11 @@ func play_guard_break(side: float) -> void:
 
 ## Blend the current pose toward the knocked-aside pose (snap in, hold, ease out).
 func _apply_break_overlay(delta: float) -> void:
-	if _break_time < 0.0:
+	var w := _poses.advance_break(delta)
+	if w < 0.0:
 		return
-	_break_time += delta
-	var total := break_snap_time + break_hold_time + break_return_time
-	if _break_time >= total:
-		_break_time = -1.0
-		return
-	var w := 1.0
-	if _break_time < break_snap_time:
-		w = ease(clampf(_break_time / maxf(break_snap_time, 0.001), 0.0, 1.0), windup_ease)
-	elif _break_time > break_snap_time + break_hold_time:
-		w = 1.0 - ease(clampf((_break_time - break_snap_time - break_hold_time) / maxf(break_return_time, 0.001),
-				0.0, 1.0), windup_ease)
-	_tip = _tip.lerp(_break_tip, w)
-	_blend_orientation(_blade_dir, _edge_dir, _break_blade, _break_edge, w)
+	_tip = _tip.lerp(_poses.break_tip, w)
+	_blend_orientation(_blade_dir, _edge_dir, _poses.break_blade, _poses.break_edge, w)
 
 
 ## A deflect met the attack: snap from the guard into a pose picked from the attack (side, high, low, or
@@ -442,44 +419,7 @@ func play_deflect(hit: HitData, side: float) -> void:
 	if _hand == null or _anim != Anim.GUARD:
 		play_guard_hit(true, side)
 		return
-	var kind := _deflect_kind_for(hit)
-	var pose := deflect_side_pose
-	var blade := deflect_side_blade
-	var edge := deflect_side_edge
-	var mirror := false
-	match kind:
-		DeflectKind.HIGH:
-			pose = deflect_high_pose
-			blade = deflect_high_blade
-			edge = deflect_high_edge
-		DeflectKind.LOW:
-			pose = deflect_low_pose
-			blade = deflect_low_blade
-			edge = deflect_low_edge
-		DeflectKind.THRUST:
-			pose = deflect_thrust_pose
-			blade = deflect_thrust_blade
-			edge = deflect_thrust_edge
-		_:
-			if side < 0.0:
-				mirror = true
-				blade.x = -blade.x
-				edge.x = -edge.x
-	var tip := pose_to_point(pose, mirror)
-	if hit != null and hit.point != Vector3.ZERO and deflect_aim_follow > 0.0:
-		# Turn the aim part of the way toward the contact point, so the blade meets it where it landed.
-		var shoulder := _shoulder()
-		var to_pose := tip - shoulder
-		var to_contact := to_local(hit.point) - shoulder
-		if to_pose.length_squared() > 0.0001 and to_contact.length_squared() > 0.0001:
-			var aim := to_pose.normalized().lerp(to_contact.normalized(), deflect_aim_follow)
-			if aim.length_squared() > 0.0001:
-				tip = shoulder + aim.normalized() * to_pose.length()
-	_deflect_kind = kind
-	_deflect_time = 0.0
-	_deflect_tip = tip
-	_deflect_blade = blade.normalized()
-	_deflect_edge = edge.normalized()
+	var kind := _poses.start_deflect(hit, side)
 	var flick := 1.0 if kind == DeflectKind.THRUST else 0.6
 	_start_wobble(deg_to_rad(deflect_wobble_angle) * flick, side)
 	_flash = 1.0
@@ -487,37 +427,13 @@ func play_deflect(hit: HitData, side: float) -> void:
 	_refresh_color()
 
 
-## Which pose answers this hit: the thrust's slap for a charged thrust, else high, low, or side from
-## the height of the contact point.
-func _deflect_kind_for(hit: HitData) -> int:
-	if debug_force_deflect > 0:
-		return debug_force_deflect - 1
-	if hit != null and hit.action != null \
-			and (hit.action.charge_time > 0.0 or hit.action.kind == ActionData.Kind.PERILOUS_THRUST):
-		return DeflectKind.THRUST
-	if hit != null and hit.point != Vector3.ZERO:
-		var centre := center_height - _drop
-		var y := to_local(hit.point).y
-		if y > centre + deflect_high_above:
-			return DeflectKind.HIGH
-		if y < centre - deflect_low_below:
-			return DeflectKind.LOW
-	return DeflectKind.SIDE
-
-
 ## Blend the guard pose toward the deflect pose (snap in, hold, ease out).
 func _apply_deflect_overlay() -> void:
-	if _deflect_kind < 0:
+	var w := _poses.deflect_weight()
+	if w < 0.0:
 		return
-	var t := _deflect_time
-	var w := 1.0
-	if t < deflect_snap_time:
-		w = ease(clampf(t / maxf(deflect_snap_time, 0.001), 0.0, 1.0), windup_ease)
-	elif t > deflect_snap_time + deflect_hold_time:
-		w = 1.0 - ease(clampf((t - deflect_snap_time - deflect_hold_time) / maxf(deflect_return_time, 0.001),
-				0.0, 1.0), windup_ease)
-	_tip = _tip.lerp(_deflect_tip, w)
-	_blend_orientation(_blade_dir, _edge_dir, _deflect_blade, _deflect_edge, w)
+	_tip = _tip.lerp(_poses.deflect_tip, w)
+	_blend_orientation(_blade_dir, _edge_dir, _poses.deflect_blade, _poses.deflect_edge, w)
 
 
 func _start_wobble(amplitude: float, side: float) -> void:
@@ -539,7 +455,7 @@ func _start_anim(kind: Anim) -> void:
 		return
 	_returning = false
 	_charging_visual = false
-	_deflect_kind = -1
+	_poses.cancel_deflect()
 	_remember_current()
 	_anim = kind
 	_anim_time = 0.0
@@ -549,8 +465,8 @@ func _start_anim(kind: Anim) -> void:
 ## An attack starts (or chains): remember where the sword is now so the wind-up blends from it.
 func begin_action(_action: ActionData) -> void:
 	_wobble_left = 0.0
-	_break_time = -1.0
-	_deflect_kind = -1
+	_poses.cancel_break()
+	_poses.cancel_deflect()
 	_anim = Anim.NONE
 	_returning = false
 	_charging_visual = false
@@ -652,7 +568,7 @@ func _process(delta: float) -> void:
 	_blend_orientation(_from_blade, _from_edge, _rest_blade, _rest_edge, k)
 	_apply_break_overlay(delta)
 	_apply()
-	if t >= 1.0 and _break_time < 0.0:
+	if t >= 1.0 and not _poses.break_active():
 		_returning = false
 
 
@@ -671,6 +587,15 @@ func _slash_tangent(a: Vector3, b: Vector3, s: float) -> Vector3:
 
 func _shoulder() -> Vector3:
 	return Vector3(shoulder_offset, shoulder_height - _drop, 0.0)
+
+
+## Read access for SwordGuardPoses.
+func get_shoulder() -> Vector3:
+	return _shoulder()
+
+
+func get_drop() -> float:
+	return _drop
 
 
 func _arm_direction(tip: Vector3) -> Vector3:
@@ -995,10 +920,7 @@ func _relaxed_aim() -> Vector3:
 ## Run the draw or sheathe animation (R, auto-sheathe).
 func _update_anim(delta: float) -> void:
 	_anim_time += delta
-	if _deflect_kind >= 0:
-		_deflect_time += delta
-		if _deflect_time >= deflect_snap_time + deflect_hold_time + deflect_return_time:
-			_deflect_kind = -1
+	_poses.advance_deflect(delta)
 	if _anim == Anim.GUARD:
 		_update_guard()
 		_apply()

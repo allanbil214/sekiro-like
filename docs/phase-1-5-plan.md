@@ -18,13 +18,13 @@
 | 2 | Typed trail points in `hitbox.gd` | safety | [x] (done 2026-10-12) |
 | 3 | Debug prints (and the hitbox debug draw) only in debug builds | tidy | [x] (done 2026-10-12) |
 | 4 | Group names as constants | tidy, safety | [x] (done 2026-10-12) |
-| 5 | Split the big files: 5a `sword_visual.gd`, 5b `enemy.gd`, 5c `player.gd` | structure | [ ] |
+| 5 | Split the big files: 5a `sword_visual.gd`, 5b `enemy.gd`, 5c `player.gd` | structure | [ ] (5a done 2026-10-12; 5b and 5c open) |
 | 6 | Typed data instead of name strings (6A input actions, 6B lock-on reason) | safety | [x] (done 2026-10-12) |
 | 7 | `Groups` constants file | same as 4 | [x] (done with 4) |
 | 8 | Delay bigger refactors to Phase 2 | decision | not built |
 | 9 | Object pooling for `Fx` particles | performance | [x] (done 2026-10-12) |
 
-Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6 (**done**), 9 (**done**), then the big splits 5a, 5b, 5c (smallest and most self-contained first). Item 8 is not built.
+Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**), 6 (**done**), 9 (**done**), then the big splits 5a (**done**), 5b, 5c (smallest and most self-contained first). Item 8 is not built.
 
 ## 3. The items
 
@@ -57,6 +57,7 @@ Suggested order: 4 (with 7, **done**), 3 (**done**), 2 (**done**), 1 (**done**),
 ### 5. Split the big files
 Same method as 12C and 12D: move self-contained code into a helper (default: a `RefCounted` owned by the original, no new scene node); tuned exports and Inspector values stay on the owner. Each part is its own build and test.
 - **5a `sword_visual.gd` (1146 lines):** the deflect poses and the guard-break pose with their overlay code. Verify all four deflect kinds, the guard flick, the guard break, the swing trail, the draw and sheathe.
+  - **Done 2026-10-12 (5a):** `SwordGuardPoses` (`scripts/player/sword_guard_poses.gd`, a `RefCounted` made in `SwordVisual._init()` as `_poses`) holds the state and logic of the deflect poses and the guard-break pose: `start_deflect()` (pose pick, mirroring, aim toward the contact), the kind choice, the snap-hold-return weights and timers, `start_break()`. The `deflect_*` and `break_*` exports, the wobble and the flash stay on `SwordVisual`, which blends the pose into its own `_tip`, `_blade_dir` and `_edge_dir` (about 5 lines per overlay); `get_shoulder()` and `get_drop()` are new read-only getters for the helper. The public calls (`play_deflect`, `play_guard_break`, `play_guard_hit`, `play_guard_press`, `play_guard`) are unchanged. `sword_visual.gd` went from 1146 to 1068 lines (the exports stay, so the gain is small); the code is placeholder and is expected to be replaced by real animations. See the build log, "Phase 1.5, item 5a".
 - **5b `enemy.gd` (1246 lines):** the defense decision logic (guard, deflect, repulse, riposte, break-out, adaptive guard chance). The phase machine, the perilous attacks and the owner-specific parts stay. Verify the four `ai/` presets plus the monk and the grappler.
 - **5c `player.gd` (1078 lines):** candidates are personal space, footsteps, the hurtbox profile update, knockback, the stagger kneel. Pick after reading the file.
 - **Why:** readability and testing, not speed.
