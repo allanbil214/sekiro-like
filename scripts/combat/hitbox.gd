@@ -35,11 +35,25 @@ var _debug_mesh: MeshInstance3D
 ## The glowing extension (Step 11e): the part of the box past the blade, shown when asked.
 var _glow_halo: MeshInstance3D
 var _glow_core: MeshInstance3D
+## One remembered step of the swing: where the blade's tip and inner edge were, how old the point is,
+## and whether it starts a new ribbon piece (the first point of a swing).
+class TrailPoint extends RefCounted:
+	var tip: Vector3
+	var base: Vector3
+	var age: float = 0.0
+	var start: bool
+
+	func _init(p_tip: Vector3, p_base: Vector3, p_start: bool) -> void:
+		tip = p_tip
+		base = p_base
+		start = p_start
+
+
 ## The swing trail (Step 11f): a ribbon behind the blade, drawn in world space from the points sampled
 ## while the hit window is open; each point fades out after trail_time.
 var _trail: MeshInstance3D
 var _trail_mesh: ImmediateMesh
-var _trail_points: Array[Dictionary] = []
+var _trail_points: Array[TrailPoint] = []
 var _trail_new_strip: bool = true
 var _length: float = 1.1
 ## Extra box behind the hand (m): the handle end of a spear. 0 = none.
@@ -196,20 +210,18 @@ func _make_trail() -> void:
 ## the box's transform; its offset from the hand is the box's local position).
 func _add_trail_point(shape_transform: Transform3D) -> void:
 	var offset := _shape_node.position.z
-	_trail_points.append({
-		"tip": shape_transform * Vector3(0.0, 0.0, -_length - offset),
-		"base": shape_transform * Vector3(0.0, 0.0, -_length * trail_base_fraction - offset),
-		"age": 0.0,
-		"start": _trail_new_strip,
-	})
+	_trail_points.append(TrailPoint.new(
+		shape_transform * Vector3(0.0, 0.0, -_length - offset),
+		shape_transform * Vector3(0.0, 0.0, -_length * trail_base_fraction - offset),
+		_trail_new_strip))
 	_trail_new_strip = false
 	set_process(true)
 
 
 func _process(delta: float) -> void:
-	for point: Dictionary in _trail_points:
-		point["age"] = float(point["age"]) + delta
-	while not _trail_points.is_empty() and float(_trail_points[0]["age"]) > trail_time:
+	for point: TrailPoint in _trail_points:
+		point.age += delta
+	while not _trail_points.is_empty() and _trail_points[0].age > trail_time:
 		_trail_points.pop_front()
 	_rebuild_trail()
 	if _trail_points.is_empty():
@@ -220,8 +232,8 @@ func _rebuild_trail() -> void:
 	_trail_mesh.clear_surfaces()
 	var strips: Array[Array] = []
 	var current: Array = []
-	for point: Dictionary in _trail_points:
-		if bool(point["start"]) and not current.is_empty():
+	for point: TrailPoint in _trail_points:
+		if point.start and not current.is_empty():
 			strips.append(current)
 			current = []
 		current.append(point)
@@ -231,13 +243,13 @@ func _rebuild_trail() -> void:
 		if strip.size() < 2:
 			continue
 		_trail_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-		for point: Dictionary in strip:
-			var fade := clampf(1.0 - float(point["age"]) / maxf(trail_time, 0.01), 0.0, 1.0)
+		for point: TrailPoint in strip:
+			var fade := clampf(1.0 - point.age / maxf(trail_time, 0.01), 0.0, 1.0)
 			fade *= fade
 			_trail_mesh.surface_set_color(Color(trail_color.r, trail_color.g, trail_color.b, trail_color.a * fade))
-			_trail_mesh.surface_add_vertex(point["tip"])
+			_trail_mesh.surface_add_vertex(point.tip)
 			_trail_mesh.surface_set_color(Color(trail_color.r, trail_color.g, trail_color.b, 0.0))
-			_trail_mesh.surface_add_vertex(point["base"])
+			_trail_mesh.surface_add_vertex(point.base)
 		_trail_mesh.surface_end()
 
 

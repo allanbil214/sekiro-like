@@ -911,3 +911,9 @@ Done and tested by the user (a parse error in `death_screen.gd` was fixed on the
 **Files.** Edited: `combatant.gd`, `enemy.gd`, `hitbox.gd` (the `debug_draw` comment says it is debug builds only).
 **Rules not obvious from the code.** `push_error` and `push_warning` (in `sfx.gd`, `enemy.gd`, `state_machine.gd`) report real setup mistakes and stay in every build. `DebugOverlay` was not touched (it has its own `show_debug_text`, off by default).
 **Tested by the user (2026-10-12):** no change in the editor. **Not done.** A release export was not tried. **Noticed, not fixed.** Nothing.
+
+### Phase 1.5, item 2: typed trail points (2026-10-12)
+**Decisions.** The swing trail in `hitbox.gd` kept its points as `Dictionary` values with string keys. They are now `Hitbox.TrailPoint` instances (an inner `RefCounted` class with typed `tip: Vector3`, `base: Vector3`, `age: float`, `start: bool`; its `_init(p_tip, p_base, p_start)` fills them), and `_trail_points` is an `Array[TrailPoint]`. A misspelled field is now a parse error instead of a silent null, and the `float(...)` and `bool(...)` casts are gone. The ribbon is unchanged (`trail_time`, `trail_base_fraction`, `trail_color`, `SwordVisual.swing_trail`).
+**Files.** Edited: `hitbox.gd` only. No scene, `.tres` or editor change.
+**Rules not obvious from the code.** No speed-up was expected: an instance costs about the same to create as a dictionary; the gain is the parser checking the field names and no string-key lookups. Parallel packed arrays would allocate less but read worse, so they were not used. In `_rebuild_trail()` the strips stay a plain `Array` of points (the loops type the point as `TrailPoint`).
+**Tested by the user (2026-10-12):** the trail looks and fades the same, player and enemy. **Not done.** Nothing. **Noticed, not fixed.** Nothing.
