@@ -1,0 +1,73 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/victory_screen.gd" id="1_script"]
+[ext_resource type="Theme" path="res://resources/ui_theme.tres" id="2_theme"]
+[ext_resource type="Shader" path="res://shaders/victory_screen.gdshader" id="3_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_screen"]
+resource_local_to_scene = true
+shader = ExtResource("3_shader")
+shader_parameter/desaturate = 0.0
+shader_parameter/dim = 0.0
+shader_parameter/flash = 0.0
+
+[node name="VictoryScreen" type="CanvasLayer"]
+layer = 19
+script = ExtResource("1_script")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+unique_name_in_owner = true
+
+[node name="ScreenRect" type="ColorRect" parent="Root"]
+material = SubResource("ShaderMaterial_screen")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+unique_name_in_owner = true
+
+[node name="Kanji" type="Label" parent="Root"]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.1
+anchor_right = 1.0
+anchor_bottom = 0.1
+grow_horizontal = 2
+mouse_filter = 2
+theme_type_variation = &"KanjiLabel"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(1, 1, 1, 0.3)
+theme_override_constants/line_spacing = -20
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 220
+text = "討
+取"
+horizontal_alignment = 1
+unique_name_in_owner = true
+
+[node name="Word" type="Label" parent="Root"]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.64
+anchor_right = 1.0
+anchor_bottom = 0.64
+grow_horizontal = 2
+mouse_filter = 2
+theme_type_variation = &"KanjiLabel"
+theme_override_colors/font_color = Color(0.92, 0.92, 0.92, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.7)
+theme_override_font_sizes/font_size = 30
+text = "ENEMY SLAIN"
+horizontal_alignment = 1
+unique_name_in_owner = true

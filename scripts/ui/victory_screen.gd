@@ -1,30 +1,18 @@
 class_name VictoryScreen
 extends CanvasLayer
-## The boss-slain screen (Step 11d), drawn in code. Must be a direct child of Player (it listens to the
-## Player's death_started and reads Player.combatant). It joins the group "victory_screen"; a boss
-## Enemy calls show_victory(kanji, text) when its final deathblow lands (Enemy._on_died).
+## The boss-slain screen (Step 11d; a scene since Phase 2 item 4). Instance scenes/ui/victory_screen.tscn
+## as a direct child of Player, named VictoryScreen (it listens to the Player's death_started and reads
+## Player.combatant). It joins the group "victory_screen"; a boss Enemy calls show_victory(kanji, text)
+## when its final deathblow lands (Enemy._on_died).
 ## Sequence (real seconds, so the slow motion does not stretch it): a long hitstop, a brief slow motion,
-## a white flash, the screen darkens and loses its color, then the kanji (stacked top to bottom, white
-## glow) and the spaced English line fade in; the spacing eases wider while it holds; then everything
-## fades out and the player stays in the arena. Dying while it plays cancels it (the death screen wins).
-## The kanji uses a system serif font (same list as DeathScreen); if it shows as a box, the machine has
-## none of the font names in `fonts`.
-
-const SCREEN_SHADER: String = """
-shader_type canvas_item;
-uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
-uniform float desaturate = 0.0;
-uniform float dim = 0.0;
-uniform float flash = 0.0;
-void fragment() {
-	vec3 c = textureLod(screen_tex, SCREEN_UV, 0.0).rgb;
-	float g = dot(c, vec3(0.299, 0.587, 0.114));
-	c = mix(c, vec3(g), desaturate);
-	c = mix(c, vec3(0.0), dim);
-	c = mix(c, vec3(1.0), flash);
-	COLOR = vec4(c, 1.0);
-}
-"""
+## a white flash, the screen darkens and loses its color (shaders/victory_screen.gdshader), then the
+## kanji (stacked top to bottom, white glow) and the spaced English line fade in; the spacing eases wider
+## while it holds; then everything fades out and the player stays in the arena. Dying while it plays
+## cancels it (the death screen wins).
+## The scene holds the look: colors, font sizes, the kanji's line spacing and glow, and the vertical
+## positions (anchors) are on the Kanji and Word nodes. Their sizes and spacings are written for a
+## 1080 px high window and scale with the real height. Both labels use the Theme's KanjiLabel font
+## (Yu Mincho / MS Mincho on Windows). This script keeps the behavior and the timings.
 
 @export_group("Game feel")
 ## Real seconds of near-freeze when the final blow lands (Hitstop), then the slow motion.
@@ -49,31 +37,27 @@ void fragment() {
 @export var fade_out_time: float = 1.2
 
 @export_group("Text")
-@export var fonts: PackedStringArray = PackedStringArray(["Yu Mincho", "MS Mincho", "Noto Serif CJK JP", "Noto Serif JP", "serif"])
-## Font sizes (px) at a 1080 px high window; they scale with the real height.
-@export var kanji_size: int = 220
-@export var kanji_line_spacing: int = -20
-@export var word_size: int = 30
-@export var kanji_color: Color = Color(1.0, 1.0, 1.0)
-@export var word_color: Color = Color(0.92, 0.92, 0.92)
-## The soft halo around the kanji (an outline with low alpha) and its width (px at 1080).
-@export var glow_color: Color = Color(1.0, 1.0, 1.0, 0.3)
-@export var glow_size: int = 8
 ## Extra space between the letters of the English line (px at 1080): starts narrow, eases to the end value.
 @export var word_spacing_start: int = 4
 @export var word_spacing_end: int = 16
-## Vertical positions as a share of the window height (top of the kanji stack and the English line).
-@export_range(0.0, 1.0) var kanji_top: float = 0.1
-@export_range(0.0, 1.0) var word_top: float = 0.64
+
+const REFERENCE_HEIGHT: float = 1080.0
+
+@onready var _root: Control = %Root
+@onready var _rect: ColorRect = %ScreenRect
+@onready var _kanji: Label = %Kanji
+@onready var _word: Label = %Word
 
 var _player: Player
-var _root: Control
-var _rect: ColorRect
 var _material: ShaderMaterial
-var _kanji: Label
-var _word: Label
 var _word_font: FontVariation
 var _word_spacing_now: int = -1
+var _ui_scale: float = 1.0
+# The sizes written in the scene (px at a 1080 px high window), read once in _ready().
+var _kanji_size: int = 0
+var _kanji_line_spacing: int = 0
+var _kanji_outline: int = 0
+var _word_size: int = 0
 var _active: bool = false
 var _start_ms: int = 0
 var _token: int = 0
@@ -81,45 +65,26 @@ var _slow: bool = false
 
 
 func _ready() -> void:
-	layer = 19
 	add_to_group(Groups.VICTORY_SCREEN)
 	_player = get_parent() as Player
-	_root = Control.new()
-	_root.name = "Root"
-	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_material = _rect.material as ShaderMaterial
 	_root.visible = false
-	add_child(_root)
-	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var shader := Shader.new()
-	shader.code = SCREEN_SHADER
-	_material = ShaderMaterial.new()
-	_material.shader = shader
-	_rect = ColorRect.new()
-	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_rect.material = _material
-	_root.add_child(_rect)
-	_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var base := SystemFont.new()
-	base.font_names = fonts
-	_kanji = _make_label(base)
+	_kanji_size = _kanji.get_theme_font_size(&"font_size")
+	_kanji_line_spacing = _kanji.get_theme_constant(&"line_spacing")
+	_kanji_outline = _kanji.get_theme_constant(&"outline_size")
+	_word_size = _word.get_theme_font_size(&"font_size")
+	# The English line's letter spacing eases while it holds, so it has its own font variation.
 	_word_font = FontVariation.new()
-	_word_font.base_font = base
-	_word = _make_label(_word_font)
+	_word_font.base_font = _word.get_theme_font(&"font")
+	_word.add_theme_font_override(&"font", _word_font)
+	_root.resized.connect(_apply_scale)
+	_apply_scale()
 	_player.death_started.connect(_cancel)
 
 
 func _exit_tree() -> void:
 	_token += 1
 	_restore_time()
-
-
-func _make_label(font: Font) -> Label:
-	var label := Label.new()
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_override("font", font)
-	_root.add_child(label)
-	return label
 
 
 ## True while the boss-slain screen is showing (the pause menu does not open then).
@@ -188,6 +153,8 @@ func _process(_delta: float) -> void:
 		_root.visible = false
 		return
 	_root.visible = true
+	if not is_equal_approx(_root.size.y / REFERENCE_HEIGHT, _ui_scale):
+		_apply_scale()
 	var screen := smoothstep(0.0, 1.0, clampf(t / maxf(screen_fade_in, 0.01), 0.0, 1.0)) * (1.0 - out_k)
 	var flash := 0.0
 	if t < flash_time:
@@ -199,28 +166,29 @@ func _process(_delta: float) -> void:
 	var alpha := smoothstep(0.0, 1.0, appear) * (1.0 - out_k)
 	var spread := clampf((t - banner_delay) / maxf(banner_fade_in + hold_time, 0.01), 0.0, 1.0)
 	spread = 1.0 - pow(1.0 - spread, 3.0)
-	_layout(alpha, lerpf(float(word_spacing_start), float(word_spacing_end), spread))
+	_fade_banner(alpha, lerpf(float(word_spacing_start), float(word_spacing_end), spread))
 
 
-func _layout(alpha: float, spacing: float) -> void:
-	var size := _root.size
-	var s := size.y / 1080.0
-	_kanji.add_theme_font_size_override("font_size", int(round(float(kanji_size) * s)))
-	_kanji.add_theme_constant_override("line_spacing", int(round(float(kanji_line_spacing) * s)))
-	_kanji.add_theme_constant_override("outline_size", int(round(float(glow_size) * s)))
-	_kanji.add_theme_color_override("font_color", Color(kanji_color.r, kanji_color.g, kanji_color.b, alpha))
-	_kanji.add_theme_color_override("font_outline_color", Color(glow_color.r, glow_color.g, glow_color.b, glow_color.a * alpha))
-	_kanji.size = Vector2(size.x, 0.0)
-	_kanji.position = Vector2(0.0, size.y * kanji_top)
+## Fade the two texts with `alpha` and set the English line's letter spacing (px at 1080).
+func _fade_banner(alpha: float, spacing: float) -> void:
+	_kanji.modulate.a = alpha
 	_kanji.visible = alpha > 0.001
-	var gap := int(round(spacing * s))
+	var gap := roundi(spacing * _ui_scale)
 	if gap != _word_spacing_now:
 		_word_spacing_now = gap
 		_word_font.spacing_glyph = gap
-	_word.add_theme_font_size_override("font_size", int(round(float(word_size) * s)))
-	_word.add_theme_color_override("font_color", Color(word_color.r, word_color.g, word_color.b, alpha))
-	_word.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.7 * alpha))
-	_word.size = Vector2(size.x, 0.0)
+	_word.modulate.a = alpha
 	# The last letter also gets the spacing, so shift half of it back to keep the line centered.
-	_word.position = Vector2(float(gap) * 0.5, size.y * word_top)
+	_word.offset_left = float(gap) * 0.5
+	_word.offset_right = float(gap) * 0.5
 	_word.visible = alpha > 0.001
+
+
+## Scale the font sizes, the kanji's line spacing and glow with the window height.
+func _apply_scale() -> void:
+	_ui_scale = _root.size.y / REFERENCE_HEIGHT
+	_kanji.add_theme_font_size_override(&"font_size", maxi(1, roundi(float(_kanji_size) * _ui_scale)))
+	_kanji.add_theme_constant_override(&"line_spacing", roundi(float(_kanji_line_spacing) * _ui_scale))
+	_kanji.add_theme_constant_override(&"outline_size", roundi(float(_kanji_outline) * _ui_scale))
+	_word.add_theme_font_size_override(&"font_size", maxi(1, roundi(float(_word_size) * _ui_scale)))
+	_word_spacing_now = -1

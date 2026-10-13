@@ -1,42 +1,24 @@
 class_name DeathScreen
 extends CanvasLayer
-## The death screen (Step 10), drawn in code. Must be a direct child of Player; it only listens to the
-## Player's death signals (death_started, death_prompt_shown, death_confirmed, resurrected).
-## On death the screen darkens a little and a blood-red vignette (a small shader, with a wobbling edge and
-## a slow pulse) creeps in from the edges; the 死 and "D E A T H" fade in; when the prompt shows,
-## "RMB / LB : Die" and "LMB / RB : Resurrect" appear (only with a resurrection left). Resurrecting fades
-## it all out; dying fades to black (the Player reloads the scene when that ends). The new scene starts
-## black and fades in (fade_in_on_start).
-## The 死 uses a system serif font (Yu Mincho / MS Mincho on Windows); if it shows as a box, the machine
-## has none of the font names in `kanji_fonts`.
-
-const VIGNETTE_SHADER: String = """
-shader_type canvas_item;
-uniform vec4 vignette_color : source_color = vec4(0.5, 0.0, 0.02, 1.0);
-uniform float strength = 0.0;
-uniform float inner = 0.3;
-uniform float outer = 0.95;
-uniform float pulse = 0.08;
-void fragment() {
-	vec2 p = (UV - 0.5) * 2.0;
-	float angle = atan(p.y, p.x);
-	float d = length(p) / 1.4142;
-	d += 0.05 * sin(angle * 5.0 + TIME * 0.5) + 0.03 * sin(angle * 11.0 - TIME * 0.8);
-	float v = smoothstep(inner, outer, d);
-	float beat = 1.0 + pulse * sin(TIME * 3.0);
-	COLOR = vec4(vignette_color.rgb, clamp(v * strength * beat, 0.0, 1.0));
-}
-"""
+## The death screen (Step 10; a scene since Phase 2 item 4). Instance scenes/ui/death_screen.tscn as a
+## direct child of Player, named DeathScreen; it only listens to the Player's death signals
+## (death_started, death_prompt_shown, death_confirmed, resurrected).
+## On death the screen darkens a little and a blood-red vignette (shaders/death_vignette.gdshader, with a
+## wobbling edge and a slow pulse) creeps in from the edges; the 死 and "D E A T H" fade in; when the
+## prompt shows, "RMB / LB : Die" and "LMB / RB : Resurrect" appear (only with a resurrection left).
+## Resurrecting fades it all out; dying fades to black (the Player reloads the scene when that ends).
+## The new scene starts black and fades in (fade_in_on_start).
+## The scene holds the look: the texts, colors, font sizes and positions (anchors) are on the nodes, and
+## the vignette's color, inner, outer and pulse are parameters of the Vignette node's material. This
+## script keeps the behavior: the fades, the strengths and the timings below. Font sizes and letter
+## spacing are written for a 1080 px high window and scale with the real height (UiTextScaler).
+## The 死 uses the Theme's KanjiLabel font (Yu Mincho / MS Mincho on Windows).
 
 @export_group("Look")
 ## How much the whole screen darkens on death (0 to 1).
 @export_range(0.0, 1.0) var darken: float = 0.35
-@export var vignette_color: Color = Color(0.5, 0.0, 0.02)
+## The vignette's strongest alpha (the shader's `strength` at the end of the fade-in).
 @export_range(0.0, 1.0) var vignette_strength: float = 0.9
-## Where the red starts and where it is full, measured from the center (0) to the corners (1).
-@export_range(0.0, 1.0) var vignette_inner: float = 0.3
-@export_range(0.1, 1.5) var vignette_outer: float = 0.95
-@export_range(0.0, 0.3) var vignette_pulse: float = 0.08
 
 @export_group("Timing")
 ## Seconds for the darkening and the vignette to come in after dying.
@@ -51,28 +33,20 @@ void fragment() {
 @export var fade_in_on_start: bool = true
 @export var start_fade_time: float = 0.7
 
-@export_group("Text")
-@export var kanji_color: Color = Color(0.78, 0.78, 0.76)
-@export var word_color: Color = Color(0.6, 0.6, 0.58)
-@export var prompt_color: Color = Color(0.9, 0.9, 0.88)
-## Font sizes (px) at a 1080 px high window; they scale with the real height.
-## Font names tried in order for the 死 (system fonts).
-@export var kanji_fonts: PackedStringArray = PackedStringArray(["Yu Mincho", "MS Mincho", "Noto Serif CJK JP", "Noto Serif JP", "serif"])
-@export var kanji_size: int = 220
-@export var word_size: int = 22
-@export var prompt_size: int = 26
-@export var die_text: String = "RMB / LB : Die"
-@export var resurrect_text: String = "LMB / RB : Resurrect"
+const REFERENCE_HEIGHT: float = 1080.0
+
+@onready var _root: Control = %Root
+@onready var _vignette: ColorRect = %Vignette
+@onready var _dim: ColorRect = %Dim
+@onready var _kanji: Label = %Kanji
+@onready var _word: Label = %Word
+@onready var _die_label: Label = %DieLabel
+@onready var _resurrect_label: Label = %ResurrectLabel
 
 var _player: Player
-var _root: Control
-var _vignette: ColorRect
 var _vignette_material: ShaderMaterial
-var _dim: ColorRect
-var _kanji: Label
-var _word: Label
-var _die_label: Label
-var _resurrect_label: Label
+var _scaler := UiTextScaler.new()
+var _scaled_height: float = -1.0
 
 var _dim_alpha: float = 0.0
 var _dim_target: float = 0.0
@@ -90,33 +64,13 @@ var _prompt_speed: float = 1.0
 
 
 func _ready() -> void:
-	layer = 20
 	_player = get_parent() as Player
-	_root = Control.new()
-	_root.name = "Root"
-	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_root)
-	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var shader := Shader.new()
-	shader.code = VIGNETTE_SHADER
-	_vignette_material = ShaderMaterial.new()
-	_vignette_material.shader = shader
-	_vignette = ColorRect.new()
-	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_vignette.material = _vignette_material
-	_root.add_child(_vignette)
-	_vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_dim = ColorRect.new()
-	_dim.color = Color(0.0, 0.0, 0.0, 0.0)
-	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(_dim)
-	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var kanji_font := SystemFont.new()
-	kanji_font.font_names = kanji_fonts
-	_kanji = _make_label("死", kanji_font)
-	_word = _make_label("D E A T H", null)
-	_die_label = _make_label(die_text, null)
-	_resurrect_label = _make_label(resurrect_text, null)
+	_vignette_material = _vignette.material as ShaderMaterial
+	_root.visible = false
+	for label: Label in [_kanji, _word, _die_label, _resurrect_label]:
+		_scaler.add(label)
+	_root.resized.connect(_apply_scale)
+	_apply_scale()
 	_player.death_started.connect(_on_death_started)
 	_player.death_prompt_shown.connect(_on_prompt_shown)
 	_player.death_confirmed.connect(_on_death_confirmed)
@@ -125,17 +79,6 @@ func _ready() -> void:
 		_dim_alpha = 1.0
 		_dim_target = 0.0
 		_dim_speed = 1.0 / start_fade_time
-
-
-func _make_label(text: String, font: Font) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if font != null:
-		label.add_theme_font_override("font", font)
-	_root.add_child(label)
-	return label
 
 
 func _on_death_started() -> void:
@@ -186,30 +129,23 @@ func _process(delta: float) -> void:
 	_root.visible = _dim_alpha > 0.001 or _vig > 0.001 or _text_alpha > 0.001
 	if not _root.visible:
 		return
-	_dim.color = Color(0.0, 0.0, 0.0, _dim_alpha)
-	_vignette_material.set_shader_parameter("vignette_color", vignette_color)
+	if not is_equal_approx(_root.size.y, _scaled_height):
+		_apply_scale()
+	_dim.modulate.a = _dim_alpha
 	_vignette_material.set_shader_parameter("strength", _vig * vignette_strength)
-	_vignette_material.set_shader_parameter("inner", vignette_inner)
-	_vignette_material.set_shader_parameter("outer", vignette_outer)
-	_vignette_material.set_shader_parameter("pulse", vignette_pulse)
-	_layout()
+	_show(_kanji, _text_alpha)
+	_show(_word, _text_alpha)
+	_show(_die_label, _prompt_alpha)
+	_show(_resurrect_label, _prompt_alpha)
 
 
-## Place and color the texts for the current window size.
-func _layout() -> void:
-	var size := _root.size
-	var s := size.y / 1080.0
-	_place(_kanji, kanji_size, size, 0.5, size.y * 0.43 - float(kanji_size) * s * 0.55, 1.0, kanji_color, _text_alpha, s)
-	_place(_word, word_size, size, 0.5, size.y * 0.43 + float(kanji_size) * s * 0.5, 1.0, word_color, _text_alpha, s)
-	var prompt_y := size.y * 0.925
-	_place(_die_label, prompt_size, size, 0.38, prompt_y, 0.3, prompt_color, _prompt_alpha, s)
-	_place(_resurrect_label, prompt_size, size, 0.62, prompt_y, 0.3, prompt_color, _prompt_alpha, s)
-
-
-func _place(label: Label, font_px: int, size: Vector2, center_x: float, y: float, width_share: float, color: Color, alpha: float, s: float) -> void:
-	label.add_theme_font_size_override("font_size", int(round(float(font_px) * s)))
-	label.add_theme_color_override("font_color", Color(color.r, color.g, color.b, color.a * alpha))
-	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.7 * alpha))
-	label.size = Vector2(size.x * width_share, 0.0)
-	label.position = Vector2(size.x * center_x - size.x * width_share * 0.5, y)
+## Fade a label with its own alpha (its color and shadow come from the scene).
+func _show(label: Label, alpha: float) -> void:
+	label.modulate.a = alpha
 	label.visible = alpha > 0.001
+
+
+## Scale the font sizes and the letter spacing with the window height.
+func _apply_scale() -> void:
+	_scaled_height = _root.size.y
+	_scaler.apply(_scaled_height / REFERENCE_HEIGHT)

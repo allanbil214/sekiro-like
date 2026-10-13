@@ -37,9 +37,9 @@
 [ext_resource type="Script" uid="uid://c6tupl6mk6o4b" path="res://scripts/ui/danger_symbol.gd" id="32_pk8ii"]
 [ext_resource type="Script" uid="uid://bva5xai5g2xge" path="res://scripts/player/lock_on.gd" id="33_5mf0n"]
 [ext_resource type="Script" uid="uid://b16888o6dv8yx" path="res://scripts/ui/player_hud.gd" id="36_wva7c"]
-[ext_resource type="Script" uid="uid://cmn2inquu1kpu" path="res://scripts/ui/death_screen.gd" id="37_7obkq"]
-[ext_resource type="Script" uid="uid://dt6isbua3gv8c" path="res://scripts/ui/victory_screen.gd" id="38_5q8fn"]
 [ext_resource type="Script" uid="uid://c6i12djbtmd6b" path="res://scripts/ui/crouch_vignette.gd" id="40_7obkq"]
+[ext_resource type="PackedScene" path="res://scenes/ui/death_screen.tscn" id="40_niom3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/victory_screen.tscn" id="41_ttakn"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="41_vo27k"]
 [ext_resource type="Script" uid="uid://egjv0nkgkfv0" path="res://scripts/ui/screen_fade.gd" id="42_genst"]
 [ext_resource type="Script" uid="uid://d22ur2c45ipfd" path="res://scripts/ui/boss_hud.gd" id="43_niom3"]
@@ -200,19 +200,17 @@ script = ExtResource("9_fcs02")
 [node name="PlayerHud" type="CanvasLayer" parent="." unique_id=1145584402]
 script = ExtResource("36_wva7c")
 
-[node name="DeathScreen" type="CanvasLayer" parent="." unique_id=314635366]
-script = ExtResource("37_7obkq")
-
-[node name="VictoryScreen" type="CanvasLayer" parent="." unique_id=1722533979]
-script = ExtResource("38_5q8fn")
-
-[node name="CrouchVignette" type="CanvasLayer" parent="." unique_id=1888972953]
-script = ExtResource("40_7obkq")
+[node name="BossHud" type="CanvasLayer" parent="." unique_id=1668375195]
+script = ExtResource("43_niom3")
 
 [node name="PauseMenu" parent="." unique_id=1999046858 instance=ExtResource("41_vo27k")]
+
+[node name="DeathScreen" parent="." unique_id=1777817340 instance=ExtResource("40_niom3")]
+
+[node name="VictoryScreen" parent="." unique_id=1983797228 instance=ExtResource("41_ttakn")]
 
 [node name="ScreenFade" type="CanvasLayer" parent="." unique_id=263334789]
 script = ExtResource("42_genst")
 
-[node name="BossHud" type="CanvasLayer" parent="." unique_id=1668375195]
-script = ExtResource("43_niom3")
+[node name="CrouchVignette" type="CanvasLayer" parent="." unique_id=1888972953]
+script = ExtResource("40_7obkq")
