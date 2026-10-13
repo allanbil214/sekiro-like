@@ -23,6 +23,13 @@ extends Node3D
 ## How fast a recenter turns the camera behind the player (LockOn.recenter_when_no_target).
 @export var recenter_speed: float = 10.0
 
+@export_group("Crouch")
+## How much lower (m) the camera pivot sits while the player is crouched or sliding, so the camera
+## stays level with the crouched player (and clear of a low ceiling).
+@export var crouch_height_drop: float = 0.5
+## How fast the camera eases to and from the crouched height (higher = snappier).
+@export var crouch_follow_speed: float = 10.0
+
 @export_group("Shake (Step 11c)")
 ## Master switch and strength (1 = as designed, 0.5 = half). Trauma (0 to 1) comes from Fx; the shake is trauma squared.
 @export var shake_enabled: bool = true
@@ -44,6 +51,7 @@ extends Node3D
 var _yaw: float = 0.0
 var _pitch: float = -0.2
 var _height_now: float = 0.0
+var _crouch_drop_now: float = 0.0
 var _recentering: bool = false
 var _recenter_yaw: float = 0.0
 var _trauma: float = 0.0
@@ -116,14 +124,17 @@ func _process(delta: float) -> void:
 
 	var wanted_height := follow_height + (lock_height_bonus if locked else 0.0)
 	_height_now = lerpf(_height_now, wanted_height, 1.0 - exp(-lock_follow_speed * delta))
-	var goal := target.global_position + Vector3.UP * _height_now
+	var player := target as Player
+	var crouch_wanted := crouch_height_drop if player != null and player.is_crouched else 0.0
+	_crouch_drop_now = lerpf(_crouch_drop_now, crouch_wanted, 1.0 - exp(-crouch_follow_speed * delta))
+	var goal := target.global_position + Vector3.UP * (_height_now - _crouch_drop_now)
 	global_position = global_position.lerp(goal, 1.0 - exp(-follow_smoothing * delta))
 
 
 ## Put the camera at its follow goal at once (no easing). Called after the player is teleported, so the
 ## camera does not swoop across the map. The yaw and pitch are kept.
 func snap_to_target() -> void:
-	global_position = target.global_position + Vector3.UP * _height_now
+	global_position = target.global_position + Vector3.UP * (_height_now - _crouch_drop_now)
 
 
 ## Add camera trauma (0 to 1; Fx calls this through the group "camera_rig"). `direction` is the world

@@ -16,10 +16,12 @@ signal closed
 const REFERENCE_HEIGHT: float = 1080.0
 
 @export_group("Layout (at a 1080 px high window)")
-## Font sizes of an arena row and of a category heading.
-@export var row_font_size: int = 28
+## Font sizes of an arena row (the body font, like the description) and of a category heading.
+@export var row_font_size: int = 24
 @export var heading_font_size: int = 22
 @export var row_height: float = 46.0
+## Extra space above each category heading except the first.
+@export var heading_gap: float = 28.0
 ## Height of the picture frame (its width follows the panel).
 @export var image_height: float = 280.0
 @export var back_width: float = 240.0
@@ -38,6 +40,7 @@ const REFERENCE_HEIGHT: float = 1080.0
 var _static_scaler := UiTextScaler.new()
 var _row_scaler := UiTextScaler.new()
 var _rows: Array[Button] = []
+var _gaps: Array[Control] = []
 var _quiet_focus: bool = false
 var _is_open: bool = false
 var _chosen: bool = false
@@ -89,11 +92,14 @@ func _build_list() -> void:
 		_list.remove_child(child)
 		child.queue_free()
 	_rows.clear()
+	_gaps.clear()
 	_row_scaler = UiTextScaler.new()
 	var last_category: int = -1
 	for arena: ArenaData in ArenaLibrary.visible_arenas():
 		if int(arena.category) != last_category:
 			last_category = int(arena.category)
+			if not _rows.is_empty():
+				_list.add_child(_make_gap())
 			_list.add_child(_make_heading(ArenaData.category_label(arena.category)))
 		var row := _make_row(arena)
 		_list.add_child(row)
@@ -112,6 +118,14 @@ func _make_heading(text: String) -> Label:
 	return label
 
 
+## An empty spacer above a heading; its height is scaled in _apply_scale().
+func _make_gap() -> Control:
+	var gap := Control.new()
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_gaps.append(gap)
+	return gap
+
+
 func _make_row(arena: ArenaData) -> Button:
 	var button := Button.new()
 	button.text = arena.display_name
@@ -119,6 +133,8 @@ func _make_row(arena: ArenaData) -> Button:
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.clip_text = true
 	button.add_theme_font_size_override(&"font_size", row_font_size)
+	# The body font of the description (tight letter spacing), not the wide menu font.
+	button.add_theme_font_override(&"font", get_theme_font(&"font", &"PanelText"))
 	button.focus_entered.connect(_on_row_focused.bind(arena))
 	button.mouse_entered.connect(_on_hovered.bind(button))
 	button.pressed.connect(_on_row_pressed.bind(arena))
@@ -194,5 +210,7 @@ func _apply_scale() -> void:
 	_row_scaler.apply(s)
 	for row: Button in _rows:
 		row.custom_minimum_size = Vector2(0.0, row_height * s)
+	for gap: Control in _gaps:
+		gap.custom_minimum_size = Vector2(0.0, heading_gap * s)
 	_image_frame.custom_minimum_size = Vector2(0.0, image_height * s)
 	_back.custom_minimum_size = Vector2(back_width * s, back_height * s)

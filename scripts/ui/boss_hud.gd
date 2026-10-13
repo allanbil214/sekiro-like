@@ -191,7 +191,7 @@ func _update_owner() -> void:
 		_owner = null
 	if _owner != null:
 		return
-	var best: Node3D
+	var best: Node3D = null
 	var best_time: int = 0
 	for boss: Node3D in _noticed_at:
 		var since: int = _noticed_at[boss]
