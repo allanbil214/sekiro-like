@@ -49,6 +49,8 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## Health bars, boss flag, and deathblow window (s); copied to the Combatant at startup.
 @export var health_bars: int = 2
 @export var boss: bool = false
+## The name the boss HUD shows (empty = the node's name).
+@export var display_name: String = ""
 @export var deathblow_window: float = 4.0
 @export var gravity_multiplier: float = 2.0
 @export var body_color: Color = Color(0.75, 0.3, 0.25)
@@ -940,6 +942,21 @@ func _stand_down_ended() -> void:
 	_stood_down = false
 	if phase == Phase.IDLE:
 		_start_yield()
+
+
+## The boss HUD (BossHud) asks these: a boss is engaged once it has noticed the player (it left IDLE),
+## until it dies or loses the player (back to IDLE, which also happens while the player is dead).
+func is_boss_engaged() -> bool:
+	return boss and not combatant.dead and phase != Phase.IDLE
+
+
+func get_boss_name() -> String:
+	return display_name if display_name != "" else String(name)
+
+
+## The boss HUD shows (or stops showing) this boss's health and posture: hide (or show) the floating bars.
+func set_boss_hud_shown(shown: bool) -> void:
+	bar.set_bars_hidden(shown)
 
 
 func _find_player() -> void:

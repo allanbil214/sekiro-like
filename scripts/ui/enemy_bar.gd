@@ -84,6 +84,10 @@ var _posture_flash_left: float = 0.0
 var _pips: Array[MeshInstance3D] = []
 var _marker: Sprite3D
 var _marker_time: float = 0.0
+## True while the boss HUD shows this enemy's health and posture: the bars and dots are hidden (the
+## deathblow marker stays). See set_bars_hidden().
+var _bars_hidden: bool = false
+var _bars_left: int = 0
 
 
 func _ready() -> void:
@@ -111,6 +115,18 @@ func _ready() -> void:
 	_marker.position = marker_offset
 	_marker.visible = false
 	add_child(_marker)
+
+
+## Hide or show the health bar, the dots, and the posture bar (the boss HUD takes them over while it
+## shows this enemy). The deathblow marker is not part of it and stays.
+func set_bars_hidden(hidden: bool) -> void:
+	_bars_hidden = hidden
+	_back.visible = not hidden
+	_posture_back.visible = not hidden
+	_set_fill(_red, _red_fraction)
+	_set_fill(_yellow, _yellow_fraction)
+	_apply_posture()
+	_on_bars_changed(_bars_left, 0)
 
 
 ## Where the posture bar sits below the health bar, in the bar's own (camera-facing) plane.
@@ -218,8 +234,9 @@ func _on_posture_changed(current: float, maximum: float) -> void:
 
 ## A lost health bar's dot is hidden.
 func _on_bars_changed(left: int, _total: int) -> void:
+	_bars_left = left
 	for i in _pips.size():
-		_pips[i].visible = i < left
+		_pips[i].visible = i < left and not _bars_hidden
 
 
 ## One round dot per health bar (only when there are 2 or more), in a row above the health bar,
@@ -295,12 +312,12 @@ func _apply_posture() -> void:
 		var quad := instance.mesh as QuadMesh
 		quad.size = Vector2(maxf(half_width, 0.0001), posture_height)
 		quad.center_offset = Vector3(side * half_width * 0.5, _posture_y(), 0.0)
-		instance.visible = _posture_fraction > 0.0005
+		instance.visible = _posture_fraction > 0.0005 and not _bars_hidden
 		(instance.material_override as StandardMaterial3D).albedo_color = color
 
 
 func _on_damaged(_hit: HitData, amount: float) -> void:
-	if show_damage_numbers and amount > 0.0:
+	if show_damage_numbers and amount > 0.0 and not _bars_hidden:
 		_spawn_number(amount)
 
 
@@ -328,7 +345,7 @@ func _set_fill(instance: MeshInstance3D, fraction: float) -> void:
 	var quad := instance.mesh as QuadMesh
 	quad.size = Vector2(maxf(fill_width, 0.0001), bar_height)
 	quad.center_offset = Vector3(-bar_width * 0.5 + fill_width * 0.5, 0.0, 0.0)
-	instance.visible = clamped > 0.0005
+	instance.visible = clamped > 0.0005 and not _bars_hidden
 
 
 func _spawn_number(amount: float) -> void:

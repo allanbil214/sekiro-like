@@ -8,3 +8,4 @@
 [node name="Dummy" parent="." instance=ExtResource("2_dummy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -6)
 boss = true
+display_name = "Dummy"

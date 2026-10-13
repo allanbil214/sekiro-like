@@ -30,6 +30,10 @@ const SWING_START: float = 0.3
 ## deathblow window (s). Copied to the Combatant at startup.
 @export var health_bars: int = 2
 @export var boss: bool = false
+## The name the boss HUD shows (empty = the node's name), and how close (m) the player must be for a
+## boss dummy to count as having noticed it (it is no longer so beyond 1.5 times that).
+@export var display_name: String = ""
+@export var boss_ui_range: float = 14.0
 @export var deathblow_window: float = 4.0
 ## How far (m) the body shifts away from a hit, and how far (radians) it tilts.
 @export var recoil_distance: float = 0.12
@@ -79,6 +83,7 @@ var _swing_time: float = 0.0
 var _cycle_index: int = 0
 var _player: Node3D
 var _stun_material: StandardMaterial3D
+var _boss_engaged: bool = false
 
 
 func _ready() -> void:
@@ -119,6 +124,7 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_update_boss_engaged()
 	if combatant.dead:
 		_end_attack()
 		return
@@ -256,6 +262,37 @@ func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 		if away.length_squared() > 0.0001:
 			_recoil = 1.0
 			_recoil_direction = away.normalized()
+
+
+## The boss HUD (BossHud) asks these. A boss dummy has no senses, so it counts as having noticed the
+## player within boss_ui_range (until 1.5 times that), while it and the player are alive.
+func is_boss_engaged() -> bool:
+	return _boss_engaged
+
+
+func get_boss_name() -> String:
+	return display_name if display_name != "" else String(name)
+
+
+func set_boss_hud_shown(shown: bool) -> void:
+	bar.set_bars_hidden(shown)
+
+
+func _update_boss_engaged() -> void:
+	var was_engaged := _boss_engaged
+	_boss_engaged = false
+	if not boss or combatant.dead:
+		return
+	if _player == null or not is_instance_valid(_player):
+		_player = get_tree().get_first_node_in_group(Groups.PLAYER) as Node3D
+	if _player == null:
+		return
+	var player_combatant := Combatant.of(_player)
+	if player_combatant != null and player_combatant.dead:
+		return
+	var flat := _player.global_position - global_position
+	flat.y = 0.0
+	_boss_engaged = flat.length() <= boss_ui_range * (1.5 if was_engaged else 1.0)
 
 
 func _on_died() -> void:

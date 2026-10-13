@@ -23,3 +23,4 @@ ai = ExtResource("3_soldier")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
 ai = ExtResource("4_monk")
 boss = true
+display_name = "Monk"

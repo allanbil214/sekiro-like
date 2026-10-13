@@ -10,3 +10,4 @@
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -6)
 ai = ExtResource("3_ai")
 boss = true
+display_name = "Duelist"

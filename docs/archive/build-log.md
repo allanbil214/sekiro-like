@@ -1035,3 +1035,22 @@ Done and tested by the user 2026-10-12. Not run headless (not asked); look and f
 
 **Not done:** the new arenas (3c), arena images, a spawner or arena modes. The release-build rule (ARENAS hidden when every arena is `debug_only`) could not be tested in the editor.
 **Noticed, not fixed:** nothing.
+
+### Phase 2 item 3c-1: the fighting arenas and the invisible walls (2026-10-12)
+Done and tested by the user 2026-10-12. Not run headless (not asked); look and feel tested by the user.
+
+**What exists**
+- `scenes/arena/fighting_arena.tscn` (the base, no enemy): a 30 x 30 m floor (a `CSGBox3D`, top at y = 0, grey), the same sky and light as the test arena, four **invisible walls** (`InvisibleWalls` with `WallNorth/South/East/West`, `StaticBody3D`s with a 40 m tall `BoxShape3D`, `collision_layer` 32, `collision_mask` 0, just inside the floor edge), a `FallZone` (120 x 4 x 120 at y = -12) and the Player at (0, 0.01, 10), facing -Z.
+- Eight inherited scenes of it, each adding its own enemy instance (a Godot inherited scene cannot delete a base node, so the base has none; the plan's "set only the `ai`" became "add one enemy and set its `ai` and `boss`"): `fighting_dummy` (a `Dummy`, `boss` on), `fighting_soldier`, `fighting_duelist`, `fighting_aura`, `fighting_repulser`, `fighting_monk`, `fighting_grappler` (one `Enemy` at (0, 0, -6) with that `ai/` preset and `boss` on) and `fighting_squad` (three soldiers at (-6, 0, -7), (0, 0, -8), (6, 0, -7), not bosses, and a boss monk at (0, 0, -12)). No default preset.
+- Eight `ArenaData` resources `arenas/fighting_<name>.tres` (FIGHTING, `debug_only` on, `sort_order` 0 to 7 in the order dummy, soldier, duelist, aura, repulser, monk, grappler, squad), each with a short description of the preset.
+- `Layers.INVISIBLE_WALL` (32, layer 6, `scripts/combat/layers.gd`).
+- `LedgeSensor._world_mask()` (`scripts/player/ledge_sensor.gd`): the player's collision mask without layer 6, used by all six ray and shape queries, so an invisible wall is solid for the body but is not a wall to wall-jump from and not a ledge to grab.
+
+**Rules that are not obvious from the code**
+- The invisible walls are on layer 6 only. The camera's `SpringArm3D` (mask 1) never sees them, so the camera does not spring near a wall. They only block bodies whose mask has layer 6: the Player and Enemy roots (`collision_mask` 33 = layers 1 and 6, set by the user in `player.tscn` and `enemy.tscn`; a new body type that must stay inside needs the same tick). The `Dummy` is a `StaticBody3D` and does not need it.
+- The walls are 40 m tall so nothing can jump over them or grab their top.
+- A boss kill shows ENEMY SLAIN and the enemy stays dead (no reload): re-enter the arena with CHANGE ARENA in the pause menu.
+
+**Files:** new `scenes/arena/fighting_arena.tscn` and the eight `fighting_*.tscn`, the eight `arenas/fighting_*.tres`; modified `scripts/combat/layers.gd`, `scripts/player/ledge_sensor.gd`. Editor: the layer 6 tick in the Player and Enemy masks. Zip: `sekiro-like_fighting-arenas.zip`.
+
+**Not done:** arena images, waves or a spawner, the movement arena (3c-2). **Noticed, not fixed:** nothing in the arena. Raised by the user after the test and not built: the boss UI (see the Phase 2 plan, item 3c-1 addendum, once agreed).
