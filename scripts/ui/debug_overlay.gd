@@ -36,7 +36,8 @@ func _ready() -> void:
 	add_child(_label)
 	_tint_material = StandardMaterial3D.new()
 	_tint_material.albedo_color = tint_color
-	if show_wall_range:
+	# Debug builds only (the editor counts as one), so a release export never shows the ring.
+	if show_wall_range and OS.is_debug_build():
 		_create_wall_range_ring.call_deferred()
 	if show_ledge_marker:
 		_create_ledge_marker.call_deferred()

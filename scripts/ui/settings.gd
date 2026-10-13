@@ -8,6 +8,8 @@ extends RefCounted
 ## `Player.crouch_is_hold`, `CameraRig.shake_enabled` and `LockOn.recenter_when_no_target` / `auto_lock_next`,
 ## which stay in the scene only as the fallback when the settings file does not exist yet.
 ## Volumes and sensitivities are stored as fractions (1.0 = 100 percent).
+## Item 6b: the rebound keys and buttons (`ControlsBindings`) are saved in the same file, in a `[controls]`
+## section that holds only the bindings that differ from the project's, and applied to the Input Map here.
 ## The buses (Master, Music, Sfx) come from `res://default_bus_layout.tres`.
 
 const PATH: String = "user://settings.cfg"
@@ -39,6 +41,7 @@ static func ensure_loaded() -> void:
 	if _loaded:
 		return
 	_loaded = true
+	ControlsBindings.capture_defaults()
 	var config := ConfigFile.new()
 	var error := config.load(PATH)
 	if error == OK:
@@ -52,6 +55,7 @@ static func ensure_loaded() -> void:
 		mouse_sensitivity = _fraction(config, "gameplay", "mouse_sensitivity", mouse_sensitivity, 0.25, 2.0)
 		stick_sensitivity = _fraction(config, "gameplay", "stick_sensitivity", stick_sensitivity, 0.25, 2.0)
 		invert_y = bool(config.get_value("gameplay", "invert_y", invert_y))
+		ControlsBindings.load_from(config)
 	elif error != ERR_FILE_NOT_FOUND:
 		push_warning("Settings: could not read %s (error %d); using the defaults." % [PATH, error])
 	apply_audio()
@@ -70,6 +74,7 @@ static func save() -> void:
 	config.set_value("gameplay", "mouse_sensitivity", mouse_sensitivity)
 	config.set_value("gameplay", "stick_sensitivity", stick_sensitivity)
 	config.set_value("gameplay", "invert_y", invert_y)
+	ControlsBindings.save_to(config)
 	var error := config.save(PATH)
 	if error != OK:
 		push_error("Settings: could not write %s (error %d)." % [PATH, error])

@@ -62,7 +62,8 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not event.is_action_pressed(Actions.PAUSE):
+	# While a Controls row waits for a key, Esc and Start belong to it (Esc cancels the capture).
+	if _options.is_capturing() or not event.is_action_pressed(Actions.PAUSE):
 		return
 	if _leaving:
 		get_viewport().set_input_as_handled()
@@ -77,7 +78,7 @@ func _input(event: InputEvent) -> void:
 
 ## The gamepad's Cancel button (Esc is already taken by the `pause` action above).
 func _unhandled_input(event: InputEvent) -> void:
-	if _is_open and not _leaving and event.is_action_pressed(&"ui_cancel"):
+	if _is_open and not _leaving and not _options.is_capturing() and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_back_or_resume()
 
