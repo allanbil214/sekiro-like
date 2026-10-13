@@ -9,6 +9,7 @@ duration = 1.0
 locked_until = 0.6
 cancel_window = Vector2(0.6, 1)
 active_hit = Vector2(0.3, 0.42)
+iframes = Vector2(0, 1)
 move_speed = 9.0
 move_window = Vector2(0.05, 0.4)
 swing_windup = Vector3(8, 0.9, -0.3)

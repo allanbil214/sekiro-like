@@ -1054,3 +1054,25 @@ Done and tested by the user 2026-10-12. Not run headless (not asked); look and f
 **Files:** new `scenes/arena/fighting_arena.tscn` and the eight `fighting_*.tscn`, the eight `arenas/fighting_*.tres`; modified `scripts/combat/layers.gd`, `scripts/player/ledge_sensor.gd`. Editor: the layer 6 tick in the Player and Enemy masks. Zip: `sekiro-like_fighting-arenas.zip`.
 
 **Not done:** arena images, waves or a spawner, the movement arena (3c-2). **Noticed, not fixed:** nothing in the arena. Raised by the user after the test and not built: the boss UI (see the Phase 2 plan, item 3c-1 addendum, once agreed).
+
+### Phase 2 item 3c-1 addendum: the boss HUD (2026-10-13)
+Done and tested by the user 2026-10-13. Not run headless (not asked); look and feel tested by the user. Raised by the user after testing 3c-1 (a screenshot of Sekiro's boss UI was the layout reference; the player's posture bar in it was ignored).
+
+**What exists**
+- `BossHud` (`scripts/ui/boss_hud.gd`, a code-drawn `CanvasLayer` at layer 9, a direct child of Player; the node `BossHud` was added to `player.tscn` by the user): top left the round dots (one per health bar left, shown when the boss has 2 or more bars), the red health bar with the yellow drain trail, and the boss's name below it (a system serif font); top center the boss's posture bar (grows from the middle out, yellow to reddish orange, red with a flash at a break, a center tick, a chevron at each end). Sized for a 1080 px window and scaled with its height; every size and color is an export.
+- It reads the bosses through `Enemies.all()`; a boss is any entry with `is_boss_engaged()`, `get_boss_name()` and `set_boss_hud_shown(bool)` (duck-typed: `Enemy` and `Dummy` both have them).
+- `Enemy`: `display_name` export (empty = the node name), `is_boss_engaged()` (`boss`, not dead, `phase != IDLE`, so it counts once the player is inside `ai.aggro_range` and stops when it returns to IDLE: the player beyond 1.5 times the range, or dead), `get_boss_name()`, `set_boss_hud_shown()`. `Dummy`: `display_name`, `boss_ui_range` (14 m; engaged within it and until 1.5 times that, while it and the player are alive), the same three methods.
+- `EnemyBar.set_bars_hidden(bool)`: hides the health bar, the dots and the posture bar (and the debug damage numbers) while the HUD shows that enemy; the deathblow marker on the body stays. `_bars_hidden` is checked wherever those parts set their visibility.
+- A ninth fighting arena, "Two Bosses" (`fighting_duo.tscn`, `arenas/fighting_duo.tres`, `sort_order` 8): a boss duelist at (-5, 0, -8) and a boss monk at (5, 0, -8). The eight existing variants got a `display_name` on their boss (Dummy, Soldier, Duelist, Aura, Repulser, Monk, Grappler; Monk in the squad).
+
+**Rules (agreed with the user 2026-10-13)**
+- One boss owns the HUD at a time; the first to notice the player owns it (`_noticed_at`, msec). Its floating bar hides while it owns the HUD.
+- Switching: only when the player hits (or is blocked by: `damaged`, `hit_guarded`, `hit_deflected`) exactly one boss within `switch_group_time` (0.1 s) of the first hit, that boss is not the owner and is engaged. A hit on the owner, or on several bosses in the same swing or attack (an area attack later), keeps the HUD where it is. After a switch, `switch_cooldown` (1.0 s) with no other switch. Lock-on does not switch it.
+- When the owner dies, stops noticing the player or the player dies, the HUD passes to the next engaged boss (the earliest to notice), or fades out (`fade_out_time` 0.6 s; `fade_in_time` 0.3 s). On a switch the drawn values start from the new boss's real ones (no trail from the previous one).
+
+**Files:** new `scripts/ui/boss_hud.gd`, `scenes/arena/fighting_duo.tscn`, `arenas/fighting_duo.tres`; modified `scripts/ui/enemy_bar.gd`, `scripts/enemy/enemy.gd`, `scripts/enemy/dummy.gd`, the eight `scenes/arena/fighting_*.tscn`. Editor: the `BossHud` node under Player. Zip: `sekiro-like_boss-ui.zip`.
+
+**Correction to the 3c-1 entry above (2026-10-13):** it says a boss kill leaves the enemy dead. That is wrong: an `Enemy` (and the `Dummy`) comes back `respawn_delay` (2 s) after it dies (`Enemy._on_died()` waits, then `combatant.reset()`), boss or not; the boss HUD fades out with the death and returns when it engages again.
+
+**Not done:** a multi-boss layout (the HUD shows one), real boss names, a sound or intro animation for the boss appearing, restyling the player's posture bar to match (the chevrons are on the boss bar only), the sight-cone awareness backlog item (the trigger is the existing `aggro_range`).
+**Noticed, not fixed:** nothing.

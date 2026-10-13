@@ -17,10 +17,14 @@ const THRUST_VISUAL: ActionData = preload("res://actions/deathblow_thrust.tres")
 @export var swing_sound_lead: float = 0.1
 ## Hitstop (s) when the deathblow lands.
 @export var landing_hitstop: float = 0.15
+## The player is invulnerable for the whole deathblow (the `iframes` window of its ActionData), and for
+## this many more seconds after it, but only if the deathblow actually landed (0 = none).
+@export var invulnerable_after: float = 1.0
 
 var _target: Node3D
 var _executed: bool = false
 var _swing_played: bool = false
+var _landed: bool = false
 var _visual_action: ActionData
 
 
@@ -35,6 +39,7 @@ func _slows_active_window() -> bool:
 
 func _on_action_enter(_previous: StringName) -> void:
 	_executed = false
+	_landed = false
 	_swing_played = false
 	if Sfx.deathblow_open_enabled():
 		Sfx.play(player.get_tree(), Sfx.Id.DEATHBLOW_OPEN)
@@ -54,6 +59,8 @@ func _on_action_enter(_previous: StringName) -> void:
 
 func _on_action_exit() -> void:
 	_target = null
+	if _landed:
+		player.grant_invulnerability(invulnerable_after)
 	if player.sword_visual != null:
 		player.sword_visual.end_combo()
 
@@ -76,6 +83,7 @@ func _on_action_update(_delta: float) -> void:
 		if is_instance_valid(_target):
 			combatant = Combatant.of(_target)
 		if combatant != null and combatant.execute_deathblow():
+			_landed = true
 			Hitstop.request(player.get_tree(), landing_hitstop)
 			player.notify_combat()
 		return

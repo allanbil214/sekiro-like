@@ -927,6 +927,12 @@ func resurrect() -> void:
 	notify_combat()
 
 
+## Invulnerable for at least `seconds` more (the longer of this and what is already running). The same
+## timer as the resurrection and the fall respawn.
+func grant_invulnerability(seconds: float) -> void:
+	_revive_invulnerable_left = maxf(_revive_invulnerable_left, seconds)
+
+
 ## Start the heal if `heal` was just pressed and the player is in a state that allows it (Locomotion,
 ## Crouch, or Dash). Crouched under a low ceiling cannot heal (it stands you up first).
 func _try_heal() -> void:
