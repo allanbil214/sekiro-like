@@ -308,6 +308,7 @@ func _ready() -> void:
 	add_to_group(Groups.PLAYER)
 	heal_charges = max_heal_charges
 	resurrections_left = max_resurrections
+	Settings.apply_gameplay(self)
 	_reaction.capture_rest()
 	_setup_hurtbox()
 	if start_invulnerable_time > 0.0:

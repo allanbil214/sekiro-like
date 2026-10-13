@@ -176,10 +176,12 @@ static func _acquire(scene: Node, positional: bool) -> Node:
 			return candidate as Node
 	if positional:
 		var player3d := AudioStreamPlayer3D.new()
+		player3d.bus = Settings.BUS_SFX
 		player3d.finished.connect(_release.bind(player3d))
 		scene.add_child(player3d)
 		return player3d
 	var player2d := AudioStreamPlayer.new()
+	player2d.bus = Settings.BUS_SFX
 	player2d.finished.connect(_release.bind(player2d))
 	scene.add_child(player2d)
 	return player2d

@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" path="res://resources/ui_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="2_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/arena_chooser.tscn" id="3_chooser"]
+[ext_resource type="PackedScene" path="res://scenes/ui/options_menu.tscn" id="4_options"]
 
 [node name="PauseMenu" type="CanvasLayer"]
 process_mode = 3
@@ -95,43 +96,8 @@ theme_override_font_sizes/font_size = 28
 text = "QUIT TO TITLE"
 unique_name_in_owner = true
 
-[node name="OptionsPanel" type="PanelContainer" parent="Root"]
-visible = false
+[node name="OptionsMenu" parent="Root" instance=ExtResource("4_options")]
 layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.32
-anchor_top = 0.32
-anchor_right = 0.68
-anchor_bottom = 0.68
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"OptionsPanel"
-unique_name_in_owner = true
-
-[node name="Rows" type="VBoxContainer" parent="Root/OptionsPanel"]
-layout_mode = 2
-theme_override_constants/separation = 24
-alignment = 1
-
-[node name="PanelHeading" type="Label" parent="Root/OptionsPanel/Rows"]
-layout_mode = 2
-theme_type_variation = &"PanelHeading"
-text = "OPTIONS"
-horizontal_alignment = 1
-unique_name_in_owner = true
-
-[node name="PanelText" type="Label" parent="Root/OptionsPanel/Rows"]
-layout_mode = 2
-theme_type_variation = &"PanelText"
-text = "Nothing here yet."
-horizontal_alignment = 1
-unique_name_in_owner = true
-
-[node name="BackButton" type="Button" parent="Root/OptionsPanel/Rows"]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_type_variation = &"EntryButton"
-text = "BACK"
 unique_name_in_owner = true
 
 [node name="ArenaChooser" parent="Root" instance=ExtResource("3_chooser")]

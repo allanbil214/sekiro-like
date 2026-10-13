@@ -8,5 +8,5 @@ display_name = "Training Yard"
 scene_path = "res://scenes/arena/movement_yard.tscn"
 description = "A training yard with one station per move: step-ups, gaps, a wall-jump shaft, a low tunnel, ledge walls, slopes, and stairs with a smooth ramp and with raw steps. No enemies. A fall sends you back to the start."
 category = 1
-debug_only = true
+debug_only = false
 sort_order = 0

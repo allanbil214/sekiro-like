@@ -3,7 +3,7 @@ extends Control
 ## The main menu (Phase 2, item 1). The scene `scenes/ui/main_menu.tscn` is the layout; the look (fonts,
 ## colors, sizes at a 1080 px high window, the brush-stroke highlight) is in `resources/ui_theme.tres`;
 ## this script is only behavior: the fades, the music, the "press any button" screen, the entries, the
-## Options panel (a placeholder), and loading the default arena. Texts (the title, the kanji, the footer)
+## Options menu (the OptionsMenu scene, item 6a), and loading the default arena. Texts (the title, the kanji, the footer)
 ## are the Label nodes' own text in the scene.
 ## Flow: fade in from black, the music starts, "PRESS ANY BUTTON", then START / OPTIONS / QUIT.
 ## Keyboard, mouse and gamepad all work (ui_up, ui_down, ui_accept, ui_cancel).
@@ -49,10 +49,7 @@ class TextBase extends RefCounted:
 @onready var _options_button: Button = %OptionsButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _press: Label = %PressLabel
-@onready var _options_panel: PanelContainer = %OptionsPanel
-@onready var _panel_heading: Label = %PanelHeading
-@onready var _panel_text: Label = %PanelText
-@onready var _back_button: Button = %BackButton
+@onready var _options: OptionsMenu = %OptionsMenu
 @onready var _chooser: ArenaChooser = %ArenaChooser
 @onready var _footer: Label = %FooterLabel
 @onready var _version: Label = %VersionLabel
@@ -68,16 +65,17 @@ var _buttons: Array[Button] = []
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	Settings.ensure_loaded()
 	_version.text = _version_text()
-	_buttons = [_start_button, _arenas_button, _options_button, _quit_button, _back_button]
+	_buttons = [_start_button, _arenas_button, _options_button, _quit_button]
 	_remember_text_bases()
 	resized.connect(_apply_scale)
 	_apply_scale()
 	_connect_buttons()
 	_entries.visible = false
-	_options_panel.visible = false
 	# The ARENAS entry shows only if this build lists at least one arena (see ArenaLibrary).
-	_arenas_button.visible = ArenaLibrary.has_visible()
+	# In a release build START opens the chooser itself, so the ARENAS entry would only repeat it.
+	_arenas_button.visible = ArenaLibrary.has_visible() and not _start_opens_chooser()
 
 	_fade.color.a = 1.0
 	var fade_tween := create_tween()
@@ -96,7 +94,7 @@ func _input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _phase == Phase.OPTIONS and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
-		_close_options()
+		_options.request_close()
 	elif _phase == Phase.ARENAS and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_chooser.request_close()
@@ -151,7 +149,7 @@ func _connect_buttons() -> void:
 	_arenas_button.pressed.connect(_open_arenas)
 	_options_button.pressed.connect(_open_options)
 	_quit_button.pressed.connect(_on_quit_pressed)
-	_back_button.pressed.connect(_close_options)
+	_options.closed.connect(_close_options)
 	_chooser.arena_chosen.connect(_on_arena_chosen)
 	_chooser.closed.connect(_close_arenas)
 	# Up from the first row wraps to the last, and down from the last wraps to the first.
@@ -160,7 +158,7 @@ func _connect_buttons() -> void:
 
 
 func _on_button_hovered(button: Button) -> void:
-	if (_phase == Phase.ENTRIES or _phase == Phase.OPTIONS) and button.is_visible_in_tree():
+	if _phase == Phase.ENTRIES and button.is_visible_in_tree():
 		button.grab_focus()
 
 
@@ -179,6 +177,9 @@ func _focus_quietly(button: Button) -> void:
 func _on_start_pressed() -> void:
 	if _phase != Phase.ENTRIES:
 		return
+	if _start_opens_chooser():
+		_open_arenas()
+		return
 	Sfx.play(get_tree(), Sfx.Id.MENU_OK)
 	_leave(_load_arena)
 
@@ -188,6 +189,12 @@ func _on_quit_pressed() -> void:
 		return
 	Sfx.play(get_tree(), Sfx.Id.MENU_OK)
 	_leave(get_tree().quit)
+
+
+## A release build sends START to the arena chooser (if it lists an arena); a debug build and the editor
+## keep START loading DEFAULT_ARENA at once, for fast testing.
+func _start_opens_chooser() -> bool:
+	return not OS.is_debug_build() and ArenaLibrary.has_visible()
 
 
 func _open_arenas() -> void:
@@ -205,7 +212,7 @@ func _close_arenas() -> void:
 		return
 	_phase = Phase.ENTRIES
 	_entries.visible = true
-	_focus_quietly(_arenas_button)
+	_focus_quietly(_start_button if _start_opens_chooser() else _arenas_button)
 
 
 func _on_arena_chosen(arena: ArenaData) -> void:
@@ -220,16 +227,14 @@ func _open_options() -> void:
 	Sfx.play(get_tree(), Sfx.Id.MENU_OK)
 	_phase = Phase.OPTIONS
 	_entries.visible = false
-	_options_panel.visible = true
-	_focus_quietly(_back_button)
+	_options.open()
 
 
+## The Options menu closed itself (Back or the cancel key; it plays the back sound).
 func _close_options() -> void:
 	if _phase != Phase.OPTIONS:
 		return
-	Sfx.play(get_tree(), Sfx.Id.MENU_BACK)
 	_phase = Phase.ENTRIES
-	_options_panel.visible = false
 	_entries.visible = true
 	_focus_quietly(_options_button)
 
@@ -262,7 +267,7 @@ func _version_text() -> String:
 func _remember_text_bases() -> void:
 	var controls: Array[Control] = [
 		_kanji, _title, _subtitle, _press, _footer, _version,
-		_start_button, _arenas_button, _options_button, _quit_button, _back_button, _panel_heading, _panel_text,
+		_start_button, _arenas_button, _options_button, _quit_button,
 	]
 	for control: Control in controls:
 		var base := TextBase.new()

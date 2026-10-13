@@ -39,6 +39,7 @@ EXCLUDE_DIRS = {
     ".idea",
     "snapshots",
     "__pycache__",
+    "output",
 }
 
 # Files skipped by exact name.

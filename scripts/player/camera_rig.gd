@@ -48,6 +48,12 @@ extends Node3D
 @export var kick_max: float = 0.2
 @export var kick_decay: float = 14.0
 
+## Set by Settings (the Options menu, Phase 2 item 6a): multipliers on the two sensitivities above and
+## invert Y. Plain variables, not exports: the settings file owns them.
+var mouse_scale: float = 1.0
+var stick_scale: float = 1.0
+var invert_y: bool = false
+
 var _yaw: float = 0.0
 var _pitch: float = -0.2
 var _height_now: float = 0.0
@@ -94,8 +100,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_lock_on.feed_flick(motion.relative.x)
 		else:
 			_recentering = false
-			_yaw -= motion.relative.x * mouse_sensitivity
-			_pitch -= motion.relative.y * mouse_sensitivity
+			_yaw -= motion.relative.x * mouse_sensitivity * mouse_scale
+			_pitch -= motion.relative.y * mouse_sensitivity * mouse_scale * _y_sign()
 	elif event.is_action_pressed("ui_cancel"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif click != null and click.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
@@ -109,8 +115,8 @@ func _process(delta: float) -> void:
 		_aim_at_lock_target(delta)
 	else:
 		var look := Input.get_vector(Actions.LOOK_LEFT, Actions.LOOK_RIGHT, Actions.LOOK_UP, Actions.LOOK_DOWN)
-		_yaw -= look.x * stick_sensitivity * delta
-		_pitch -= look.y * stick_sensitivity * delta
+		_yaw -= look.x * stick_sensitivity * stick_scale * delta
+		_pitch -= look.y * stick_sensitivity * stick_scale * _y_sign() * delta
 		if _recentering:
 			_yaw = lerp_angle(_yaw, _recenter_yaw, 1.0 - exp(-recenter_speed * delta))
 			if absf(angle_difference(_yaw, _recenter_yaw)) < 0.01:
@@ -129,6 +135,11 @@ func _process(delta: float) -> void:
 	_crouch_drop_now = lerpf(_crouch_drop_now, crouch_wanted, 1.0 - exp(-crouch_follow_speed * delta))
 	var goal := target.global_position + Vector3.UP * (_height_now - _crouch_drop_now)
 	global_position = global_position.lerp(goal, 1.0 - exp(-follow_smoothing * delta))
+
+
+## -1 when the Options menu inverts the vertical look, else 1.
+func _y_sign() -> float:
+	return -1.0 if invert_y else 1.0
 
 
 ## Put the camera at its follow goal at once (no easing). Called after the player is teleported, so the

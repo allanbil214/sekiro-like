@@ -8,5 +8,5 @@ display_name = "Soldier"
 scene_path = "res://scenes/arena/fighting_soldier.tscn"
 description = "A plain soldier: guards a lot, deflects now and then, ripostes, no perilous attacks. A boss."
 category = 2
-debug_only = true
+debug_only = false
 sort_order = 1

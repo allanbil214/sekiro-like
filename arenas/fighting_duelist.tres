@@ -8,5 +8,5 @@ display_name = "Duelist"
 scene_path = "res://scenes/arena/fighting_duelist.tscn"
 description = "A sharp guard that deflects often and uses the perilous thrust (mikiri it). A boss."
 category = 2
-debug_only = true
+debug_only = false
 sort_order = 2

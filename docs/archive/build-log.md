@@ -1140,6 +1140,36 @@ A refactor with no gameplay change. Tested and verified by the user 2026-10-13.
 
 **Fix after the first test (same day):** two gray frames showed (Godot's default clear color) and the arena flickered once before the black. The user set Project Settings > Rendering > Environment > Default Clear Color to black (a `project.godot` setting, not shipped). `DeathScreen` hid its cover in `_ready()` and showed it only in its first `_process`, so one frame of the arena was drawn after `change_scene_to_packed`: it now shows the black cover (texts hidden) in `_ready()` when `fade_in_on_start` is on, and a new export `start_hold_time` (0.3 s, 0 = off) keeps it fully black before the 0.7 s fade, which also hides a gray square that showed on the player for the first frames of an arena (it predates this item; the cause was not looked into, the camera settling in the first frames is a guess).
 
-**Editor steps done by the user:** `data/loading_tips.csv` set to Import As "Keep File (exports as is)" and the three generated `loading_tips.*.translation` files deleted (Godot had imported the CSV as a translation table). **Still to do before a release export:** add `*.csv` to the export preset's non-resource filter. Excel users save as "CSV UTF-8".
+**Editor steps done by the user:** `data/loading_tips.csv` set to Import As "Keep File (exports as is)", the three generated `loading_tips.*.translation` files deleted (Godot had imported the CSV as a translation table), and `*.csv` added to the export preset's non-resource filter. Excel users save as "CSV UTF-8".
 
 **Not done:** background art, loading music or sounds, per-tip icons, localization, any other scene-change path, saves and a grace logic for them (a real "reload a save in the middle of combat" case waits for saves; enemies are not held idle during the grace period, only the player is invulnerable). The load-failure path (F6 on the loading scene) and the background pictures were not tested.
+
+### Phase 2 item 3b follow-up: START opens the chooser in a release build (2026-10-13)
+
+**Decision (user):** in a non-debug export START opens the arena chooser, so the exported game can reach every arena; in the editor and in debug exports START still loads `DEFAULT_ARENA` (the test arena) at once, for fast testing. `debug_only` was switched off on every arena except `arenas/test_arena.tres` (nine fighting and two movement arenas).
+
+**Files:** `scripts/ui/main_menu.gd` (`_start_opens_chooser()` is `not OS.is_debug_build() and ArenaLibrary.has_visible()`; `_on_start_pressed()` calls `_open_arenas()` when it is true; the ARENAS entry is hidden then, because it would repeat START; `_close_arenas()` puts focus back on START when ARENAS is hidden) and the eleven `arenas/*.tres` (one line each). If a release build lists no arena, START falls back to `DEFAULT_ARENA`.
+
+**Not changed:** the pause menu's CHANGE ARENA stays debug-only (the user was told and has not asked for it in release). **Tested by the user in a release export, 2026-10-13.**
+
+### Phase 2 item 6a: Options, Audio and Gameplay menus (2026-10-13)
+
+**What exists.** One `OptionsMenu` scene (`scenes/ui/options_menu.tscn`, `scripts/ui/options_menu.gd`) is instanced as `OptionsMenu` by `main_menu.tscn` and `pause_menu.tscn`; the two empty `OptionsPanel` nodes (and their `PanelHeading`, `PanelText`, `BackButton`) were removed. Pages: MAIN (AUDIO, GAMEPLAY), AUDIO (Master, Music, Sound effects, 0 to 100 percent in steps of 5) and GAMEPLAY (camera shake, crouch toggle or hold, recenter camera, lock next enemy, mouse speed and stick speed 25 to 200 percent, invert Y). `Settings` (`scripts/ui/settings.gd`, static, no autoload) holds every value, reads and writes `user://settings.cfg` (a `ConfigFile`, sections `audio` and `gameplay`), applies the volumes to the buses and the gameplay values to the Player.
+
+**Decisions (user, 2026-10-13).** Go with the defaults of the full check: the three extras (mouse speed, stick speed, invert Y) were accepted, toggles are plain buttons ("CAMERA SHAKE: ON"), slider styles were added to the Theme, display settings stay out.
+
+**Rules that are not obvious from the code.**
+- Hosts only call `open()` and listen for `closed`. `request_close()` goes back one page first, then closes and emits `closed`; the menu plays the back sound itself, so the hosts' `_close_options()` plays none.
+- The rows are built in code from getter and setter lambdas (`_add_toggle`, `_add_slider`); the containers, heading and buttons are in the scene. A built row is added to the tree before `UiTextScaler.add()` reads its font, otherwise the Theme's letter spacing is not found.
+- Saving: on a toggle, a slider release (`drag_ended`), a page change, on close and in `_exit_tree()`. A key or stick step on a slider plays the move sound at once; a mouse drag plays it on release.
+- Volumes and sensitivities are fractions in `Settings` (1.0 = 100 percent); the sliders work in percent. 0 mutes the bus; the dB value is `linear_to_db(max(volume, 0.0001))`.
+- `Settings.ensure_loaded()` runs once (static flag): from `MainMenu._ready()` and `Settings.apply_gameplay()`, so an arena started directly with F6 gets the volumes too. `Player._ready()` calls `Settings.apply_gameplay(self)`; the Options menu calls `Settings.apply_to_scene()` after every change (the first node in group `player`, if any).
+- The settings file overrides the Inspector values of `Player.crouch_is_hold`, `CameraRig.shake_enabled`, `LockOn.recenter_when_no_target` and `LockOn.auto_lock_next`; they are only the fallback until the file exists. `CameraRig` gained the plain variables `mouse_scale`, `stick_scale` and `invert_y` (not exports) and `_y_sign()`; the base `mouse_sensitivity` and `stick_sensitivity` exports are unchanged.
+- Buses: `default_bus_layout.tres` in the project root (Master, Music, Sfx; Music and Sfx send to Master). `Sfx._acquire()` sets `bus = Settings.BUS_SFX` on every new voice; the main menu's `Music` node has `bus = &"Music"` in the scene. A missing bus pushes one error (`Settings._warned_bus`) and the volume is skipped.
+- Theme: `OptionsSlider` (base `HSlider`): a dark track, a gold filled part, and a round grabber drawn as a radial `GradientTexture2D` (24 px, brighter on focus or hover); the focus outline is empty. The sizes are not scaled with the window height.
+
+**Files.** New: `default_bus_layout.tres`, `scripts/ui/settings.gd`, `scripts/ui/options_menu.gd`, `scenes/ui/options_menu.tscn`. Changed: `scripts/ui/main_menu.gd`, `scripts/ui/pause_menu.gd`, `scenes/ui/main_menu.tscn`, `scenes/ui/pause_menu.tscn`, `scripts/audio/sfx.gd`, `scripts/player/camera_rig.gd`, `scripts/player/player.gd` (one line in `_ready()`), `resources/ui_theme.tres` (the slider entries only).
+
+**Not done.** Controls (6b), display settings (window mode, VSync), a shake strength slider, a picture of a pad, arena music (the Music slider only changes the menu music), a reset-to-defaults button for the Audio and Gameplay pages.
+
+**Noticed, not fixed.** Switching crouch from toggle to hold while crouched stands the player up when the game resumes (the hold check runs at once). Slider track and grabber sizes are fixed pixels and do not follow the window height. Tested by the user, 2026-10-13: both menus, saving and reloading, and a fight, lock-on and death regression.

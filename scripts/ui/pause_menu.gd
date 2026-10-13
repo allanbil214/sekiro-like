@@ -4,7 +4,7 @@ extends CanvasLayer
 ## Player, so every arena has it. Esc or gamepad Start (the `pause` action) opens it: the game pauses
 ## (`SceneTree.paused`), the arena stays visible under a dark dim, the mouse is shown. Entries: RESUME,
 ## CHANGE ARENA (debug builds only: the arena chooser, then a short fade and the picked arena), OPTIONS
-## (the same empty placeholder panel as the main menu) and QUIT TO TITLE (a short fade, then the
+## (the OptionsMenu scene, item 6a, shared with the main menu) and QUIT TO TITLE (a short fade, then the
 ## main menu). The look is `resources/ui_theme.tres`; this script is behavior only.
 ## The scene's process mode is "Always", so the menu runs while the tree is paused.
 ## It does not open while the player is dead (the death prompt and the final death), while the
@@ -31,10 +31,7 @@ const REFERENCE_HEIGHT: float = 1080.0
 @onready var _options_button: Button = %OptionsButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _hint: Label = %HintLabel
-@onready var _options_panel: PanelContainer = %OptionsPanel
-@onready var _panel_heading: Label = %PanelHeading
-@onready var _panel_text: Label = %PanelText
-@onready var _back_button: Button = %BackButton
+@onready var _options: OptionsMenu = %OptionsMenu
 @onready var _chooser: ArenaChooser = %ArenaChooser
 @onready var _fade: ColorRect = %FadeRect
 
@@ -50,14 +47,12 @@ var _buttons: Array[Button] = []
 func _ready() -> void:
 	_player = get_parent() as Player
 	_root.visible = false
-	_options_panel.visible = false
 	_fade.color.a = 0.0
-	_buttons = [_resume_button, _arenas_button, _options_button, _quit_button, _back_button]
+	_buttons = [_resume_button, _arenas_button, _options_button, _quit_button]
 	# CHANGE ARENA is a debug tool: only in a debug build, and only if an arena is listed.
 	_arenas_button.visible = OS.is_debug_build() and ArenaLibrary.has_visible()
 	var texts: Array[Control] = [
 		_paused_label, _hint, _resume_button, _arenas_button, _options_button, _quit_button,
-		_back_button, _panel_heading, _panel_text,
 	]
 	for control: Control in texts:
 		_scaler.add(control)
@@ -101,7 +96,6 @@ func _open_menu() -> void:
 	_mouse_mode_before = Input.mouse_mode
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = true
-	_options_panel.visible = false
 	_entries.visible = true
 	_root.visible = true
 	_apply_scale()
@@ -119,12 +113,12 @@ func _resume() -> void:
 	get_tree().paused = false
 
 
-## Esc or Cancel: close the arena chooser or the Options panel if one is showing, else resume.
+## Esc or Cancel: close the arena chooser or the Options menu (one page back first) if one is showing, else resume.
 func _back_or_resume() -> void:
 	if _chooser.visible:
 		_chooser.request_close()
-	elif _options_panel.visible:
-		_close_options()
+	elif _options.visible:
+		_options.request_close()
 	else:
 		_resume()
 
@@ -137,7 +131,7 @@ func _connect_buttons() -> void:
 	_arenas_button.pressed.connect(_open_arenas)
 	_options_button.pressed.connect(_open_options)
 	_quit_button.pressed.connect(_on_quit_pressed)
-	_back_button.pressed.connect(_close_options)
+	_options.closed.connect(_close_options)
 	_chooser.arena_chosen.connect(_on_arena_chosen)
 	_chooser.closed.connect(_close_arenas)
 	# Up from the first row wraps to the last, and down from the last wraps to the first.
@@ -193,15 +187,11 @@ func _open_options() -> void:
 	_entries.visible = false
 	_paused_label.visible = false
 	_divider.visible = false
-	_options_panel.visible = true
-	_focus_quietly(_back_button)
+	_options.open()
 
 
+## The Options menu closed itself (Back or the cancel key; it plays the back sound).
 func _close_options() -> void:
-	if not _options_panel.visible:
-		return
-	Sfx.play_ui(get_tree(), Sfx.Id.MENU_BACK)
-	_options_panel.visible = false
 	_paused_label.visible = true
 	_divider.visible = true
 	_entries.visible = true

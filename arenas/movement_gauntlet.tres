@@ -8,5 +8,5 @@ display_name = "Gauntlet"
 scene_path = "res://scenes/arena/movement_gauntlet.tscn"
 description = "The moves chained over a void: gaps, a wall-jump shaft, a ledge and a last gap that needs a dash jump, ending on a finish pad. No enemies. A fall sends you back to the start of the gauntlet."
 category = 1
-debug_only = true
+debug_only = false
 sort_order = 1

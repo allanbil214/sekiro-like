@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://ce058rqejajm5" path="res://scripts/ui/main_menu.gd" id="2_script"]
 [ext_resource type="AudioStream" uid="uid://cwbl1s5e7nqsy" path="res://audio/music/main_menu.ogg" id="3_1g8jr"]
 [ext_resource type="PackedScene" path="res://scenes/ui/arena_chooser.tscn" id="4_chooser"]
+[ext_resource type="PackedScene" path="res://scenes/ui/options_menu.tscn" id="5_options"]
 
 [sub_resource type="Gradient" id="Gradient_vignette"]
 offsets = PackedFloat32Array(0, 0.55, 1)
@@ -145,44 +146,9 @@ text = "PRESS ANY BUTTON"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="OptionsPanel" type="PanelContainer" parent="." unique_id=560531120]
+[node name="OptionsMenu" parent="." instance=ExtResource("5_options")]
 unique_name_in_owner = true
-visible = false
 layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.32
-anchor_top = 0.32
-anchor_right = 0.68
-anchor_bottom = 0.68
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"OptionsPanel"
-
-[node name="Rows" type="VBoxContainer" parent="OptionsPanel" unique_id=57576251]
-layout_mode = 2
-theme_override_constants/separation = 24
-alignment = 1
-
-[node name="PanelHeading" type="Label" parent="OptionsPanel/Rows" unique_id=1328473492]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"PanelHeading"
-text = "OPTIONS"
-horizontal_alignment = 1
-
-[node name="PanelText" type="Label" parent="OptionsPanel/Rows" unique_id=1566039050]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"PanelText"
-text = "Nothing here yet."
-horizontal_alignment = 1
-
-[node name="BackButton" type="Button" parent="OptionsPanel/Rows" unique_id=1651570158]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 4
-theme_type_variation = &"EntryButton"
-text = "BACK"
 
 [node name="ArenaChooser" parent="." instance=ExtResource("4_chooser")]
 unique_name_in_owner = true
@@ -232,3 +198,4 @@ color = Color(0, 0, 0, 1)
 [node name="Music" type="AudioStreamPlayer" parent="." unique_id=1313244232]
 unique_name_in_owner = true
 stream = ExtResource("3_1g8jr")
+bus = &"Music"

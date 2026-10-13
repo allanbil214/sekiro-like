@@ -8,5 +8,5 @@ display_name = "Dummy"
 scene_path = "res://scenes/arena/fighting_dummy.tscn"
 description = "A training dummy with two health bars that swings an arm in turn (high, mid, low). A boss, so a kill shows ENEMY SLAIN."
 category = 2
-debug_only = true
+debug_only = false
 sort_order = 0

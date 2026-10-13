@@ -21,9 +21,10 @@
 | 3 | Arena chooser, fall zone and three base arenas (3a fall zone, 3b arena data and chooser, 3c the arenas) | feature | [x] done and tested (3a, 3b and 3c-1 on 2026-10-12; 3c-2, the two movement arenas, on 2026-10-13) |
 | 4 | Migrate the in-game UI to scenes (the death and victory screens first; the HUD waits for real art) | refactor | [x] done and tested 2026-10-13 (the death and victory screens; the HUDs wait for real art) |
 | 5 | Loading screens: a proper one with tips and a black-screen one (section 3, item 5) | feature | [x] done and tested 2026-10-13 |
-| 6 and later | The open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 6 | Options screen in two parts: 6a the audio and gameplay menus, 6b the controls (section 3, item 6) | feature | [ ] 6a done and tested 2026-10-13; 6b (the controls) is next, full check comes first |
+| 7 and later | The open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
-Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), then the backlog in the order the user picks.
+Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), then the backlog in the order the user picks.
 
 ## 3. The items
 
@@ -70,7 +71,7 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **3b. `ArenaData` and the chooser** (**built and tested 2026-10-12**; the build log, "Phase 2 item 3b", has what exists; `sort_order` was added to the resource). An `ArenaData` resource per arena: name, scene, optional image, description, category (test, movement, fighting) and a `debug_only` flag. The chooser reads a folder of them (a new arena is one new resource) and shows them in sections by category, with a plain placeholder where an image is missing.
   - **ARENAS entry in the main menu:** a debug build shows every arena; a release build shows the entry only if at least one arena is player-facing (`debug_only` off).
   - **The pause menu** gets a debug-only "Change arena".
-  - **START is not the chooser:** START stays the real game's entry (the default arena for now).
+  - **START is not the chooser:** START stays the real game's entry (the default arena for now). **Changed 2026-10-13 (user):** in a release build START opens the chooser (the ARENAS entry hides), and every arena except the test arena is no longer `debug_only`; the editor and debug builds keep START loading the default arena. Built and tested (build log, "Phase 2 item 3b follow-up").
 - **3c-1 built and tested 2026-10-12, with the boss HUD addendum tested 2026-10-13** (the user's idea after the test: when a boss notices you, its name, health and posture show as a screen HUD and its floating bar hides; rules: the first boss to notice owns it, a lone hit on another boss passes it over, an area hit or a hit on the owner does not, lock-on does not; a ninth arena, "Two Bosses", tests it; build log, "Phase 2 item 3c-1 addendum") (the build log, "Phase 2 item 3c-1", has what exists). **3c decisions (user, 2026-10-12):** built in two parts, **3c-1** the fighting arenas and **3c-2** the movement arena. All new arenas start `debug_only` (flip it per arena when the real game flow exists). The fighting arena is a flat 30 x 30 m floor with **invisible walls** (40 m tall `StaticBody3D`s on physics layer 6, `Layers.INVISIBLE_WALL`, in the masks of the Player and Enemy bodies only, so the camera's spring arm never touches them and `LedgeSensor` ignores them) and a `FallZone` as a safety net. A Godot inherited scene cannot delete a base node, so the base arena has no enemy and **each variant adds its own enemy instance** and sets its `ai` and `boss`. Variants (all bosses, except the squad): Dummy, Soldier, Duelist, Aura, Repulser, Monk, Grappler (no default preset), plus **Squad** (3 non-boss soldiers and a boss monk). The **movement arena** is one scene with two zones: a training yard (stations: step-ups, gaps of rising width, a wall-jump shaft, a low tunnel for crouch and slide, a ledge wall for hang and shimmy, slopes and stairs) and a gauntlet that chains harder versions over a void to a finish pad; a fall sends the player back to the start of the run (no checkpoints yet). Sizes come from the real run speed, jump and ledge numbers. Original plan text:
 - **3c. Three base arenas.** (1) the current jumbled test arena, kept as it is (`debug_only`); (2) a new **movement arena** for traversal (walls, ledges, gaps, slopes; no enemies); (3) a new **fighting arena** with flat, open ground. Variants are **inherited scenes of the fighting arena** that set only the enemy's `ai` preset (the monk, the grappler, the four presets in `ai/`). Claude builds a simple blockout of the two new maps for the user to refine in the editor.
 - **3c-2 built and tested 2026-10-13** (the build log, "Phase 2 item 3c-2", has what exists). Changed while building (user): the one movement arena became **two scenes**, a Training Yard and a Gauntlet, each with its own start pad and its own `ArenaData`; the stairs got an **invisible smooth ramp** (the visible steps are only the look, to be followed by IK later) plus a raw "no ramp" station; the camera pivot **lowers while crouched** (`CameraRig.crouch_height_drop`); the chooser rows use the body font with a gap above each heading. The finish pad does nothing yet (no timer, no trigger).
@@ -98,14 +99,27 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
   - Extra: `Player.start_invulnerable_time` (1.0 s) at every scene start; `DeathScreen` now covers its first frame and holds black for 0.3 s (`start_hold_time`); the project's Default Clear Color is black.
   - Not built: background art, loading music or sounds, per-tip icons, localization, enemies held idle during the grace period (waits for saves).
 
-## 4. Backlog carried over (6 and later)
+### 6. Options screen
+- **Status:** agreed with the user on 2026-10-13 as two parts. **6a is built and tested (2026-10-13)**; 6b is not built, and its points marked *proposed* are **not agreed** and get a default at its full check.
+- **What (user):** the Options panel (today an empty placeholder in the main menu and, as its own copy, in the pause menu) becomes real. Audio and Gameplay are **their own menus**, and Controls shows the controller and keyboard layouts and lets the user change them. One shared scene would replace the two copies (proposed).
+- **6a. Audio and Gameplay menus (built and tested 2026-10-13; the build log, "Phase 2 item 6a", has what exists):** the proposals below were kept, and the user accepted the three extras (mouse and stick speed, invert Y) and the settings file. One shared `OptionsMenu` scene (MAIN, AUDIO and GAMEPLAY pages) replaced both empty panels; `Settings` (static) owns the values and `user://settings.cfg`; `default_bus_layout.tres` adds Music and Sfx. Gameplay page: camera shake on or off, crouch toggle or hold, recenter camera, lock next enemy, mouse speed, stick speed, invert Y. Original plan:
+  - **Audio:** volume sliders. No audio buses exist yet (everything plays on Master), so a bus layout (Master, Music, Sfx) is needed first (proposed: a shipped `default_bus_layout.tres`, the `Music` node and the `Sfx` voices set to their bus).
+  - **Gameplay (user):** camera shake as a plain on or off toggle (`CameraRig.shake_enabled`; no strength slider for now), crouch as toggle or hold (`Player.crouch_is_hold`), and the lock-on options already on `LockOn` (`recenter_when_no_target`, `auto_lock_next`).
+  - **Proposed, not agreed:** mouse and stick sensitivity sliders (`CameraRig.mouse_sensitivity`, `stick_sensitivity`), invert Y, and a `ConfigFile` at `user://settings.cfg` that stores every setting and applies them at start-up.
+- **6b. Controls:**
+  - **Keyboard and mouse:** a list of the actions; select one, press a key or mouse button to rebind it; reset to defaults. Code keeps reading action names only (`Actions`), so gameplay code does not change.
+  - **Controller:** a list of the buttons and the action each one does, with button rebinding. The sticks stay fixed (move on the left, look on the right). A picture of a pad with labels waits for art (proposed: the plain list first).
+  - **Proposed:** binding a key another action already uses swaps the two actions; the bindings are saved in the same settings file.
+- **Not included:** display settings (window mode, VSync), language, subtitles, difficulty, a UI scale, a camera shake strength slider.
+
+## 4. Backlog carried over (7 and later)
 
 The open entries stay in section 13 of `docs/handoff.md`, which remains the single list: ledge enhancements, heal and death extras, lock-on extras, the sweep duck, enemy awareness, the stealth deathblow, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 
 ## 5. Not in this phase
 
 - Saves, a real map, quests and the game flow around them (START becomes NEW GAME when they exist).
-- An Options screen with real settings (volume, sensitivity, key remapping).
+- Settings beyond item 6: display (window mode, VSync), language, subtitles, difficulty, a UI scale.
 - Music in the arenas and any sound work beyond the main menu's.
 - A bundled title font and a drawn logo.
 - Any change to the combat tuning or to `Enemy`'s own behavior.

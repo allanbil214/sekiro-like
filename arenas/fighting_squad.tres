@@ -8,5 +8,5 @@ display_name = "Squad"
 scene_path = "res://scenes/arena/fighting_squad.tscn"
 description = "Three soldiers and a boss monk at once: lock-on switching and perilous attacks in a crowd. Only the monk is a boss."
 category = 2
-debug_only = true
+debug_only = false
 sort_order = 7
