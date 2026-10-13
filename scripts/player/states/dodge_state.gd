@@ -46,3 +46,20 @@ func _on_action_update(_delta: float) -> void:
 			machine.transition_to(StateName.DASH)
 		else:
 			machine.transition_to(StateName.LOCOMOTION)
+
+
+## While the dodge button is held with a direction input (it is about to flow into a dash, or a jump),
+## the burst fades down to the dash speed and no lower, so there is no dip before the dash. A tap and
+## the backstep keep the normal fade (move_end_factor) and the short slide.
+func _apply_action_movement(delta: float) -> void:
+	if _move_dir != Vector3.ZERO and runner.in_move_window(action) and _flows_into_dash():
+		var base_speed := action.move_speed * _move_speed_multiplier
+		var factor := maxf(runner.move_fade_factor(action), player.dash_speed / maxf(base_speed, 0.001))
+		player.set_horizontal_velocity(_move_dir * base_speed * factor)
+		return
+	super(delta)
+
+
+func _flows_into_dash() -> bool:
+	return _move_speed_multiplier >= 1.0 and Input.is_action_pressed(Actions.DODGE) \
+			and player.get_move_input().length_squared() > 0.01
