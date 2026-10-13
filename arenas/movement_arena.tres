@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ArenaData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/arena_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Movement Course"
+scene_path = "res://scenes/arena/movement_arena.tscn"
+description = "No enemies. A training yard with one station per move (step-ups, gaps, wall-jump shaft, low tunnel, ledge walls, slopes, stairs), then a gauntlet over a void to a finish pad. A fall sends you back to the start."
+category = 1
+debug_only = true
+sort_order = 0

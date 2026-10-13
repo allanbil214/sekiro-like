@@ -1,0 +1,589 @@
+[gd_scene load_steps=17 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="Script" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.55, 0.55, 0.57, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_hurdle"]
+albedo_color = Color(0.8, 0.55, 0.35, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_gap"]
+albedo_color = Color(0.4, 0.55, 0.8, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_shaft"]
+albedo_color = Color(0.45, 0.7, 0.5, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_tunnel"]
+albedo_color = Color(0.65, 0.5, 0.75, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ledge"]
+albedo_color = Color(0.8, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_slope"]
+albedo_color = Color(0.85, 0.78, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_stairs"]
+albedo_color = Color(0.4, 0.72, 0.72, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_gaunt"]
+albedo_color = Color(0.38, 0.38, 0.42, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_finish"]
+albedo_color = Color(0.95, 0.80, 0.30, 1)
+emission_enabled = true
+emission = Color(1, 0.75, 0.2, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fall"]
+size = Vector3(100, 4, 420)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_main"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_main")
+glow_enabled = true
+
+[node name="MovementArena" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.81729025, -0.4414149, 0.3703911, 0, 0.64278764, 0.76604444, -0.57622623, -0.62608063, 0.5253441, 0, 10.818325, 12.643993)
+shadow_enabled = true
+
+[node name="Yard" type="Node3D" parent="."]
+
+[node name="Start" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Start"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.2, 0)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "START\nTRAINING YARD"
+
+[node name="Hurdles" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Hurdles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.8, -16)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "STEP-UPS\n0.3 / 0.6 / 1.0 / 1.5 / 2.0 m"
+
+[node name="Hurdle1" type="CSGBox3D" parent="Yard/Hurdles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -9)
+use_collision = true
+size = Vector3(14, 0.3, 2)
+material = SubResource("Mat_hurdle")
+
+[node name="Hurdle2" type="CSGBox3D" parent="Yard/Hurdles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -15)
+use_collision = true
+size = Vector3(14, 0.6, 2)
+material = SubResource("Mat_hurdle")
+
+[node name="Hurdle3" type="CSGBox3D" parent="Yard/Hurdles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -21)
+use_collision = true
+size = Vector3(14, 1, 2)
+material = SubResource("Mat_hurdle")
+
+[node name="Hurdle4" type="CSGBox3D" parent="Yard/Hurdles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -27)
+use_collision = true
+size = Vector3(14, 1.5, 2)
+material = SubResource("Mat_hurdle")
+
+[node name="Hurdle5" type="CSGBox3D" parent="Yard/Hurdles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -33)
+use_collision = true
+size = Vector3(14, 2, 2)
+material = SubResource("Mat_hurdle")
+
+[node name="Floor" type="Node3D" parent="Yard"]
+
+[node name="Chunk1" type="CSGBox3D" parent="Yard/Floor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -17)
+use_collision = true
+size = Vector3(14, 1, 42)
+material = SubResource("Mat_floor")
+
+[node name="Gaps" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -46)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "GAPS\n1.5 / 2.5 / 3.5 / 4.5 / 5.5 m"
+
+[node name="Plat0" type="CSGBox3D" parent="Yard/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -40)
+use_collision = true
+size = Vector3(6, 1, 4)
+material = SubResource("Mat_gap")
+
+[node name="Plat1" type="CSGBox3D" parent="Yard/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -45.5)
+use_collision = true
+size = Vector3(6, 1, 4)
+material = SubResource("Mat_gap")
+
+[node name="Plat2" type="CSGBox3D" parent="Yard/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -52)
+use_collision = true
+size = Vector3(6, 1, 4)
+material = SubResource("Mat_gap")
+
+[node name="Plat3" type="CSGBox3D" parent="Yard/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -59.5)
+use_collision = true
+size = Vector3(6, 1, 4)
+material = SubResource("Mat_gap")
+
+[node name="Plat4" type="CSGBox3D" parent="Yard/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -68)
+use_collision = true
+size = Vector3(6, 1, 4)
+material = SubResource("Mat_gap")
+
+[node name="Plat5" type="CSGBox3D" parent="Yard/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -77.5)
+use_collision = true
+size = Vector3(6, 1, 4)
+material = SubResource("Mat_gap")
+
+[node name="Shaft" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 4.2, -84.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "WALL-JUMP SHAFT\n2.0 m wide, 5.5 m tall"
+
+[node name="WallL" type="CSGBox3D" parent="Yard/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.75, -84.5)
+use_collision = true
+size = Vector3(2, 5.5, 6)
+material = SubResource("Mat_shaft")
+
+[node name="WallR" type="CSGBox3D" parent="Yard/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2.75, -84.5)
+use_collision = true
+size = Vector3(2, 5.5, 6)
+material = SubResource("Mat_shaft")
+
+[node name="Tunnel" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Tunnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.4, -96.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "LOW TUNNEL\n1.3 m high, 10 m long\ncrouch / slide"
+
+[node name="Ceiling" type="CSGBox3D" parent="Yard/Tunnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -97.5)
+use_collision = true
+size = Vector3(8, 1, 10)
+material = SubResource("Mat_tunnel")
+
+[node name="SideL" type="CSGBox3D" parent="Yard/Tunnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 1.15, -97.5)
+use_collision = true
+size = Vector3(1, 2.3, 10)
+material = SubResource("Mat_tunnel")
+
+[node name="SideR" type="CSGBox3D" parent="Yard/Tunnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1.15, -97.5)
+use_collision = true
+size = Vector3(1, 2.3, 10)
+material = SubResource("Mat_tunnel")
+
+[node name="Ledges" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Ledges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 5, -114.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "LEDGE WALLS\n2.5 / 3.5 m, then a 10 m shimmy face (3.0 m)"
+
+[node name="Wall1" type="CSGBox3D" parent="Yard/Ledges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -112)
+use_collision = true
+size = Vector3(10, 2.5, 3)
+material = SubResource("Mat_ledge")
+
+[node name="Wall2" type="CSGBox3D" parent="Yard/Ledges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, -119)
+use_collision = true
+size = Vector3(10, 3.5, 3)
+material = SubResource("Mat_ledge")
+
+[node name="Wall3" type="CSGBox3D" parent="Yard/Ledges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -126)
+use_collision = true
+size = Vector3(10, 3, 3)
+material = SubResource("Mat_ledge")
+
+[node name="Slopes" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Slopes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.4, -137.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "SLOPES (1.5 m rise)\n10 / 25 / 40 degrees"
+
+[node name="Ridge10Up" type="CSGBox3D" parent="Yard/Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.9848, -0.1736, 0, 0.1736, 0.9848, 0, 0.5038, -138.7969)
+use_collision = true
+size = Vector3(8, 0.5, 8.6382)
+material = SubResource("Mat_slope")
+
+[node name="Ridge10Down" type="CSGBox3D" parent="Yard/Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.9848, 0.1736, 0, -0.1736, 0.9848, 0, 0.5038, -147.217)
+use_collision = true
+size = Vector3(8, 0.5, 8.6382)
+material = SubResource("Mat_slope")
+
+[node name="Ridge25Up" type="CSGBox3D" parent="Yard/Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.9063, -0.4226, 0, 0.4226, 0.9063, 0, 0.5234, -156.2279)
+use_collision = true
+size = Vector3(8, 0.5, 3.5493)
+material = SubResource("Mat_slope")
+
+[node name="Ridge25Down" type="CSGBox3D" parent="Yard/Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.9063, 0.4226, 0, -0.4226, 0.9063, 0, 0.5234, -159.2333)
+use_collision = true
+size = Vector3(8, 0.5, 3.5493)
+material = SubResource("Mat_slope")
+
+[node name="Ridge40Up" type="CSGBox3D" parent="Yard/Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.766, -0.6428, 0, 0.6428, 0.766, 0, 0.5585, -165.0019)
+use_collision = true
+size = Vector3(8, 0.5, 2.3336)
+material = SubResource("Mat_slope")
+
+[node name="Ridge40Down" type="CSGBox3D" parent="Yard/Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.766, 0.6428, 0, -0.6428, 0.766, 0, 0.5585, -166.4681)
+use_collision = true
+size = Vector3(8, 0.5, 2.3336)
+material = SubResource("Mat_slope")
+
+[node name="Stairs" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.4, -175.5226)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "STAIRS\n12 steps, 0.15 m risers, 0.4 m treads"
+
+[node name="StairsUp1" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, -171.7226)
+use_collision = true
+size = Vector3(8, 0.15, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp2" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -172.1226)
+use_collision = true
+size = Vector3(8, 0.3, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp3" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, -172.5226)
+use_collision = true
+size = Vector3(8, 0.45, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp4" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -172.9226)
+use_collision = true
+size = Vector3(8, 0.6, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp5" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, -173.3226)
+use_collision = true
+size = Vector3(8, 0.75, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp6" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, -173.7226)
+use_collision = true
+size = Vector3(8, 0.9, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp7" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.525, -174.1226)
+use_collision = true
+size = Vector3(8, 1.05, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp8" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -174.5226)
+use_collision = true
+size = Vector3(8, 1.2, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp9" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, -174.9226)
+use_collision = true
+size = Vector3(8, 1.35, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp10" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -175.3226)
+use_collision = true
+size = Vector3(8, 1.5, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp11" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.825, -175.7226)
+use_collision = true
+size = Vector3(8, 1.65, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsUp12" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, -176.1226)
+use_collision = true
+size = Vector3(8, 1.8, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsTop" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, -177.3226)
+use_collision = true
+size = Vector3(8, 1.8, 2)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown12" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, -178.5226)
+use_collision = true
+size = Vector3(8, 1.8, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown11" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.825, -178.9226)
+use_collision = true
+size = Vector3(8, 1.65, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown10" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -179.3226)
+use_collision = true
+size = Vector3(8, 1.5, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown9" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, -179.7226)
+use_collision = true
+size = Vector3(8, 1.35, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown8" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -180.1226)
+use_collision = true
+size = Vector3(8, 1.2, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown7" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.525, -180.5226)
+use_collision = true
+size = Vector3(8, 1.05, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown6" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, -180.9226)
+use_collision = true
+size = Vector3(8, 0.9, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown5" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, -181.3226)
+use_collision = true
+size = Vector3(8, 0.75, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown4" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -181.7226)
+use_collision = true
+size = Vector3(8, 0.6, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown3" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, -182.1226)
+use_collision = true
+size = Vector3(8, 0.45, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown2" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -182.5226)
+use_collision = true
+size = Vector3(8, 0.3, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="StairsDown1" type="CSGBox3D" parent="Yard/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, -182.9226)
+use_collision = true
+size = Vector3(8, 0.15, 0.4)
+material = SubResource("Mat_stairs")
+
+[node name="Chunk2" type="CSGBox3D" parent="Yard/Floor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -133.3113)
+use_collision = true
+size = Vector3(14, 1, 107.6226)
+material = SubResource("Mat_floor")
+
+[node name="Gate" type="Node3D" parent="Yard"]
+
+[node name="Sign" type="Label3D" parent="Yard/Gate"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, -190.1226)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "GAUNTLET AHEAD\nA fall sends you back to the start"
+
+[node name="Gauntlet" type="Node3D" parent="."]
+
+[node name="Gaps" type="Node3D" parent="Gauntlet"]
+
+[node name="Plat1" type="CSGBox3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -192.3726)
+use_collision = true
+size = Vector3(3, 1, 2.5)
+material = SubResource("Mat_gaunt")
+
+[node name="Plat2" type="CSGBox3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -199.8726)
+use_collision = true
+size = Vector3(3, 1, 2.5)
+material = SubResource("Mat_gaunt")
+
+[node name="Plat3" type="CSGBox3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -208.3726)
+use_collision = true
+size = Vector3(3, 1, 2.5)
+material = SubResource("Mat_gaunt")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, -203.6226)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "GAUNTLET\nGAPS 4.0 / 5.0 / 6.0 m"
+
+[node name="Shaft" type="Node3D" parent="Gauntlet"]
+
+[node name="Base" type="CSGBox3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -215.6226)
+use_collision = true
+size = Vector3(6, 1, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="WallL" type="CSGBox3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.75, -215.6226)
+use_collision = true
+size = Vector3(2, 5.5, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="WallR" type="CSGBox3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2.75, -215.6226)
+use_collision = true
+size = Vector3(2, 5.5, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 5.5, -215.6226)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "WALL-JUMP SHAFT\nthen walk the right wall top"
+
+[node name="High" type="Node3D" parent="Gauntlet"]
+
+[node name="Plat" type="CSGBox3D" parent="Gauntlet/High"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -223.6226)
+use_collision = true
+size = Vector3(6, 1, 5)
+material = SubResource("Mat_gaunt")
+
+[node name="Plat2" type="CSGBox3D" parent="Gauntlet/High"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -233.1226)
+use_collision = true
+size = Vector3(3, 1, 3)
+material = SubResource("Mat_gaunt")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/High"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, -226.6226)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "GAP 5.5 m, THEN A LEDGE\n(3.0 m wall)"
+
+[node name="Ledge" type="Node3D" parent="Gauntlet"]
+
+[node name="Block" type="CSGBox3D" parent="Gauntlet/Ledge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.5, -237.6226)
+use_collision = true
+size = Vector3(6, 4, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="Finish" type="Node3D" parent="Gauntlet"]
+
+[node name="SignGap" type="Label3D" parent="Gauntlet/Finish"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.5, -241.6226)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "LAST GAP 7.0 m\nneeds a dash jump"
+
+[node name="Pad" type="CSGBox3D" parent="Gauntlet/Finish"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -250.6226)
+use_collision = true
+size = Vector3(6, 1, 6)
+material = SubResource("Mat_finish")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/Finish"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.5, -250.6226)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "FINISH"
+
+[node name="FallZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, -116.8113)
+script = ExtResource("2_fall")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone"]
+shape = SubResource("BoxShape3D_fall")
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 1)
