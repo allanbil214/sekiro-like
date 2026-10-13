@@ -54,7 +54,7 @@ glow_enabled = true
 [sub_resource type="BoxShape3D" id="BoxShape3D_ramp_Stairs"]
 size = Vector3(8, 0.2, 5.1264)
 
-[node name="MovementArena" type="Node3D"]
+[node name="MovementYard" type="Node3D"]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_main")
@@ -639,122 +639,10 @@ pixel_size = 0.01
 billboard = 1
 font_size = 72
 outline_size = 14
-text = "GAUNTLET AHEAD\nA fall sends you back to the start"
-
-[node name="Gauntlet" type="Node3D" parent="."]
-
-[node name="Gaps" type="Node3D" parent="Gauntlet"]
-
-[node name="Plat1" type="CSGBox3D" parent="Gauntlet/Gaps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -207.9726)
-use_collision = true
-size = Vector3(3, 1, 2.5)
-material = SubResource("Mat_gaunt")
-
-[node name="Plat2" type="CSGBox3D" parent="Gauntlet/Gaps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -215.4726)
-use_collision = true
-size = Vector3(3, 1, 2.5)
-material = SubResource("Mat_gaunt")
-
-[node name="Plat3" type="CSGBox3D" parent="Gauntlet/Gaps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -223.9726)
-use_collision = true
-size = Vector3(3, 1, 2.5)
-material = SubResource("Mat_gaunt")
-
-[node name="Sign" type="Label3D" parent="Gauntlet/Gaps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, -219.2226)
-pixel_size = 0.01
-billboard = 1
-font_size = 72
-outline_size = 14
-text = "GAUNTLET\nGAPS 4.0 / 5.0 / 6.0 m"
-
-[node name="Shaft" type="Node3D" parent="Gauntlet"]
-
-[node name="Base" type="CSGBox3D" parent="Gauntlet/Shaft"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -231.2226)
-use_collision = true
-size = Vector3(6, 1, 6)
-material = SubResource("Mat_gaunt")
-
-[node name="WallL" type="CSGBox3D" parent="Gauntlet/Shaft"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.75, -231.2226)
-use_collision = true
-size = Vector3(2, 5.5, 6)
-material = SubResource("Mat_gaunt")
-
-[node name="WallR" type="CSGBox3D" parent="Gauntlet/Shaft"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2.75, -231.2226)
-use_collision = true
-size = Vector3(2, 5.5, 6)
-material = SubResource("Mat_gaunt")
-
-[node name="Sign" type="Label3D" parent="Gauntlet/Shaft"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 5.5, -231.2226)
-pixel_size = 0.01
-billboard = 1
-font_size = 72
-outline_size = 14
-text = "WALL-JUMP SHAFT\nthen walk the right wall top"
-
-[node name="High" type="Node3D" parent="Gauntlet"]
-
-[node name="Plat" type="CSGBox3D" parent="Gauntlet/High"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -239.2226)
-use_collision = true
-size = Vector3(6, 1, 5)
-material = SubResource("Mat_gaunt")
-
-[node name="Plat2" type="CSGBox3D" parent="Gauntlet/High"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -248.7226)
-use_collision = true
-size = Vector3(3, 1, 3)
-material = SubResource("Mat_gaunt")
-
-[node name="Sign" type="Label3D" parent="Gauntlet/High"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, -242.2226)
-pixel_size = 0.01
-billboard = 1
-font_size = 72
-outline_size = 14
-text = "GAP 5.5 m, THEN A LEDGE\n(3.0 m wall)"
-
-[node name="Ledge" type="Node3D" parent="Gauntlet"]
-
-[node name="Block" type="CSGBox3D" parent="Gauntlet/Ledge"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.5, -253.2226)
-use_collision = true
-size = Vector3(6, 4, 6)
-material = SubResource("Mat_gaunt")
-
-[node name="Finish" type="Node3D" parent="Gauntlet"]
-
-[node name="SignGap" type="Label3D" parent="Gauntlet/Finish"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.5, -257.2226)
-pixel_size = 0.01
-billboard = 1
-font_size = 72
-outline_size = 14
-text = "LAST GAP 7.0 m\nneeds a dash jump"
-
-[node name="Pad" type="CSGBox3D" parent="Gauntlet/Finish"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -266.2226)
-use_collision = true
-size = Vector3(6, 1, 6)
-material = SubResource("Mat_finish")
-
-[node name="Sign" type="Label3D" parent="Gauntlet/Finish"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.5, -266.2226)
-pixel_size = 0.01
-billboard = 1
-font_size = 72
-outline_size = 14
-text = "FINISH"
+text = "END OF THE YARD\nthe gauntlet is its own arena"
 
 [node name="FallZone" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, -124.6113)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, -91.3613)
 script = ExtResource("2_fall")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone"]

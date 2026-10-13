@@ -1,0 +1,199 @@
+[gd_scene load_steps=17 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="Script" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.55, 0.55, 0.57, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_hurdle"]
+albedo_color = Color(0.8, 0.55, 0.35, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_gap"]
+albedo_color = Color(0.4, 0.55, 0.8, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_shaft"]
+albedo_color = Color(0.45, 0.7, 0.5, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_tunnel"]
+albedo_color = Color(0.65, 0.5, 0.75, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ledge"]
+albedo_color = Color(0.8, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_slope"]
+albedo_color = Color(0.85, 0.78, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_stairs"]
+albedo_color = Color(0.4, 0.72, 0.72, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_gaunt"]
+albedo_color = Color(0.38, 0.38, 0.42, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_finish"]
+albedo_color = Color(0.95, 0.80, 0.30, 1)
+emission_enabled = true
+emission = Color(1, 0.75, 0.2, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fall"]
+size = Vector3(100, 4, 420)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_main"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_main")
+glow_enabled = true
+
+[node name="MovementGauntlet" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.81729025, -0.4414149, 0.3703911, 0, 0.64278764, 0.76604444, -0.57622623, -0.62608063, 0.5253441, 0, 10.818325, 12.643993)
+shadow_enabled = true
+
+[node name="Gauntlet" type="Node3D" parent="."]
+
+[node name="Start" type="Node3D" parent="Gauntlet"]
+
+[node name="Pad" type="CSGBox3D" parent="Gauntlet/Start"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -1)
+use_collision = true
+size = Vector3(8, 1, 10)
+material = SubResource("Mat_floor")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/Start"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "START\nGAUNTLET"
+
+[node name="Gaps" type="Node3D" parent="Gauntlet"]
+
+[node name="Plat1" type="CSGBox3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -11.25)
+use_collision = true
+size = Vector3(3, 1, 2.5)
+material = SubResource("Mat_gaunt")
+
+[node name="Plat2" type="CSGBox3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -18.75)
+use_collision = true
+size = Vector3(3, 1, 2.5)
+material = SubResource("Mat_gaunt")
+
+[node name="Plat3" type="CSGBox3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -27.25)
+use_collision = true
+size = Vector3(3, 1, 2.5)
+material = SubResource("Mat_gaunt")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/Gaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, -22.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "GAUNTLET\nGAPS 4.0 / 5.0 / 6.0 m"
+
+[node name="Shaft" type="Node3D" parent="Gauntlet"]
+
+[node name="Base" type="CSGBox3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -34.5)
+use_collision = true
+size = Vector3(6, 1, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="WallL" type="CSGBox3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.75, -34.5)
+use_collision = true
+size = Vector3(2, 5.5, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="WallR" type="CSGBox3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2.75, -34.5)
+use_collision = true
+size = Vector3(2, 5.5, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/Shaft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 5.5, -34.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "WALL-JUMP SHAFT\nthen walk the right wall top"
+
+[node name="High" type="Node3D" parent="Gauntlet"]
+
+[node name="Plat" type="CSGBox3D" parent="Gauntlet/High"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -42.5)
+use_collision = true
+size = Vector3(6, 1, 5)
+material = SubResource("Mat_gaunt")
+
+[node name="Plat2" type="CSGBox3D" parent="Gauntlet/High"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -52)
+use_collision = true
+size = Vector3(3, 1, 3)
+material = SubResource("Mat_gaunt")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/High"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, -45.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "GAP 5.5 m, THEN A LEDGE\n(3.0 m wall)"
+
+[node name="Ledge" type="Node3D" parent="Gauntlet"]
+
+[node name="Block" type="CSGBox3D" parent="Gauntlet/Ledge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.5, -56.5)
+use_collision = true
+size = Vector3(6, 4, 6)
+material = SubResource("Mat_gaunt")
+
+[node name="Finish" type="Node3D" parent="Gauntlet"]
+
+[node name="SignGap" type="Label3D" parent="Gauntlet/Finish"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.5, -60.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "LAST GAP 7.0 m\nneeds a dash jump"
+
+[node name="Pad" type="CSGBox3D" parent="Gauntlet/Finish"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -69.5)
+use_collision = true
+size = Vector3(6, 1, 6)
+material = SubResource("Mat_finish")
+
+[node name="Sign" type="Label3D" parent="Gauntlet/Finish"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.5, -69.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 72
+outline_size = 14
+text = "FINISH"
+
+[node name="FallZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, -26.25)
+script = ExtResource("2_fall")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone"]
+shape = SubResource("BoxShape3D_fall")
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 1)
