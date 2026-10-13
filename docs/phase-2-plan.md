@@ -20,7 +20,7 @@
 | 2 | Pause menu | feature | [x] done and tested 2026-10-12 |
 | 3 | Arena chooser, fall zone and three base arenas (3a fall zone, 3b arena data and chooser, 3c the arenas) | feature | [x] done and tested (3a, 3b and 3c-1 on 2026-10-12; 3c-2, the two movement arenas, on 2026-10-13) |
 | 4 | Migrate the in-game UI to scenes (the death and victory screens first; the HUD waits for real art) | refactor | [x] done and tested 2026-10-13 (the death and victory screens; the HUDs wait for real art) |
-| 5 | Loading screens: a proper one with tips and a black-screen one (section 3, item 5) | feature | [ ] proposed 2026-10-13, details not agreed yet |
+| 5 | Loading screens: a proper one with tips and a black-screen one (section 3, item 5) | feature | [x] done and tested 2026-10-13 |
 | 6 and later | The open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), then the backlog in the order the user picks.
@@ -85,12 +85,18 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Built and tested 2026-10-13** (the build log, "Phase 2 item 4", has what exists). Only the two screens, as planned. The user asked why not the HUDs: `EnemyBar` is 3D (billboard quads in the world), so it is not screen UI; `PlayerHud` and `BossHud` are shapes drawn in code, so a scene gains little until real HUD art exists (they could be a later part 4b; not planned). Decisions (user, 2026-10-13): the death screen's English text (D E A T H and the two prompts) moved to the Theme's serif body font, the one visible change; the victory screen's ENEMY SLAIN keeps the Mincho font it already used (the Theme's `KanjiLabel` font); the shaders became `.gdshader` files.
 
 ### 5. Loading screens
-- **Status:** the user's idea (2026-10-13); the points below marked *proposed* came out of that discussion and are **not agreed**. A full check comes before the build.
+- **Status:** built and tested 2026-10-13 (the build log, "Phase 2 item 5", has what exists). The user's idea (2026-10-13); the points marked *proposed* below were agreed with the full check and kept.
 - **Why:** START and the arena choices use `change_scene_to_file`, which freezes the window with no feedback until the new scene is ready. (Quit to Title and the death reload already fade to black first.)
 - **Two types (user):** (1) a **proper loading screen**: tips and a progress bar, in the shared Theme; (2) a **black-screen loading**: a plain black screen, no text.
 - **Used for (user):** the proper one when starting the game and when choosing an arena; quitting needs only the black one.
 - **Tips (user):** as many as we like, covering the game's quirks and helpful details, the obvious and generic ones too, kept in a file the user can edit easily (a CSV was suggested).
 - **Proposed:** a static `SceneLoader` and one small loading scene, no autoload (the caller sets the target, then changes to the loading scene, which loads the target on a thread, shows the progress, keeps a minimum on-screen time so a fast load does not flash, then switches). Tips from a CSV read with `FileAccess.get_csv_line()` (import type "Keep File" and a `*.csv` export filter, so it is not turned into a translation); shuffled without repeats, with an optional context column. Layout reference: the Sekiro tip screen (title, text, a bar at the bottom right); the look is original, no artwork yet (a background slot later).
+
+- **Built (agreed with the full check, user, 2026-10-13):**
+  - `SceneLoader` (static, `Kind { PROPER, BLACK }`), the loading scene with the shared Theme, `LoadingTips` and `data/loading_tips.csv` (41 tips, contexts `any`, `fighting`, `movement`, `test`). START and ARENAS are PROPER; Quit to Title and CHANGE ARENA are BLACK; the death reload is unchanged.
+  - Animated: fade in and out of black, tips cross-fade (every 8 s or on Enter, A or a click), the bar eases and fills over the minimum time (2.5 s), and an empty background slot that cross-fades and zooms. Nothing runs behind the screen: the arena enters the tree only after full black, and the player has control from the first frame.
+  - Extra: `Player.start_invulnerable_time` (1.0 s) at every scene start; `DeathScreen` now covers its first frame and holds black for 0.3 s (`start_hold_time`); the project's Default Clear Color is black.
+  - Not built: background art, loading music or sounds, per-tip icons, localization, enemies held idle during the grace period (waits for saves).
 
 ## 4. Backlog carried over (6 and later)
 
