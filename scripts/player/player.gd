@@ -167,10 +167,14 @@ var sheathed: bool = false
 @export var hit_recoil_tilt: float = 0.2
 @export var hit_recoil_time: float = 0.25
 @export_group("Posture and deathblow")
-## A deathblow needs an enemy with an open window within this distance (m, flat) ...
-@export var deathblow_range: float = 2.5
+## A deathblow needs an enemy with an open window within this distance (m, flat, center to center) ...
+## (Personal space keeps you about 2 m from a living enemy, so this leaves room to be pushed or to drift.)
+@export var deathblow_range: float = 3.5
 ## ... and in front of you: within this total cone (degrees) around where you face.
-@export var deathblow_facing_degrees: float = 120.0
+@export var deathblow_facing_degrees: float = 180.0
+## An attack press counts toward a deathblow for this long (s), longer than the normal input buffer, so a
+## press made while the last swing is still recovering is not lost.
+@export var deathblow_buffer_time: float = 0.4
 ## How far (radians) the body leans forward while staggered.
 @export var stagger_lean: float = 0.5
 ## While staggered the body also sinks to a knee (visual only: how far, m, and how fast, per second),
@@ -823,7 +827,7 @@ func find_deathblow_target() -> Node3D:
 
 ## A fresh attack press next to a stunned enemy is a deathblow, not a normal attack.
 func _try_deathblow() -> void:
-	if weapon == null or not input_buffer.has_pressed(Actions.ATTACK) or not is_on_floor():
+	if weapon == null or not input_buffer.has_pressed(Actions.ATTACK, deathblow_buffer_time) or not is_on_floor():
 		return
 	var current := state_machine.current
 	if current is StaggerState or current is DeathblowState or current is DeadState or current is AirState \
@@ -838,7 +842,7 @@ func _try_deathblow() -> void:
 	var target := find_deathblow_target()
 	if target == null:
 		return
-	input_buffer.consume(Actions.ATTACK)
+	input_buffer.clear(Actions.ATTACK)
 	deathblow_target = target
 	state_machine.transition_to(StateName.DEATHBLOW)
 

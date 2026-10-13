@@ -21,11 +21,12 @@ func tick(delta: float) -> void:
 			_pressed_at[action] = _time
 
 
-func has_pressed(action: StringName) -> bool:
+## `within` (s) overrides the buffer time for this one check (negative = use `buffer_time`).
+func has_pressed(action: StringName, within: float = -1.0) -> bool:
 	if not _pressed_at.has(action):
 		return false
 	var pressed_time: float = _pressed_at[action]
-	return _time - pressed_time <= buffer_time
+	return _time - pressed_time <= (buffer_time if within < 0.0 else within)
 
 
 ## True if the action was pressed recently. Using it up so it can't trigger twice.
