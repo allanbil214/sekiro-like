@@ -1097,3 +1097,29 @@ Done and tested by the user 2026-10-13. Not run headless (not asked); look and f
 **Files:** new `scenes/arena/movement_yard.tscn`, `scenes/arena/movement_gauntlet.tscn`, `arenas/movement_yard.tres`, `arenas/movement_gauntlet.tres`; modified `scripts/ui/arena_chooser.gd`, `scripts/player/camera_rig.gd`. Deleted `scenes/arena/movement_arena.tscn` and `arenas/movement_arena.tres`. Zips: `sekiro-like_movement-arena.zip`, `sekiro-like_stairs-chooser-crouch-camera.zip`, `sekiro-like_movement-split.zip`.
 
 **Not done:** arena images, checkpoints, a timer or any finish trigger, moving or disappearing platforms. **Noticed:** the boss HUD's `var best: Node3D` gave an analyzer warning (`UNASSIGNED_VARIABLE`); the user fixed it with `= null` (2026-10-13).
+
+### Phase 2 item 4: the death and victory screens as scenes (2026-10-13)
+
+A refactor with no gameplay change. Tested and verified by the user 2026-10-13.
+
+**Decisions**
+- Only the two screens, as planned. `EnemyBar` is 3D (billboard quads), so it is not screen UI; `PlayerHud` and `BossHud` are shapes drawn in code, so a scene gains little until real HUD art exists. Left as they are.
+- The death screen's English text (D E A T H and the two prompts) moved to the Theme's serif body font (the one visible change). The victory screen's ENEMY SLAIN keeps Mincho: it already used the kanji font list, so it now uses the Theme's `KanjiLabel` font.
+- No Theme edit and no `player.tscn` overwrite. The user replaced the two nodes in `player.tscn` with instances of the new scenes, named `DeathScreen` and `VictoryScreen`.
+
+**Files**
+- New: `scenes/ui/death_screen.tscn` (layer 20), `scenes/ui/victory_screen.tscn` (layer 19), `shaders/death_vignette.gdshader`, `shaders/victory_screen.gdshader`.
+- Modified: `scripts/ui/death_screen.gd`, `scripts/ui/victory_screen.gd`. Class names, signals and the public calls (`show_victory()`, `is_active()`, the `victory_screen` group) are unchanged, so `Enemy` and `PauseMenu` needed no edit.
+
+**Rules that are not obvious from the code**
+- The scenes hold the look; the scripts hold the behavior. Removed exports (now values on the nodes): the death screen's `kanji_*`, `word_*`, `prompt_*` colors and sizes, `die_text`, `resurrect_text`, `kanji_fonts` and the vignette's color, inner, outer and pulse (shader parameters on the `Vignette` material); the victory screen's `fonts`, kanji and word colors and sizes, `kanji_line_spacing`, `glow_color`, `glow_size`, `kanji_top` and `word_top`. Kept as exports: `darken`, `vignette_strength`, every timing, the slow motion and hitstop numbers, the dim, desaturate and flash values, `word_spacing_start` and `word_spacing_end`.
+- Positions are anchors. Death: 死 top 0.317963 (= 0.43 - 220 x 0.55 / 1080), D E A T H top 0.531852, the prompts at 0.925 in columns 0.23 to 0.53 and 0.47 to 0.77. Victory: the kanji top 0.1, the English line top 0.64. Kanji size and kanji position are separate settings now: if 死 is resized, move its anchor too.
+- Font sizes and letter spacing are written for a 1080 px high window and scale with the real height: the death screen through `UiTextScaler`; the victory screen in its own code (font sizes, the kanji's line spacing and glow width), because its English line's letter spacing eases while the banner holds and so has its own `FontVariation` made from the label's Theme font. The half-spacing shift that keeps that line centered is `offset_left` and `offset_right`.
+- The labels fade with `modulate.a` (color and shadow alpha follow). The `Root` control is hidden in `_ready()`, so a scene shows everything in the editor but nothing at the first frame. The shader materials are `resource_local_to_scene`, because their parameters change at runtime.
+- The Theme's `KanjiLabel` is the faint 560 px kanji of the main menu; the screens use only its font, with size and color overridden on the nodes, so a Theme change to its size or color does not reach them.
+
+**Not done**
+- The HUDs (see Decisions). Theme unchanged.
+
+**Noticed, not fixed**
+- The Theme's Mincho list has no "Noto Serif JP" (the old per-screen lists did); it only matters off Windows.

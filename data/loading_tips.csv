@@ -1,0 +1,42 @@
+id,context,title,text
+t001,any,Dodge,Left Shift dodges. With no direction held it is a backstep. Hold it after the dodge to flow into a dash.
+t002,any,Dash on,"Hold the dodge button after dodging while you hold a direction, and the dodge turns into a dash. Release, stop or jump to end it."
+t003,any,Dodge attack,Press attack right after the locked part of a dodge to start the dash attack.
+t004,any,Guard and deflect,A guard pressed just before a hit deflects it. Deflecting costs you almost no posture and hurts the attacker's.
+t005,any,Do not mash guard,"Tapping guard again and again shrinks your deflect window. Press once, on purpose, and the window comes back after a moment."
+t006,any,Posture,"Posture fills when you guard or get hit. Full posture means a break, and a broken enemy can be finished with a deathblow."
+t007,any,Deathblow,"When an enemy's posture breaks or its health bar is empty, attack near it to land a deathblow."
+t008,any,Posture recovery,"Posture recovers on its own after a second, but not while you are acting. Holding guard for a few seconds makes it recover twice as fast."
+t009,any,Danger symbol,"A red symbol over your head means a perilous attack is coming. It cannot be guarded, and only a deflect pressed at the last moment works on a thrust."
+t010,any,Against a thrust,Dodge toward a perilous thrust at the right moment to counter it. The enemy is cut short and loses posture.
+t011,any,Against a sweep,"Jump over a perilous sweep. If you land on the enemy's head, it is stunned."
+t012,any,Against a grab,A yellow symbol means a grab. Guarding does nothing against it: dodge.
+t013,any,Healing,"Q drinks from the gourd. It takes about a second at walking speed, and a hit interrupts it. A charge is spent only when the drink finishes."
+t014,any,Cancel a heal,"Dodge, jump, attack or guard cancels a heal for free, so you can back out when it goes wrong."
+t015,any,Resurrection,"You can resurrect twice per run. At the prompt, attack resurrects you and guard lets you die."
+t016,any,Lock-on,"Middle mouse locks onto the enemy nearest the center of the screen. Press again to release, and flick the mouse to switch targets."
+t017,any,Combo,Attacks chain into a five-hit combo that loops. Hold attack at the end of a wind-up to charge a thrust.
+t018,any,Sheathe,"R sheathes the sword, and it sheathes itself after about five calm seconds. Attacking while sheathed is a fast draw slash."
+t019,any,Charged draw,Hold attack while the sword is sheathed to charge a stronger draw slash.
+t020,any,Crouch,"Left Ctrl toggles crouching. Your body is smaller, so some high attacks pass over you."
+t021,any,Slide,"Press crouch while dashing to slide. The slide has a short moment of invulnerability, like a dodge."
+t022,any,Wall jump,Jump in the air next to a wall to kick off it. You get two wall jumps per airtime.
+t023,any,Ledges,"Reach a ledge while holding E to hang from it. Then E climbs, crouch drops, jump leaps away, and left or right shimmies along it."
+t024,any,Helm splitter,Hold attack in the air for a diving strike. It also works while the sword is sheathed.
+t025,any,Head bounce,Landing on an enemy's head while falling bounces you up. Any other landing on a head slides you off.
+t026,any,Pausing,"Esc, or Start on a pad, pauses the game. Nothing moves while the menu is open."
+t027,any,Falling,"Falling out of the world costs a quarter of your maximum health, but never your last point, and puts you back at the start."
+t028,any,Hit streaks,Enemies that get hit several times in a row start guarding harder. Vary your timing instead of repeating one string.
+t029,any,Still a prototype,"Numbers and animations here are placeholders. If something feels off, it probably is a number somebody has not tuned yet."
+t030,any,Breathe,"You lose nothing by backing off. Let your posture recover, then go back in."
+t031,fighting,The squad,"With several enemies, lock onto one and keep moving. Your guard only covers what is in front of you."
+t032,fighting,Repulsers,"A repulser can bounce your attack back and cut your swing short. Deflect, dodge or wait it out."
+t033,fighting,Monks,Monks lean on perilous thrusts and sweeps. Watch for the red symbol before you commit to a combo.
+t034,fighting,Grapplers,A grappler tries to grab you. Keep your finger on dodge when it gets close.
+t035,fighting,Duelists,Duelists pressure you with thrusts. Practice your dodge direction here.
+t036,fighting,Bosses,"When a boss notices you, its name, health and posture move to the screen edge."
+t037,movement,Training Yard,The Training Yard has one station for every move. Try each one a few times before the Gauntlet.
+t038,movement,Gauntlet,The Gauntlet chains the moves over a void. A fall sends you back to the start pad.
+t039,movement,Low tunnels,"A low tunnel needs a crouch or a slide. Crouch is a toggle, so you can stay down while you walk."
+t040,movement,Long gaps,The last gap is wider than a plain jump. A dash jump is the way across.
+t041,test,Test arena,"The test arena is a jumble of platforms, walls and a gap, for trying out the movement."

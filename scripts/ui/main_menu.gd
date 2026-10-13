@@ -244,7 +244,7 @@ func _leave(then: Callable) -> void:
 
 
 func _load_arena(path: String = DEFAULT_ARENA) -> void:
-	var error := get_tree().change_scene_to_file(path)
+	var error := SceneLoader.go(get_tree(), path, SceneLoader.Kind.PROPER)
 	if error != OK:
 		push_error("MainMenu: could not load %s (error %d)." % [path, error])
 		_fade.color.a = 0.0

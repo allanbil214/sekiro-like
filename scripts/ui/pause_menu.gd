@@ -226,7 +226,7 @@ func _start_leaving(path: String) -> void:
 func _change_scene(path: String) -> void:
 	get_tree().paused = false
 	Engine.time_scale = 1.0
-	var error := get_tree().change_scene_to_file(path)
+	var error := SceneLoader.go(get_tree(), path, SceneLoader.Kind.BLACK)
 	if error != OK:
 		push_error("PauseMenu: could not load %s (error %d)." % [path, error])
 		get_tree().paused = true

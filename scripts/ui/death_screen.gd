@@ -32,6 +32,9 @@ extends CanvasLayer
 ## Start each scene black and fade in (it also smooths the reload after dying).
 @export var fade_in_on_start: bool = true
 @export var start_fade_time: float = 0.7
+## Seconds the screen stays fully black at the start before the fade-in begins (0 = no hold). It hides the
+## first frames of a scene while the camera and the bodies settle.
+@export var start_hold_time: float = 0.3
 
 const REFERENCE_HEIGHT: float = 1080.0
 
@@ -51,6 +54,7 @@ var _scaled_height: float = -1.0
 var _dim_alpha: float = 0.0
 var _dim_target: float = 0.0
 var _dim_speed: float = 1.0
+var _start_hold_left: float = 0.0
 var _vig: float = 0.0
 var _vig_target: float = 0.0
 var _vig_speed: float = 1.0
@@ -79,6 +83,12 @@ func _ready() -> void:
 		_dim_alpha = 1.0
 		_dim_target = 0.0
 		_dim_speed = 1.0 / start_fade_time
+		_start_hold_left = start_hold_time
+		# Cover the very first frame too: _process has not run yet, so show the black now (texts stay hidden).
+		_dim.modulate.a = 1.0
+		_root.visible = true
+		for label: Label in [_kanji, _word, _die_label, _resurrect_label]:
+			_show(label, 0.0)
 
 
 func _on_death_started() -> void:
@@ -122,7 +132,10 @@ func _process(delta: float) -> void:
 		if _text_delay_left < 0.0:
 			_text_target = 1.0
 			_text_speed = 1.0 / maxf(text_fade_time, 0.01)
-	_dim_alpha = move_toward(_dim_alpha, _dim_target, _dim_speed * delta)
+	if _start_hold_left > 0.0:
+		_start_hold_left -= delta
+	else:
+		_dim_alpha = move_toward(_dim_alpha, _dim_target, _dim_speed * delta)
 	_vig = move_toward(_vig, _vig_target, _vig_speed * delta)
 	_text_alpha = move_toward(_text_alpha, _text_target, _text_speed * delta)
 	_prompt_alpha = move_toward(_prompt_alpha, _prompt_target, _prompt_speed * delta)

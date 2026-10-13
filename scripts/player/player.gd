@@ -151,6 +151,9 @@ var sheathed: bool = false
 @export var max_resurrections: int = 2
 @export_range(0.05, 1.0) var resurrect_health_fraction: float = 0.5
 @export var resurrect_invulnerable_time: float = 2.0
+## Invulnerable for this many seconds (0 = off) from the moment any scene with a Player starts (a loaded arena,
+## the death reload, an F6 run), so the first moment after a fade-in or a reload cannot get you killed.
+@export_range(0.0, 5.0, 0.1) var start_invulnerable_time: float = 1.0
 @export_group("Fall zone (Phase 2, 3a)")
 ## A fall out of the world (FallZone): the screen fades to black over fall_fade_out (s), the player is put
 ## back at its start, then fades back in over fall_fade_in (s). Invulnerable for fall_invulnerable_time (s)
@@ -307,6 +310,8 @@ func _ready() -> void:
 	resurrections_left = max_resurrections
 	_reaction.capture_rest()
 	_setup_hurtbox()
+	if start_invulnerable_time > 0.0:
+		grant_invulnerability(start_invulnerable_time)
 	state_machine.setup(self)
 	state_machine.start()
 
