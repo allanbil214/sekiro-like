@@ -113,7 +113,8 @@ func _ready() -> void:
 	_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_marker.no_depth_test = true
 	_marker.shaded = false
-	_marker.render_priority = 6
+	# Above the lock-on ring (priority 10), so the red icon is not covered while locked on.
+	_marker.render_priority = 12
 	_marker.position = marker_offset
 	_marker.visible = false
 	add_child(_marker)

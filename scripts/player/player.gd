@@ -183,13 +183,12 @@ var sheathed: bool = false
 @export var stealth_kill_height: float = 1.2
 ## How far (m) the stealth deathblow can be heard while it plays (instead of the loud action radius).
 @export var noise_stealth_kill: float = 3.0
-## Death from above (item 7c): a fresh attack press in the air (within `aerial_kill_buffer_time`) while falling
-## or near the apex (`aerial_kill_max_rise` m/s up at most) over a stealth target within `aerial_kill_range`
-## (m, flat) and between `aerial_kill_min_height` and `aerial_kill_max_height` (m) above its feet.
+## Death from above (item 7c): a fresh attack press in the air (within `aerial_kill_buffer_time`), at any point of
+## the jump or fall, over a stealth target at least `aerial_kill_min_height`
+## (m) above its feet, from any height, and within `aerial_kill_range` (m, flat). For the enemy you are locked
+## onto the reach is the lock-on's own (`LockOn.release_range`), and it is preferred over other targets.
 @export var aerial_kill_range: float = 3.0
 @export var aerial_kill_min_height: float = 1.5
-@export var aerial_kill_max_height: float = 12.0
-@export var aerial_kill_max_rise: float = 1.0
 @export var aerial_kill_buffer_time: float = 0.25
 @export_group("Posture and deathblow")
 ## A deathblow needs an enemy with an open window within this distance (m, flat, center to center) ...
@@ -932,6 +931,11 @@ func can_stealth_kill(enemy: Enemy) -> bool:
 
 ## Item 7c: the nearest enemy a death from above could land on right now, or null.
 func find_aerial_target() -> Node3D:
+	var locked: Enemy = null
+	if lock_on.has_target():
+		locked = lock_on.target as Enemy
+	if locked != null and can_aerial_kill(locked):
+		return locked
 	var best: Node3D = null
 	var best_distance := aerial_kill_range
 	for node: Node in Enemies.all():
@@ -947,19 +951,20 @@ func find_aerial_target() -> Node3D:
 	return best
 
 
-## Item 7c: in the Air state, falling or near the apex, above `enemy` (flat range and height band), and `enemy`
+## Item 7c: in the Air state (rising or falling), above `enemy` (flat range and height band), and `enemy`
 ## can be stealth-killed (Enemy.can_be_stealth_killed).
 func can_aerial_kill(enemy: Enemy) -> bool:
-	if not (state_machine.current is AirState) or is_on_floor() or velocity.y > aerial_kill_max_rise:
+	if not (state_machine.current is AirState) or is_on_floor():
 		return false
 	if not enemy.can_be_stealth_killed():
 		return false
 	var to_enemy := enemy.global_position - global_position
 	var height := -to_enemy.y
-	if height < aerial_kill_min_height or height > aerial_kill_max_height:
+	if height < aerial_kill_min_height:
 		return false
 	to_enemy.y = 0.0
-	return to_enemy.length() <= aerial_kill_range
+	var locked := lock_on.has_target() and lock_on.target == enemy
+	return to_enemy.length() <= (lock_on.release_range if locked else aerial_kill_range)
 
 
 ## Item 7c: called by AirState on a fresh attack press when find_aerial_target() found `target`.

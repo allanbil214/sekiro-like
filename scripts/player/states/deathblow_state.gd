@@ -18,7 +18,7 @@ const HELM_VISUAL: ActionData = preload("res://actions/helm_splitter.tres")
 ## The thrust sound starts this long (s) before the strike.
 @export var swing_sound_lead: float = 0.1
 ## Death from above (item 7c): the plunge speed (m/s) toward the target, the flat and height (m above its feet)
-## at which it counts as contact, the longest the plunge may take (s) before it is given up, and how close
+## at which it counts as contact, the base time (s) the plunge may take before it is given up (the trip itself is added), and how close
 ## (m, flat) a landing on the floor still counts as a hit.
 @export var plunge_speed: float = 18.0
 @export var plunge_contact_flat: float = 1.4
@@ -41,6 +41,7 @@ var _stealth: bool = false
 var _aerial: bool = false
 var _plunging: bool = false
 var _plunge_time: float = 0.0
+var _plunge_limit: float = 1.2
 var _visual_clock: float = 0.0
 
 
@@ -64,6 +65,11 @@ func _on_action_enter(_previous: StringName) -> void:
 	_aerial = player.deathblow_aerial
 	_plunging = _aerial
 	_plunge_time = 0.0
+	_plunge_limit = plunge_timeout
+	if _aerial and is_instance_valid(_target):
+		# A long drop needs longer than the base time: add the trip at the capped dive speed.
+		_plunge_limit += (_target.global_position - player.global_position).length() \
+			/ maxf(minf(plunge_speed, player.hard_land_speed - 1.0), 1.0)
 	_visual_clock = 0.0
 	_visual_action = THRUST_VISUAL
 	if player.sheathed and player.weapon != null and player.weapon.draw_attack != null:
@@ -130,7 +136,7 @@ func _update_plunge(delta: float) -> void:
 		else:
 			_abort_plunge()
 		return
-	if _plunge_time >= plunge_timeout:
+	if _plunge_time >= _plunge_limit:
 		_abort_plunge()
 		return
 	var dive_velocity := (to_target + Vector3.UP * 0.3).normalized() * plunge_speed

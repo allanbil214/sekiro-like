@@ -47,45 +47,6 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.78, 0.62, 0.3, 0.5)
 
-[sub_resource type="FontVariation" id="FontVariation_subtitle"]
-base_font = SubResource("SystemFont_serif")
-spacing_glyph = 14
-
-[sub_resource type="FontVariation" id="FontVariation_press"]
-base_font = SubResource("SystemFont_serif")
-spacing_glyph = 8
-
-[sub_resource type="FontVariation" id="FontVariation_title"]
-base_font = SubResource("SystemFont_serif")
-spacing_glyph = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_track"]
-content_margin_top = 2.0
-content_margin_bottom = 2.0
-bg_color = Color(0.25, 0.22, 0.18, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill"]
-content_margin_top = 2.0
-content_margin_bottom = 2.0
-bg_color = Color(0.78, 0.62, 0.3, 0.9)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill_hi"]
-content_margin_top = 2.0
-content_margin_bottom = 2.0
-bg_color = Color(0.9, 0.74, 0.4, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-
 [sub_resource type="Gradient" id="Gradient_grabber"]
 offsets = PackedFloat32Array(0, 0.8, 1)
 colors = PackedColorArray(0.85, 0.68, 0.34, 1, 0.78, 0.62, 0.3, 1, 0.78, 0.62, 0.3, 0)
@@ -109,6 +70,45 @@ height = 24
 fill = 1
 fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(1, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill"]
+content_margin_top = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0.78, 0.62, 0.3, 0.9)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill_hi"]
+content_margin_top = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0.9, 0.74, 0.4, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_track"]
+content_margin_top = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0.25, 0.22, 0.18, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="FontVariation" id="FontVariation_subtitle"]
+base_font = SubResource("SystemFont_serif")
+spacing_glyph = 14
+
+[sub_resource type="FontVariation" id="FontVariation_press"]
+base_font = SubResource("SystemFont_serif")
+spacing_glyph = 8
+
+[sub_resource type="FontVariation" id="FontVariation_title"]
+base_font = SubResource("SystemFont_serif")
+spacing_glyph = 10
 
 [resource]
 default_font = SubResource("FontVariation_body")
