@@ -21,6 +21,7 @@ enum Id {
 	HEAL_DRINK, HEAL_DONE, RESURRECT,
 	DEATH_HIT, DEATH_TOLL, PROMPT_OPEN, DIE_CONFIRM,
 	MENU_MOVE, MENU_OK, MENU_BACK,
+	DETECTED,
 }
 
 const DATA_PATH: String = "res://audio/sfx_data.tres"

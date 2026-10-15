@@ -4,7 +4,7 @@ extends Resource
 ## `res://arenas/`; `ArenaLibrary` finds it, no code changes. The scene is a path (not a PackedScene)
 ## so listing the arenas does not load every one of them.
 
-enum Category { TEST, MOVEMENT, FIGHTING }
+enum Category { TEST, MOVEMENT, FIGHTING, STEALTH }
 
 ## The name shown in the chooser.
 @export var display_name: String = "Arena"
@@ -30,4 +30,6 @@ static func category_label(value: Category) -> String:
 			return "MOVEMENT"
 		Category.FIGHTING:
 			return "FIGHTING"
+		Category.STEALTH:
+			return "STEALTH"
 	return ""

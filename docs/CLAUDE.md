@@ -7,8 +7,9 @@ Project: Sekiro-like combat prototype. Godot 4.7.2 (standard build), typed GDScr
 1. **Read in full:** `docs/work-agreements.md`, then `docs/handoff.md`, then the spec for step X.
    - Steps 3a to 3c: `docs/step3-combat-spec.md`. (skip if Step 4 or later, unless you need to remind you or something)
    - Step 4 or later: `docs/design-later-steps.md` (read it normally from here on).
+   - Animation, Blender, rig, or timeline-tool work: `docs/animation-pipeline.md` (read it in full; ask for the latest `.blend` or the model files, and send the full check before generating any animation).
    - Phase 1.5 items: `docs/phase-1-5-plan.md`. Phase 2 items: `docs/phase-2-plan.md` (its decisions are the agreed ones; the backlog it points to is section 13 of the handoff). Read the plan instead of a step spec.
-2. **Do not open** `docs/archive/build-log.md` or `docs/design-later-steps.md` before they are needed. If a task needs one specific part, search for it and read only that section (work agreement, section 7).
+2. **Do not open** `docs/archive/build-log.md`, `docs/design-later-steps.md`, or `docs/animation-pipeline.md` before they are needed. If a task needs one specific part, search for it and read only that section (work agreement, section 7).
 3. **Look at the latest snapshot** (a zip like `claude_snapshot_*.zip`, uploaded in the chat). Read only the scripts and `.tres` files that step X touches; the handoff's "What the finished steps built" says which files own what. If the snapshot or a doc is missing, ask for it.
 4. **Reply with a short "what I understood" and the full check** for step X (the work agreement, section 1: the request in your own words, scope, assumptions with proposed defaults, files, editor steps, what is not included, delivery format and zip name). Then **wait for an explicit go**. Do not write code before it.
 

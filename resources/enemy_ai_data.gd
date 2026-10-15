@@ -216,3 +216,57 @@ extends Resource
 ## The kanji is stacked top to bottom, one character per line. Placeholder wording.
 @export var victory_kanji: String = "討取"
 @export var victory_text: String = "ENEMY SLAIN"
+
+@export_group("Awareness (Phase 2 item 7a)")
+## Read only by an `Enemy` with `use_awareness` on. Its senses fill a meter from 0 to 1: sight (range, a cone
+## and a clear line) and hearing (the player's noise radius). 0.5 = suspicious, 1 = it spots you (combat) or,
+## if it cannot see you, goes alert and searches. All placeholders to tune by playing.
+## Sight: range (m), the whole cone (degrees), and the eye and aim heights (m above the feet) of the line check.
+@export var sight_range: float = 12.0
+@export_range(10.0, 360.0) var sight_degrees: float = 110.0
+@export var sight_eye_height: float = 1.6
+@export var sight_target_height: float = 1.0
+## Meter per second at medium range, times 2 within `sight_close_range` (m), falling to the far multiplier at
+## the edge of the range; times these while the player runs or is crouched.
+@export var sight_fill_rate: float = 0.5
+@export var sight_close_range: float = 3.0
+@export var sight_close_multiplier: float = 2.0
+@export var sight_far_multiplier: float = 0.35
+@export var sight_run_multiplier: float = 1.5
+@export var sight_crouch_multiplier: float = 0.5
+## Hearing: meter per second when the player is inside its noise radius (less toward the edge), and how much
+## of the radius is left when a wall is in the way.
+@export var hearing_fill_rate: float = 1.2
+@export_range(0.0, 1.0) var hearing_wall_factor: float = 0.5
+## With nothing sensed for `decay_delay` seconds the meter drains this fast (per second).
+@export var meter_decay: float = 0.25
+@export var decay_delay: float = 1.0
+## The meter level where it turns suspicious, and how long (s) it stops and looks toward the cause first.
+@export_range(0.0, 1.0) var suspicious_at: float = 0.5
+@export var suspicious_pause: float = 0.6
+## Alert: how long (s) it searches at the last place it knew you were (it stays alert while it sees you).
+@export var search_time: float = 6.0
+## Speeds (m/s) of patrolling, of creeping toward a sound, and of the alert search; and how fast it turns to look.
+@export var patrol_speed: float = 1.6
+@export var investigate_speed: float = 2.2
+@export var search_speed: float = 3.2
+@export var look_turn_speed: float = 4.0
+## An enemy with no patrol scans this far to each side (degrees) of where it stands, one full sweep per period (s).
+@export var scan_degrees: float = 50.0
+@export var scan_period: float = 6.0
+## An enemy that enters combat makes unaware allies inside this distance (m) suspicious (alert inside half of it).
+@export var shout_radius: float = 10.0
+## It has no pathfinding: it only walks, chases and searches toward a spot within this height difference (m);
+## from another level it stands and watches. Chasing gives up past this + 1 m.
+@export var max_vertical_reach: float = 3.0
+## Edge guard: it stops instead of walking where there is no floor this far ahead (m), within this depth (m).
+@export var edge_probe_distance: float = 0.9
+@export var edge_probe_depth: float = 1.4
+## A patrol or search leg that makes no progress for this long (s) is given up.
+@export var stuck_time: float = 1.5
+## After it spots you it waits this long (s) before its first attack.
+@export var spot_reaction_time: float = 0.4
+## The "?" and "!" over its head: height (m above the feet), font size and pixel size.
+@export var symbol_height: float = 2.4
+@export var symbol_font_size: int = 150
+@export var symbol_pixel_size: float = 0.005

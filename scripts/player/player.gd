@@ -166,6 +166,15 @@ var sheathed: bool = false
 @export var hit_recoil_distance: float = 0.15
 @export var hit_recoil_tilt: float = 0.2
 @export var hit_recoil_time: float = 0.25
+@export_group("Noise (Phase 2 item 7a)")
+## How far (m) the player can be heard by an enemy with awareness: crouch-walking, walking, running, any
+## action (an attack, a dodge ...), and a hard landing (a short spike). Standing still makes no noise.
+@export var noise_crouch: float = 1.2
+@export var noise_walk: float = 5.0
+@export var noise_run: float = 10.0
+@export var noise_action: float = 8.0
+@export var noise_hard_land: float = 12.0
+
 @export_group("Posture and deathblow")
 ## A deathblow needs an enemy with an open window within this distance (m, flat, center to center) ...
 ## (Personal space keeps you about 2 m from a living enemy, so this leaves room to be pushed or to drift.)
@@ -234,6 +243,8 @@ var input_buffer: InputBuffer
 ## Finds walls, ledges, and hang spots (Step 12C). Created in _ready().
 var ledge_sensor: LedgeSensor
 var is_crouched: bool = false
+var _noise_spike: float = 0.0
+var _noise_spike_left: float = 0.0
 ## Mid-air reach is once per airtime; a wall jump restores it. Landing resets both.
 var reach_ready: bool = true
 var wall_jumps_used: int = 0
@@ -310,6 +321,10 @@ func _ready() -> void:
 	_headroom_shape.radius = 0.38
 	_headroom_shape.height = stand_height - 0.07
 	add_to_group(Groups.PLAYER)
+	# The awareness HUD (item 7a): the triangles that show enemies noticing the player.
+	var awareness_hud := AwarenessHud.new()
+	awareness_hud.name = "AwarenessHud"
+	add_child(awareness_hud)
 	heal_charges = max_heal_charges
 	resurrections_left = max_resurrections
 	Settings.apply_gameplay(self)
@@ -329,6 +344,7 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	input_buffer.tick(delta)
+	_noise_spike_left = maxf(_noise_spike_left - delta, 0.0)
 	if _guard_lockout > 0.0:
 		_guard_lockout -= delta
 		input_buffer.clear(Actions.GUARD)
@@ -357,6 +373,7 @@ func _physics_process(delta: float) -> void:
 	if was_airborne and is_on_floor():
 		if fall_speed >= hard_land_speed:
 			Fx.play(get_tree(), Fx.Kind.HARD_LAND, global_position)
+			make_noise(noise_hard_land)
 		elif fall_speed >= land_dust_speed:
 			Fx.play(get_tree(), Fx.Kind.LAND_DUST, global_position)
 	velocity.x -= push.x
@@ -365,6 +382,35 @@ func _physics_process(delta: float) -> void:
 	_update_footsteps(delta)
 	_forced.update_personal_space(delta)
 	_update_hurtbox()
+
+
+## How far (m) the player can be heard right now (item 7a): the loudest of the current movement, any action,
+## and a recent spike (`make_noise`). Enemies with awareness read this every frame.
+func get_noise_radius() -> float:
+	var radius := 0.0
+	var current := state_machine.current
+	if current is ActionState:
+		radius = noise_action
+	elif is_on_floor() and (current is LocomotionState or current is CrouchState or current is GuardState \
+			or current is DashState or current is HealState):
+		var horizontal := Vector2(velocity.x, velocity.z).length()
+		if horizontal >= 0.5:
+			if is_crouched:
+				radius = noise_crouch
+			elif horizontal > walk_speed * 1.5:
+				radius = noise_run
+			else:
+				radius = noise_walk
+	if _noise_spike_left > 0.0:
+		radius = maxf(radius, _noise_spike)
+	return radius
+
+
+## A short loud noise of `radius` m that fades after `duration` seconds (a hard landing).
+func make_noise(radius: float, duration: float = 0.5) -> void:
+	if _noise_spike_left <= 0.0 or radius > _noise_spike:
+		_noise_spike = radius
+	_noise_spike_left = maxf(_noise_spike_left, duration)
 
 
 ## Movement input in world space, relative to the camera. Length 0 to 1.

@@ -21,10 +21,11 @@
 | 3 | Arena chooser, fall zone and three base arenas (3a fall zone, 3b arena data and chooser, 3c the arenas) | feature | [x] done and tested (3a, 3b and 3c-1 on 2026-10-12; 3c-2, the two movement arenas, on 2026-10-13) |
 | 4 | Migrate the in-game UI to scenes (the death and victory screens first; the HUD waits for real art) | refactor | [x] done and tested 2026-10-13 (the death and victory screens; the HUDs wait for real art) |
 | 5 | Loading screens: a proper one with tips and a black-screen one (section 3, item 5) | feature | [x] done and tested 2026-10-13 |
-| 6 | Options screen in two parts: 6a the audio and gameplay menus, 6b the controls (section 3, item 6) | feature | [ ] 6a done and tested 2026-10-13; 6b (the controls) is next, full check comes first |
-| 7 and later | The open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 6 | Options screen in two parts: 6a the audio and gameplay menus, 6b the controls (section 3, item 6) | feature | [x] done and tested (6a and 6b on 2026-10-13) |
+| 7 | Enemy awareness and the stealth deathblow, with a multi-level stealth arena (7a awareness core and the arena's ground floor, 7b the stealth deathblow, 7c the upper levels; section 3, item 7) | feature | [ ] in progress: **7a built and tested (2026-10-15)**, 7b and 7c not built |
+| 8 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
-Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), then the backlog in the order the user picks.
+Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then the rest of the backlog in the order the user picks.
 
 ## 3. The items
 
@@ -100,19 +101,45 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
   - Not built: background art, loading music or sounds, per-tip icons, localization, enemies held idle during the grace period (waits for saves).
 
 ### 6. Options screen
-- **Status:** agreed with the user on 2026-10-13 as two parts. **6a is built and tested (2026-10-13)**; 6b is not built, and its points marked *proposed* are **not agreed** and get a default at its full check.
+- **Status:** agreed with the user on 2026-10-13 as two parts. **6a and 6b are built and tested (2026-10-13)**; the build log ("Phase 2 item 6a", "Phase 2 item 6b") has what exists. The points of 6b marked *proposed* were kept as written, except that a controller capture cancels with Esc or a timeout, not with B (B is bindable).
 - **What (user):** the Options panel (today an empty placeholder in the main menu and, as its own copy, in the pause menu) becomes real. Audio and Gameplay are **their own menus**, and Controls shows the controller and keyboard layouts and lets the user change them. One shared scene would replace the two copies (proposed).
 - **6a. Audio and Gameplay menus (built and tested 2026-10-13; the build log, "Phase 2 item 6a", has what exists):** the proposals below were kept, and the user accepted the three extras (mouse and stick speed, invert Y) and the settings file. One shared `OptionsMenu` scene (MAIN, AUDIO and GAMEPLAY pages) replaced both empty panels; `Settings` (static) owns the values and `user://settings.cfg`; `default_bus_layout.tres` adds Music and Sfx. Gameplay page: camera shake on or off, crouch toggle or hold, recenter camera, lock next enemy, mouse speed, stick speed, invert Y. Original plan:
   - **Audio:** volume sliders. No audio buses exist yet (everything plays on Master), so a bus layout (Master, Music, Sfx) is needed first (proposed: a shipped `default_bus_layout.tres`, the `Music` node and the `Sfx` voices set to their bus).
   - **Gameplay (user):** camera shake as a plain on or off toggle (`CameraRig.shake_enabled`; no strength slider for now), crouch as toggle or hold (`Player.crouch_is_hold`), and the lock-on options already on `LockOn` (`recenter_when_no_target`, `auto_lock_next`).
   - **Proposed, not agreed:** mouse and stick sensitivity sliders (`CameraRig.mouse_sensitivity`, `stick_sensitivity`), invert Y, and a `ConfigFile` at `user://settings.cfg` that stores every setting and applies them at start-up.
-- **6b. Controls:**
+- **6b. Controls (built and tested 2026-10-13):**
   - **Keyboard and mouse:** a list of the actions; select one, press a key or mouse button to rebind it; reset to defaults. Code keeps reading action names only (`Actions`), so gameplay code does not change.
   - **Controller:** a list of the buttons and the action each one does, with button rebinding. The sticks stay fixed (move on the left, look on the right). A picture of a pad with labels waits for art (proposed: the plain list first).
   - **Proposed:** binding a key another action already uses swaps the two actions; the bindings are saved in the same settings file.
 - **Not included:** display settings (window mode, VSync), language, subtitles, difficulty, a UI scale, a camera shake strength slider.
 
-## 4. Backlog carried over (7 and later)
+### 7. Enemy awareness and the stealth deathblow
+- **Status:** picked by the user on 2026-10-13 (the backlog entries "Enemy awareness system" and "Stealth deathblow from crouch" together, plus "an arena for it with several enemies and verticality"). **7a is built and tested (2026-10-15)**; the build log ("Phase 2 item 7a") has what exists. **7b and 7c are planned, not built**; what is written below for them is still a proposal the user has not confirmed (the full check for each asks).
+- **What (user):** enemies get senses, so crouching and sneaking matter; a crouched player can sneak up on an unaware enemy and take one health bar with a stealth deathblow; and a new arena with several enemies laid out over several heights tests it.
+- **Why it fits:** `Enemy` has no senses today: `Phase.IDLE` becomes `CHASE` as soon as the player is within `aggro_range` (14 m), through walls, from behind, crouched or not. Crouching, the crouch footsteps and the low hurtbox exist but nothing reacts to them.
+- **Rule (built in 7a):** every existing arena and enemy preset behaves exactly as before. The switch is `Enemy.use_awareness` (default off, per instance, so any preset can be used with it); the numbers are in a new "Awareness" group of `EnemyAIData`. Only the stealth arena's enemies have it on (the Phase 2 rule: no change to `Enemy`'s own behavior or the combat tuning).
+- **Awareness (built in 7a, as described here; details in the build log):** a new helper `EnemyAwareness` (a `RefCounted`, like `enemy_defense.gd`) keeps a meter from 0 to 1 per enemy and four levels: **unaware** (stands at its post or walks a patrol), **suspicious** (meter 0.5 or more: stops, turns toward the cause, creeps to the last-seen spot; a yellow "?" over its head), **alert** (meter 1: goes to the last-known position and searches for a few seconds; a red "!"), and **combat** (the existing loop, unchanged). Losing the player leads back through a search to its post.
+  - **Sight:** range, a cone (about 110 degrees) and a clear raycast (walls, crates and pillars hide the player). It fills faster when close, upright or running, slower when crouched.
+  - **Hearing:** footsteps by gait (run loud, walk medium, crouch nearly silent), plus spikes for a hard landing, a dodge and combat sounds.
+  - **Patrol:** a loop of `Marker3D` waypoints with wait times, or a stationary lookout that scans.
+  - **Shouting:** an enemy entering combat makes unaware allies within about 10 m suspicious or alert.
+  - All numbers are `EnemyAIData` exports in a new group, placeholders to tune by playing.
+- **7a additions agreed with the user during the check (2026-10-15):**
+  - **The awareness indicator:** plain triangles on an invisible ring around the screen center (like Sekiro's and Far Cry's detection marks), tip toward the noticing enemy relative to the camera. A triangle fills from its base as the enemy's meter rises, whitish to yellowish to red, and when the enemy spots the player it pops ("bwah!": it punches up in size, flashes red) and **vanishes for the fight**; the 3D "?" and "!" over the head stay. At most 6 triangles, the nearest first (`AwarenessHud`, created by `Player`).
+  - **The "detected" sound** (`audio/stealth/detected.wav`, the Sfx slot `detected`, a cut-off group so several do not stack) plays when an enemy spots the player, the moment the triangle pops (also when an unaware enemy is hit).
+  - **Height rules (there is no pathfinding):** an awareness enemy has an edge guard (it stops where there is no floor ahead, also in combat) and walks, chases or searches only toward a spot within `max_vertical_reach` (3 m) of its own height; from another level it stands and watches, still alert. Chasing gives up past that + 1 m.
+  - **An unaware enemy does not plan guards** against the player, and a resurrection of the player does not turn unaware guards hostile (only those that were in combat yield again).
+- **Stealth deathblow (proposed):** while **crouched**, a fresh attack press within about 2 m of an **unaware or suspicious** enemy, **behind** it (outside about 120 degrees of its facing), removes one health bar with no posture break needed. It reuses `DeathblowState` and `Player._try_deathblow()`, plus a `Combatant` method for a bar removal that needs no open window. A non-boss on its last bar dies; a boss on its last bar goes to empty health, which opens the normal deathblow window.
+- **The arena "Stealth Compound" (user asked for it; layout proposed):** a walled courtyard of about 45 x 45 m (invisible walls, a `FallZone`, a start spot), three heights: the ground floor (crates and pillars as cover, patrolling soldiers), a mid level at about 4 m (catwalks and ledges reached by the ledge climb, a wall-jump shaft and stairs) and a roof at about 8 m (a stationary lookout, a boss monk near the end); 8 to 9 enemies (soldiers, two duelists, the boss). Built from CSG shapes with a `Label3D` sign per area like the movement arenas, an `ArenaData` in a new category STEALTH with `debug_only` off, and the debug overlay shows each enemy's meter and level (debug builds only).
+- **Split (proposed), each built and tested in turn:**
+  - **7a (built and tested 2026-10-15)** the awareness core (senses, levels, the "?" and "!" symbols, patrol, shouting, the debug readout) and the arena's ground floor with its patrolling enemies, so it can be tested at once.
+  - **7b** the stealth deathblow.
+  - **7c** the upper levels (the mid level and the roof), the lookout and the boss.
+- **Files (7a built):** new `scripts/enemy/enemy_awareness.gd`, `scripts/ui/awareness_hud.gd`, `scenes/arena/stealth_compound.tscn`, `arenas/stealth_compound.tres`, `audio/stealth/detected.wav`; changed `resources/enemy_ai_data.gd`, `scripts/enemy/enemy.gd`, `scripts/player/player.gd` (noise), `scripts/ui/debug_overlay.gd`, `resources/arena_data.gd` (STEALTH), `scripts/audio/sfx.gd` and `audio/sfx_data.tres` (the detected sound). **Still to come:** for 7b `scripts/player/player.gd`, `scripts/player/states/deathblow_state.gd`, `scripts/combat/combatant.gd`; for 7c the arena scene. No editor steps.
+- **Not included (proposed):** an air deathblow (dropping on an unaware enemy from above), a light and shadow system, tall grass or other hiding places, throwables or distractions, corpse discovery, enemy dialogue, and any change to the combat tuning. They can be backlog entries later.
+- **Open points for the 7b and 7c checks:** whether the roof boss stays, whether crouch is required for the stealth deathblow (the backlog says yes), and the boss last-bar rule above. (The shouting stayed in 7a.)
+
+## 4. Backlog carried over (8 and later)
 
 The open entries stay in section 13 of `docs/handoff.md`, which remains the single list: ledge enhancements, heal and death extras, lock-on extras, the sweep duck, enemy awareness, the stealth deathblow, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 

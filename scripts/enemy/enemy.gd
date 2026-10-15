@@ -75,6 +75,16 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 @export var stun_bobble_tilt: float = 0.3
 @export var stun_bobble_period: float = 1.6
 @export var stun_droop: float = 0.25
+@export_group("Awareness (Phase 2 item 7a)")
+## On: this enemy has senses (sight and hearing, see EnemyAwareness) and notices the player only when it sees or
+## hears it, instead of at `aggro_range` through walls. It can patrol, search and shout, and it has the edge
+## guard. Off (the default): the old behavior, nothing else changes. The numbers are in the `ai` preset.
+@export var use_awareness: bool = false
+## A node whose Marker3D children are the patrol waypoints, walked in a loop. Empty: it stands at its post and scans.
+@export var patrol_path: NodePath
+## Seconds it waits at each waypoint (a random time between the two).
+@export var patrol_wait: Vector2 = Vector2(1.5, 3.5)
+
 @export_group("Debug")
 ## Print phase changes, attacks, and defense decisions to the Output panel.
 @export var debug_log: bool = false
@@ -95,8 +105,12 @@ var phase: Phase = Phase.IDLE
 var _guarding: bool = false
 
 var _player: Node3D
+var _awareness: EnemyAwareness
 ## True while the player is dead and this enemy is standing down (Step 10).
 var _stood_down: bool = false
+## Awareness enemies only: it was in combat when it stood down, so it yields when the player is back (an unaware one
+## just carries on).
+var _stand_down_was_combat: bool = false
 var _gravity: float = 9.8
 var _think_timer: float = 0.0
 var _phase_timer: float = 0.0
@@ -216,6 +230,9 @@ func _ready() -> void:
 	sword_visual.setup(look_weapon, ai.blade_back_length)
 	_think_timer = 0.5
 	_defense.roll_break_threshold()
+	if use_awareness:
+		_awareness = EnemyAwareness.new(self)
+		_awareness.setup()
 
 
 func _exit_tree() -> void:
@@ -252,14 +269,20 @@ func _physics_process(delta: float) -> void:
 			_stand_down()
 		elif _stood_down:
 			_stand_down_ended()
-	_defense.update(delta, distance, _player_action_state(has_target))
+	# An enemy that has not noticed the player yet does not plan guards against it (item 7a).
+	if not (use_awareness and phase == Phase.IDLE):
+		_defense.update(delta, distance, _player_action_state(has_target))
 	if _defense.tick_riposte(delta, has_target):
 		_start_burst(ai.riposte_burst_count, true)
 	match phase:
 		Phase.IDLE:
-			_decelerate(delta)
-			if has_target and distance <= ai.aggro_range:
-				_set_phase(Phase.CHASE)
+			if _awareness != null:
+				if _awareness.update(delta, has_target):
+					_enter_combat()
+			else:
+				_decelerate(delta)
+				if has_target and distance <= ai.aggro_range:
+					_set_phase(Phase.CHASE)
 		Phase.CHASE:
 			_update_chase(delta, to_player, distance, has_target)
 		Phase.ATTACK:
@@ -394,7 +417,7 @@ func on_stomped() -> bool:
 # --- Phases -----------------------------------------------------------------------------------
 
 func _update_chase(delta: float, to_player: Vector3, distance: float, has_target: bool) -> void:
-	if not has_target or distance > ai.aggro_range * 1.5:
+	if not has_target or distance > ai.aggro_range * 1.5 or _is_out_of_reach():
 		_set_phase(Phase.IDLE)
 		return
 	_face(to_player, delta, ai.turn_speed)
@@ -928,20 +951,70 @@ func _stand_down() -> void:
 	if _stood_down:
 		return
 	_stood_down = true
+	_stand_down_was_combat = phase != Phase.IDLE
 	_abort_attack()
 	drop_guard()
 	_defense.riposte_pending = false
 	_end_pose()
 	if phase != Phase.FLINCH and phase != Phase.COUNTERED and phase != Phase.STUNNED:
 		_set_phase(Phase.IDLE)
+	if _awareness != null:
+		_awareness.reset()
 
 
 ## The player came back (a resurrection): the enemy keeps its health and posture, and starts with a
 ## short yield (it keeps its distance and circles) instead of rushing in.
 func _stand_down_ended() -> void:
 	_stood_down = false
-	if phase == Phase.IDLE:
+	if phase == Phase.IDLE and (_awareness == null or _stand_down_was_combat):
 		_start_yield()
+
+
+## The player this enemy is tracking (null before it was found). The awareness helper reads it.
+func get_target() -> Node3D:
+	return _player
+
+
+## It spotted the player or was hit while unaware: it enters combat after a short reaction time, and shouts.
+func _enter_combat() -> void:
+	if _awareness != null:
+		_awareness.on_spotted()
+	_think_timer = maxf(_think_timer, ai.spot_reaction_time)
+	_set_phase(Phase.CHASE)
+
+
+## Another enemy shouted (EnemyAwareness): `player_position` is where the player is.
+func hear_shout(player_position: Vector3, close: bool) -> void:
+	if _awareness != null and phase == Phase.IDLE and not combatant.dead:
+		_awareness.hear_shout(player_position, close)
+
+
+## What the awareness HUD draws: the meter (0 to 1), the level, whether it is in combat, and a stamp that changes
+## every time it spots the player. Empty when it has no awareness or is dead.
+func get_awareness_info() -> Dictionary:
+	if _awareness == null or combatant.dead:
+		return {}
+	return {
+		"meter": _awareness.meter,
+		"level": int(_awareness.level),
+		"combat": phase != Phase.IDLE,
+		"stamp": _awareness.spotted_stamp,
+	}
+
+
+## One line for the debug overlay.
+func get_awareness_debug() -> String:
+	if _awareness == null or combatant.dead:
+		return ""
+	if phase != Phase.IDLE:
+		return "%s COMBAT" % name
+	return _awareness.debug_text()
+
+
+## True when the player is on another level than this enemy can follow (no pathfinding, item 7a).
+func _is_out_of_reach() -> bool:
+	return _awareness != null and _player != null \
+			and absf(_player.global_position.y - global_position.y) > ai.max_vertical_reach + 1.0
 
 
 ## The boss HUD (BossHud) asks these: a boss is engaged once it has noticed the player (it left IDLE),
@@ -992,6 +1065,9 @@ func _apply_gravity(delta: float) -> void:
 
 
 func _move_toward_velocity(target: Vector3, delta: float) -> void:
+	# The edge guard (item 7a): an awareness enemy does not walk off a ledge.
+	if _awareness != null and target.length_squared() > 0.0001 and not _awareness.edge_safe(target):
+		target = Vector3.ZERO
 	velocity.x = move_toward(velocity.x, target.x, ai.acceleration * delta)
 	velocity.z = move_toward(velocity.z, target.z, ai.acceleration * delta)
 
@@ -1003,9 +1079,17 @@ func _decelerate(delta: float) -> void:
 func _set_phase(new_phase: Phase) -> void:
 	if debug_log and OS.is_debug_build() and new_phase != phase:
 		print("[Enemy] %s -> %s" % [Phase.keys()[phase], Phase.keys()[new_phase]])
+	var old_phase := phase
 	phase = new_phase
 	if not EnemyDefense.phase_allows_guard(new_phase):
 		drop_guard()
+	if _awareness != null:
+		if new_phase != Phase.IDLE:
+			_awareness.hide_symbol()
+		elif old_phase != Phase.IDLE and not _stood_down and not combatant.dead and _player != null:
+			# It lost the player in combat: it goes to where it last saw it and searches.
+			drop_guard()
+			_awareness.begin_search(_player.global_position)
 
 
 func _return_to_spawn() -> void:
@@ -1018,6 +1102,9 @@ func _return_to_spawn() -> void:
 
 ## An unguarded hit landed: the recoil wobble always, a flinch if this moment allows it.
 func _on_damaged(hit: HitData, _amount: float) -> void:
+	# A hit on an enemy that had not noticed the player: it notices at once (item 7a).
+	if _awareness != null and phase == Phase.IDLE and not combatant.dead:
+		_enter_combat()
 	_defense.on_unguarded_hit()
 	_recoil = 1.0
 	_recoil_scale = 1.0
@@ -1088,6 +1175,8 @@ func _on_died() -> void:
 	if boss and ai != null:
 		# Step 11d: the VictoryScreen (group "victory_screen") shows the boss-slain banner.
 		get_tree().call_group(Groups.VICTORY_SCREEN, "show_victory", ai.victory_kanji, ai.victory_text)
+	if _awareness != null:
+		_awareness.reset()
 	_abort_attack()
 	drop_guard()
 	_defense.riposte_pending = false
@@ -1111,3 +1200,5 @@ func _on_died() -> void:
 	_peril_history.clear()
 	_think_timer = 0.5
 	_set_phase(Phase.IDLE)
+	if _awareness != null:
+		_awareness.reset()

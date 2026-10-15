@@ -43,6 +43,20 @@ func _ready() -> void:
 		_create_ledge_marker.call_deferred()
 
 
+## One line per enemy that has awareness (item 7a): its level, meter and whether it sees the player.
+func _awareness_text() -> String:
+	var lines: PackedStringArray = []
+	for node: Node3D in Enemies.all():
+		var enemy := node as Enemy
+		if enemy != null and enemy.use_awareness:
+			var line := enemy.get_awareness_debug()
+			if not line.is_empty():
+				lines.append(line)
+	if lines.is_empty():
+		return ""
+	return "Awareness:\n  " + "\n  ".join(lines)
+
+
 func _process(_delta: float) -> void:
 	var machine := _player.state_machine
 	var text := "State: %s\nInvulnerable: %s" % [machine.get_current_name(), _player.invulnerable]
@@ -73,6 +87,9 @@ func _process(_delta: float) -> void:
 			"in reach" if _player.find_deathblow_target() != null else "-",
 		]
 	text += "\n" + _player.lock_on.get_debug_text()
+	var aware_text := _awareness_text()
+	if not aware_text.is_empty():
+		text += "\n" + aware_text
 	var stagger_state := machine.current as StaggerState
 	if stagger_state != null:
 		text += "\nSTAGGER: %.1f / %.1f s  dodge %s  (x%.1f damage)" % [
