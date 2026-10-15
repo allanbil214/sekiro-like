@@ -6,7 +6,7 @@
 script = ExtResource("1_data")
 display_name = "Stealth Compound"
 scene_path = "res://scenes/arena/stealth_compound.tscn"
-description = "A walled courtyard with five guards who see and hear: they patrol, search and call for help. Crouch to stay quiet, break their line of sight behind the walls and crates. Ground floor only for now."
+description = "A walled courtyard with five guards who see and hear: they patrol, search and call for help. Crouch to stay quiet, break their line of sight behind the walls and crates. Climb to the catwalks and the roof, drop on a guard from above, and find the monk at the far end."
 category = 3
 debug_only = false
 sort_order = 0

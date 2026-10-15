@@ -18,6 +18,12 @@ func physics_update(delta: float) -> void:
 	if player.input_buffer.has_pressed(Actions.GUARD):
 		machine.transition_to(StateName.GUARD)
 		return
+	# Death from above (item 7c): an attack press over a stealth target plunges onto it.
+	if player.weapon != null and player.input_buffer.has_pressed(Actions.ATTACK, player.aerial_kill_buffer_time):
+		var aerial_target := player.find_aerial_target()
+		if aerial_target != null:
+			player.begin_aerial_kill(aerial_target)
+			return
 	# Attack in the air starts the air tap loop. Close to the ground the press stays buffered,
 	# so landing turns it into a ground attack instead.
 	if player.weapon != null and player.input_buffer.has_pressed(Actions.ATTACK) \

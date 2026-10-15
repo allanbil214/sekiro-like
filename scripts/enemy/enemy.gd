@@ -1003,7 +1003,8 @@ func _update_stealth_marker(delta: float) -> void:
 	if _awareness == null:
 		return
 	var player := _player as Player
-	bar.set_stealth_marker(player != null and can_be_stealth_killed() and player.can_stealth_kill(self))
+	bar.set_stealth_marker(player != null and can_be_stealth_killed() \
+			and (player.can_stealth_kill(self) or player.can_aerial_kill(self)))
 
 
 ## Another enemy shouted (EnemyAwareness): `player_position` is where the player is.

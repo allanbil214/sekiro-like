@@ -1,10 +1,11 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="Script" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
 [ext_resource type="PackedScene" path="res://scenes/enemy/enemy.tscn" id="3_enemy"]
 [ext_resource type="Resource" path="res://ai/enemy_soldier.tres" id="4_soldier"]
 [ext_resource type="Resource" path="res://ai/enemy_duelist.tres" id="5_duelist"]
+[ext_resource type="Resource" path="res://ai/enemy_monk.tres" id="6_monk"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -29,6 +30,12 @@ albedo_color = Color(0.62, 0.6, 0.58, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_crate"]
 albedo_color = Color(0.75, 0.55, 0.32, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_catwalk"]
+albedo_color = Color(0.36, 0.4, 0.46, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ramp"]
+albedo_color = Color(0.5, 0.45, 0.38, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_wall_ns"]
 size = Vector3(48, 40, 1)
@@ -219,6 +226,14 @@ position = Vector3(-10, 0, -17)
 [node name="P2" type="Marker3D" parent="Patrols/PathC"]
 position = Vector3(10, 0, -17)
 
+[node name="PathD" type="Node3D" parent="Patrols"]
+
+[node name="P1" type="Marker3D" parent="Patrols/PathD"]
+position = Vector3(-14, 4.01, -17)
+
+[node name="P2" type="Marker3D" parent="Patrols/PathD"]
+position = Vector3(0, 4.01, -17)
+
 [node name="StartSign" type="Label3D" parent="."]
 position = Vector3(0, 3.4, 17)
 pixel_size = 0.01
@@ -259,6 +274,112 @@ patrol_path = NodePath("../Patrols/PathC")
 position = Vector3(17, 0, 12)
 rotation = Vector3(0, 1.5708, 0)
 ai = ExtResource("4_soldier")
+respawn_delay = 4.0
+use_awareness = true
+
+[node name="MidLevel" type="Node3D" parent="."]
+
+[node name="CatwalkWest" type="CSGBox3D" parent="MidLevel"]
+position = Vector3(-19, 3.8, -2.5)
+use_collision = true
+size = Vector3(4, 0.4, 33)
+material = SubResource("Mat_catwalk")
+
+[node name="CatwalkNorth" type="CSGBox3D" parent="MidLevel"]
+position = Vector3(-8.5, 3.8, -17)
+use_collision = true
+size = Vector3(25, 0.4, 4)
+material = SubResource("Mat_catwalk")
+
+[node name="RampMid" type="CSGBox3D" parent="MidLevel"]
+transform = Transform3D(1, 0, 0, 0, 0.8944, -0.4472, 0, 0.4472, 0.8944, -19, 1.8211, 17.9106)
+use_collision = true
+size = Vector3(4, 0.4, 8.9443)
+material = SubResource("Mat_ramp")
+
+[node name="LedgeStep" type="CSGBox3D" parent="MidLevel"]
+position = Vector3(-12, 0.8, -14)
+use_collision = true
+size = Vector3(2, 1.6, 2)
+material = SubResource("Mat_crate")
+
+[node name="ShaftWallA" type="CSGBox3D" parent="MidLevel"]
+position = Vector3(-9, 2.3, -13.8)
+use_collision = true
+size = Vector3(0.4, 4.6, 2.4)
+material = SubResource("Mat_wall")
+
+[node name="ShaftWallB" type="CSGBox3D" parent="MidLevel"]
+position = Vector3(-6.6, 2.3, -13.8)
+use_collision = true
+size = Vector3(0.4, 4.6, 2.4)
+material = SubResource("Mat_wall")
+
+[node name="Roof" type="Node3D" parent="."]
+
+[node name="RoofPlatform" type="CSGBox3D" parent="Roof"]
+position = Vector3(17, 7.8, -17)
+use_collision = true
+size = Vector3(10, 0.4, 10)
+material = SubResource("Mat_catwalk")
+
+[node name="RampRoof" type="CSGBox3D" parent="Roof"]
+transform = Transform3D(0.8944, -0.4472, 0, 0.4472, 0.8944, 0, 0, 0, 1, 8.0894, 5.8211, -17)
+use_collision = true
+size = Vector3(8.9443, 0.4, 4)
+material = SubResource("Mat_ramp")
+
+[node name="MidSign" type="Label3D" parent="."]
+position = Vector3(-19, 3.4, 21)
+pixel_size = 0.01
+billboard = 1
+font_size = 56
+outline_size = 12
+text = "MID LEVEL (4 m)\nWalk up this ramp, or use the ledge step and\nthe wall-jump shaft on the north side.\nDrop onto a guard from above."
+
+[node name="ShaftSign" type="Label3D" parent="."]
+position = Vector3(-7.8, 6.2, -11.5)
+pixel_size = 0.01
+billboard = 1
+font_size = 56
+outline_size = 12
+text = "WALL-JUMP SHAFT"
+
+[node name="RoofSign" type="Label3D" parent="."]
+position = Vector3(17, 10.2, -13)
+pixel_size = 0.01
+billboard = 1
+font_size = 56
+outline_size = 12
+text = "ROOF (8 m)\nA lookout, and the boss at the far end."
+
+[node name="Guard6" parent="." instance=ExtResource("3_enemy")]
+position = Vector3(-14, 4.01, -17)
+ai = ExtResource("4_soldier")
+respawn_delay = 4.0
+use_awareness = true
+patrol_path = NodePath("../Patrols/PathD")
+
+[node name="Guard7" parent="." instance=ExtResource("3_enemy")]
+position = Vector3(-19, 4.01, -2)
+rotation = Vector3(0, -1.5708, 0)
+ai = ExtResource("5_duelist")
+respawn_delay = 4.0
+use_awareness = true
+
+[node name="Guard8" parent="." instance=ExtResource("3_enemy")]
+position = Vector3(17, 8.01, -13.5)
+rotation = Vector3(0, 3.1416, 0)
+ai = ExtResource("4_soldier")
+respawn_delay = 4.0
+use_awareness = true
+
+[node name="BossMonk" parent="." instance=ExtResource("3_enemy")]
+position = Vector3(19, 8.01, -17)
+rotation = Vector3(0, 1.5708, 0)
+ai = ExtResource("6_monk")
+boss = true
+display_name = "Monk"
 respawn_delay = 4.0
 use_awareness = true
 

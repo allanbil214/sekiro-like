@@ -183,6 +183,14 @@ var sheathed: bool = false
 @export var stealth_kill_height: float = 1.2
 ## How far (m) the stealth deathblow can be heard while it plays (instead of the loud action radius).
 @export var noise_stealth_kill: float = 3.0
+## Death from above (item 7c): a fresh attack press in the air (within `aerial_kill_buffer_time`) while falling
+## or near the apex (`aerial_kill_max_rise` m/s up at most) over a stealth target within `aerial_kill_range`
+## (m, flat) and between `aerial_kill_min_height` and `aerial_kill_max_height` (m) above its feet.
+@export var aerial_kill_range: float = 3.0
+@export var aerial_kill_min_height: float = 1.5
+@export var aerial_kill_max_height: float = 12.0
+@export var aerial_kill_max_rise: float = 1.0
+@export var aerial_kill_buffer_time: float = 0.25
 @export_group("Posture and deathblow")
 ## A deathblow needs an enemy with an open window within this distance (m, flat, center to center) ...
 ## (Personal space keeps you about 2 m from a living enemy, so this leaves room to be pushed or to drift.)
@@ -291,6 +299,8 @@ var _reach_arms: ReachArms
 var deathblow_target: Node3D
 ## True when the deathblow in progress is a stealth kill (item 7b).
 var deathblow_stealth: bool = false
+## True when it is a death from above (item 7c): the deathblow starts with a plunge onto the target.
+var deathblow_aerial: bool = false
 var _stagger_pending: bool = false
 ## Forced movement (knockback, head slide, personal space) and the placeholder body reactions (the hit
 ## wobble, the lean, the kneel), Phase 1.5 item 5c.
@@ -920,6 +930,47 @@ func can_stealth_kill(enemy: Enemy) -> bool:
 	return true
 
 
+## Item 7c: the nearest enemy a death from above could land on right now, or null.
+func find_aerial_target() -> Node3D:
+	var best: Node3D = null
+	var best_distance := aerial_kill_range
+	for node: Node in Enemies.all():
+		var enemy := node as Enemy
+		if enemy == null or not can_aerial_kill(enemy):
+			continue
+		var to_enemy := enemy.global_position - global_position
+		to_enemy.y = 0.0
+		var distance := to_enemy.length()
+		if distance <= best_distance:
+			best = enemy
+			best_distance = distance
+	return best
+
+
+## Item 7c: in the Air state, falling or near the apex, above `enemy` (flat range and height band), and `enemy`
+## can be stealth-killed (Enemy.can_be_stealth_killed).
+func can_aerial_kill(enemy: Enemy) -> bool:
+	if not (state_machine.current is AirState) or is_on_floor() or velocity.y > aerial_kill_max_rise:
+		return false
+	if not enemy.can_be_stealth_killed():
+		return false
+	var to_enemy := enemy.global_position - global_position
+	var height := -to_enemy.y
+	if height < aerial_kill_min_height or height > aerial_kill_max_height:
+		return false
+	to_enemy.y = 0.0
+	return to_enemy.length() <= aerial_kill_range
+
+
+## Item 7c: called by AirState on a fresh attack press when find_aerial_target() found `target`.
+func begin_aerial_kill(target: Node3D) -> void:
+	input_buffer.clear(Actions.ATTACK)
+	deathblow_target = target
+	deathblow_stealth = true
+	deathblow_aerial = true
+	state_machine.transition_to(StateName.DEATHBLOW)
+
+
 ## A fresh attack press next to a stunned enemy is a deathblow, not a normal attack.
 func _try_deathblow() -> void:
 	if weapon == null or not input_buffer.has_pressed(Actions.ATTACK, deathblow_buffer_time) or not is_on_floor():
@@ -944,6 +995,7 @@ func _try_deathblow() -> void:
 	input_buffer.clear(Actions.ATTACK)
 	deathblow_target = target
 	deathblow_stealth = stealth
+	deathblow_aerial = false
 	state_machine.transition_to(StateName.DEATHBLOW)
 
 
