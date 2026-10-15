@@ -1211,3 +1211,22 @@ A refactor with no gameplay change. Tested and verified by the user 2026-10-13.
 **Not done.** The stealth deathblow (7b), the upper levels, lookout and boss (7c), stealth tips on the loading screens (the context is `stealth`), a screen-edge indicator, and any change to the combat tuning.
 
 **Noticed, not fixed.** `DeathblowState` is an `ActionState`, so a deathblow counts as a loud action (`noise_action`); 7b may want a quieter stealth kill. Guards that were hit and then lose the player search from where the player was last, not where the hit came from. Respawned guards walk their patrol from their spawn. Tested by the user, 2026-10-15.
+
+### Phase 2 item 7b: the stealth deathblow (2026-10-15)
+
+**Decisions (agreed in the full check).** No crouch and no angle are needed. A fresh attack press kills silently when the enemy has `use_awareness` and either is in `Phase.IDLE` (unaware, suspicious or searching) or spotted the player less than `EnemyAIData.stealth_grace_time` (0.35 s) ago, still inside its 0.4 s reaction pause. A hit ends the grace at once. The player must be on the floor (any stance), within `Player.stealth_kill_range` 2.2 m flat and `stealth_kill_height` 1.2 m, facing it within `deathblow_facing_degrees`. A normal deathblow target keeps priority. A non-boss dies outright whatever its bars; a boss loses one bar; a boss on its last bar goes to empty health and opens the normal deathblow window; a boss that survives turns to combat (the detected sound and the shout). While it plays the noise is `Player.noise_stealth_kill` (3 m) instead of `noise_action` (8 m), which closes the 7a note that a deathblow was a loud action.
+
+**What exists.**
+- `Enemy.can_be_stealth_killed()` (awareness on, not dead, no open window, not stood down; `Phase.IDLE`, or `Phase.CHASE` while `_stealth_grace_left` > 0). `_enter_combat(by_hit)` sets the grace (0 for a hit); `_on_damaged` clears it.
+- `Player.find_stealth_target()` and `can_stealth_kill(enemy)`; `_try_deathblow()` calls the first when `find_deathblow_target()` finds nothing and sets `Player.deathblow_stealth`. `Player.get_noise_radius()` reads it.
+- `DeathblowState` remembers the flag on entry and, at the strike time, calls `Combatant.execute_stealth_kill()` instead of `execute_deathblow()`. Once committed, the strike lands even if the grace runs out during the step; the player is invulnerable during it as before.
+- `Combatant.execute_stealth_kill()` and `stealth_kill_active` (true only while it runs). If a window is already open it is a normal deathblow. A non-boss emits `deathblow_closed(true, true)` and `died` (the blood jet and recoil come from the existing handler). On a boss, `Enemy._on_deathblow_closed` or `_on_deathblow_opened` checks the flag: a surviving boss enters combat, and a last-bar boss calls `on_spotted()` (sound and shout) while it is stunned.
+- `EnemyBar.set_stealth_marker(on)`: the existing red marker is now shown when the deathblow window is open or the stealth marker is on (`_refresh_marker()`). `Enemy._update_stealth_marker()` sets it each frame, and clears it on death. `DebugOverlay` has a "Stealth target: in reach" line.
+
+**Files.** Changed: `scripts/player/player.gd`, `scripts/combat/combatant.gd`, `scripts/enemy/enemy.gd`, `scripts/player/states/deathblow_state.gd`, `scripts/ui/enemy_bar.gd`, `scripts/ui/debug_overlay.gd`, `resources/enemy_ai_data.gd`. No new files, no scenes, no `.tres` (the new exports take their script defaults).
+
+**Rules that are not obvious from the code.** The marker and the kill use the same check, so the marker is the promise. The grace counts down in game time (`delta`), so hitstop stretches it slightly. Only enemies with awareness can be stealth-killed; the `Dummy` and every other arena behave as before. The grace is set only when the enemy spots the player by sight or sound, never by a hit.
+
+**Not done.** The upper levels, the lookout and the boss, and the death from above (7c); corpse discovery (7d); a separate stealth-kill animation (it reuses the deathblow thrust or the draw slash); kills on an ALERT enemy that sees you (that is combat).
+
+**Noticed, not fixed.** An attack press (buffered for `deathblow_buffer_time`, 0.4 s) next to an unaware enemy always becomes the stealth kill, so a plain attack cannot be used to wake one on purpose. Every kill is silent but the "detected" sound and the shout still happen for a surviving boss. Tested by the user, 2026-10-15.
