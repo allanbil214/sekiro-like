@@ -52,6 +52,16 @@ func _awareness_text() -> String:
 			var line := enemy.get_awareness_debug()
 			if not line.is_empty():
 				lines.append(line)
+	var bodies := 0
+	var unseen := 0
+	for node: Node3D in Enemies.all():
+		var body := node as Enemy
+		if body != null and body.is_corpse():
+			bodies += 1
+			if not body.corpse_discovered:
+				unseen += 1
+	if bodies > 0:
+		lines.append("Corpses: %d (%d undiscovered)" % [bodies, unseen])
 	if lines.is_empty():
 		return ""
 	return "Awareness:\n  " + "\n  ".join(lines)
@@ -121,8 +131,12 @@ func _process(_delta: float) -> void:
 	var helm_state := machine.current as HelmSplitterState
 	if helm_state != null:
 		text += "\n" + helm_state.get_debug_text()
+	if not show_debug_text:
+		text = ""
+	if _player.debug_undetectable:
+		text = "UNDETECTABLE (F4)" + ("\n" + text if not text.is_empty() else "")
 	_label.text = text
-	_label.visible = show_debug_text
+	_label.visible = not text.is_empty()
 	if _body != null:
 		if tint_on_iframes and _player.invulnerable:
 			_body.material_override = _tint_material

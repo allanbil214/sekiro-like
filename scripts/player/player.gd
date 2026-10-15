@@ -190,6 +190,10 @@ var sheathed: bool = false
 @export var aerial_kill_range: float = 3.0
 @export var aerial_kill_min_height: float = 1.5
 @export var aerial_kill_buffer_time: float = 0.25
+@export_group("Debug")
+## Debug: nobody can notice this player (no noise, no sight or hearing fill, no aggro range); a guard already
+## in combat keeps fighting and a hit still alerts. Toggled with F4 in a debug build while playing.
+@export var debug_undetectable: bool = false
 @export_group("Posture and deathblow")
 ## A deathblow needs an enemy with an open window within this distance (m, flat, center to center) ...
 ## (Personal space keeps you about 2 m from a living enemy, so this leaves room to be pushed or to drift.)
@@ -406,6 +410,8 @@ func _physics_process(delta: float) -> void:
 ## How far (m) the player can be heard right now (item 7a): the loudest of the current movement, any action,
 ## and a recent spike (`make_noise`). Enemies with awareness read this every frame.
 func get_noise_radius() -> float:
+	if debug_undetectable:
+		return 0.0
 	var radius := 0.0
 	var current := state_machine.current
 	if current is DeathblowState and deathblow_stealth:
@@ -927,6 +933,14 @@ func can_stealth_kill(enemy: Enemy) -> bool:
 			< cos(deg_to_rad(deathblow_facing_degrees * 0.5)):
 		return false
 	return true
+
+
+## F4 flips `debug_undetectable` (debug builds only, the editor counts as one).
+func _unhandled_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key != null and key.pressed and not key.echo and key.keycode == KEY_F4 and OS.is_debug_build():
+		debug_undetectable = not debug_undetectable
+		get_viewport().set_input_as_handled()
 
 
 ## Item 7c: the nearest enemy a death from above could land on right now, or null.

@@ -256,6 +256,15 @@ extends Resource
 @export var scan_period: float = 6.0
 ## An enemy that enters combat makes unaware allies inside this distance (m) suspicious (alert inside half of it).
 @export var shout_radius: float = 10.0
+## Corpse discovery (item 7d). What a guard does when it finds a body: SUSPICIOUS (the default) it turns suspicious,
+## looks at it and creeps over; ALERT it goes alert and searches around it; ALARM as ALERT, and allies inside
+## `shout_radius` turn suspicious. A later difficulty option can set this per preset.
+enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
+## On: an unaware guard notices a body (see Enemy.leaves_corpse) inside `corpse_sight_range` (m), in its view
+## cone and with a clear line, and reacts at once. A body is discovered once, by the first guard that sees it.
+@export var notices_corpses: bool = true
+@export var corpse_sight_range: float = 10.0
+@export var corpse_reaction: CorpseReaction = CorpseReaction.SUSPICIOUS
 ## It has no pathfinding: it only walks, chases and searches toward a spot within this height difference (m);
 ## from another level it stands and watches. Chasing gives up past this + 1 m.
 @export var max_vertical_reach: float = 3.0

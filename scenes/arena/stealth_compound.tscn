@@ -1,11 +1,10 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene format=3 uid="uid://dxta6pv0ru7oc"]
 
-[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
-[ext_resource type="Script" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
-[ext_resource type="PackedScene" path="res://scenes/enemy/enemy.tscn" id="3_enemy"]
-[ext_resource type="Resource" path="res://ai/enemy_soldier.tres" id="4_soldier"]
-[ext_resource type="Resource" path="res://ai/enemy_duelist.tres" id="5_duelist"]
-[ext_resource type="Resource" path="res://ai/enemy_monk.tres" id="6_monk"]
+[ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="Script" uid="uid://cckm17n0luvoa" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
+[ext_resource type="PackedScene" uid="uid://bwl4ivdc22duh" path="res://scenes/enemy/enemy.tscn" id="3_enemy"]
+[ext_resource type="Resource" uid="uid://dkn2mp6tq5nlj" path="res://ai/enemy_soldier.tres" id="4_soldier"]
+[ext_resource type="Resource" uid="uid://bw24ehgay8ov3" path="res://ai/enemy_monk.tres" id="6_monk"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -22,6 +21,15 @@ glow_enabled = true
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.5, 0.5, 0.52, 1)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ns"]
+size = Vector3(48, 40, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ew"]
+size = Vector3(1, 40, 46)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fall"]
+size = Vector3(140, 4, 140)
+
 [sub_resource type="StandardMaterial3D" id="Mat_wall"]
 albedo_color = Color(0.42, 0.4, 0.44, 1)
 
@@ -37,351 +45,338 @@ albedo_color = Color(0.36, 0.4, 0.46, 1)
 [sub_resource type="StandardMaterial3D" id="Mat_ramp"]
 albedo_color = Color(0.5, 0.45, 0.38, 1)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ns"]
-size = Vector3(48, 40, 1)
+[node name="StealthCompound" type="Node3D" unique_id=1439096103]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ew"]
-size = Vector3(1, 40, 46)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_fall"]
-size = Vector3(140, 4, 140)
-
-[node name="StealthCompound" type="Node3D"]
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2009582445]
 environment = SubResource("Environment_main")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1626643095]
 transform = Transform3D(0.81729025, -0.4414149, 0.3703911, 0, 0.64278764, 0.76604444, -0.57622623, -0.62608063, 0.5253441, 0, 10.818325, 12.643993)
 shadow_enabled = true
 
-[node name="Floor" type="CSGBox3D" parent="."]
-position = Vector3(0, -0.5, 0)
+[node name="Floor" type="CSGBox3D" parent="." unique_id=1898979366]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 use_collision = true
 size = Vector3(46, 1, 46)
 material = SubResource("Mat_floor")
 
-[node name="InvisibleWalls" type="Node3D" parent="."]
+[node name="InvisibleWalls" type="Node3D" parent="." unique_id=1322760191]
 
-[node name="WallNorth" type="StaticBody3D" parent="InvisibleWalls"]
-position = Vector3(0, 20, -23.5)
+[node name="WallNorth" type="StaticBody3D" parent="InvisibleWalls" unique_id=1517558469]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, -23.5)
 collision_layer = 32
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallNorth"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallNorth" unique_id=1553973781]
 shape = SubResource("BoxShape3D_wall_ns")
 
-[node name="WallSouth" type="StaticBody3D" parent="InvisibleWalls"]
-position = Vector3(0, 20, 23.5)
+[node name="WallSouth" type="StaticBody3D" parent="InvisibleWalls" unique_id=1943123041]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, 23.5)
 collision_layer = 32
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallSouth"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallSouth" unique_id=751963643]
 shape = SubResource("BoxShape3D_wall_ns")
 
-[node name="WallEast" type="StaticBody3D" parent="InvisibleWalls"]
-position = Vector3(23.5, 20, 0)
+[node name="WallEast" type="StaticBody3D" parent="InvisibleWalls" unique_id=49836589]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.5, 20, 0)
 collision_layer = 32
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallEast"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallEast" unique_id=1470216284]
 shape = SubResource("BoxShape3D_wall_ew")
 
-[node name="WallWest" type="StaticBody3D" parent="InvisibleWalls"]
-position = Vector3(-23.5, 20, 0)
+[node name="WallWest" type="StaticBody3D" parent="InvisibleWalls" unique_id=1841858376]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23.5, 20, 0)
 collision_layer = 32
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallWest"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallWest" unique_id=1709092565]
 shape = SubResource("BoxShape3D_wall_ew")
 
-[node name="FallZone" type="Area3D" parent="."]
-position = Vector3(0, -12, 0)
+[node name="FallZone" type="Area3D" parent="." unique_id=714113858]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, 0)
 script = ExtResource("2_fall")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone" unique_id=1564661495]
 shape = SubResource("BoxShape3D_fall")
 
-[node name="Cover" type="Node3D" parent="."]
+[node name="Cover" type="Node3D" parent="." unique_id=1342965671]
 
-[node name="WallW1" type="CSGBox3D" parent="Cover"]
-position = Vector3(-8, 1.5, 8)
+[node name="WallW1" type="CSGBox3D" parent="Cover" unique_id=2126333699]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1.5, 8)
 use_collision = true
 size = Vector3(8, 3, 0.6)
 material = SubResource("Mat_wall")
 
-[node name="WallW2" type="CSGBox3D" parent="Cover"]
-position = Vector3(8, 1.5, 8)
+[node name="WallW2" type="CSGBox3D" parent="Cover" unique_id=160552428]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1.5, 8)
 use_collision = true
 size = Vector3(8, 3, 0.6)
 material = SubResource("Mat_wall")
 
-[node name="WallW3" type="CSGBox3D" parent="Cover"]
-position = Vector3(-14, 1.5, -8)
+[node name="WallW3" type="CSGBox3D" parent="Cover" unique_id=966349376]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 1.5, -8)
 use_collision = true
 size = Vector3(0.6, 3, 10)
 material = SubResource("Mat_wall")
 
-[node name="WallW4" type="CSGBox3D" parent="Cover"]
-position = Vector3(14, 1.5, -8)
+[node name="WallW4" type="CSGBox3D" parent="Cover" unique_id=46059760]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.5, -8)
 use_collision = true
 size = Vector3(0.6, 3, 10)
 material = SubResource("Mat_wall")
 
-[node name="WallW5" type="CSGBox3D" parent="Cover"]
-position = Vector3(0, 1.5, -20)
+[node name="WallW5" type="CSGBox3D" parent="Cover" unique_id=1280396103]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -20)
 use_collision = true
 size = Vector3(12, 3, 0.6)
 material = SubResource("Mat_wall")
 
-[node name="Pillar1" type="CSGBox3D" parent="Cover"]
-position = Vector3(-10, 2, -2)
+[node name="Pillar1" type="CSGBox3D" parent="Cover" unique_id=1371668795]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 2, -2)
 use_collision = true
 size = Vector3(1, 4, 1)
 material = SubResource("Mat_pillar")
 
-[node name="Pillar2" type="CSGBox3D" parent="Cover"]
-position = Vector3(10, 2, -2)
+[node name="Pillar2" type="CSGBox3D" parent="Cover" unique_id=1002603743]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 2, -2)
 use_collision = true
 size = Vector3(1, 4, 1)
 material = SubResource("Mat_pillar")
 
-[node name="Pillar3" type="CSGBox3D" parent="Cover"]
-position = Vector3(0, 2, -2)
+[node name="Pillar3" type="CSGBox3D" parent="Cover" unique_id=592430201]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -2)
 use_collision = true
 size = Vector3(1, 4, 1)
 material = SubResource("Mat_pillar")
 
-[node name="Crate1" type="CSGBox3D" parent="Cover"]
-position = Vector3(-6, 0.6, 14)
+[node name="Crate1" type="CSGBox3D" parent="Cover" unique_id=605993352]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.6, 14)
 use_collision = true
 size = Vector3(1.2, 1.2, 1.2)
 material = SubResource("Mat_crate")
 
-[node name="Crate2" type="CSGBox3D" parent="Cover"]
-position = Vector3(6, 0.6, 14)
+[node name="Crate2" type="CSGBox3D" parent="Cover" unique_id=920408110]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.6, 14)
 use_collision = true
 size = Vector3(1.2, 1.2, 1.2)
 material = SubResource("Mat_crate")
 
-[node name="Crate3" type="CSGBox3D" parent="Cover"]
-position = Vector3(-4, 0.6, -14)
+[node name="Crate3" type="CSGBox3D" parent="Cover" unique_id=1329800567]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.6, -14)
 use_collision = true
 size = Vector3(1.2, 1.2, 1.2)
 material = SubResource("Mat_crate")
 
-[node name="Crate4" type="CSGBox3D" parent="Cover"]
-position = Vector3(-2.7, 0.6, -14)
+[node name="Crate4" type="CSGBox3D" parent="Cover" unique_id=1314602896]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.7, 0.6, -14)
 use_collision = true
 size = Vector3(1.2, 1.2, 1.2)
 material = SubResource("Mat_crate")
 
-[node name="Crate5" type="CSGBox3D" parent="Cover"]
-position = Vector3(-3.35, 1.8, -14)
+[node name="Crate5" type="CSGBox3D" parent="Cover" unique_id=305586167]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.35, 1.8, -14)
 use_collision = true
 size = Vector3(1.2, 1.2, 1.2)
 material = SubResource("Mat_crate")
 
-[node name="Crate6" type="CSGBox3D" parent="Cover"]
-position = Vector3(12, 0.6, -16)
+[node name="Crate6" type="CSGBox3D" parent="Cover" unique_id=866667981]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.6, -16)
 use_collision = true
 size = Vector3(1.2, 1.2, 1.2)
 material = SubResource("Mat_crate")
 
-[node name="Crate7" type="CSGBox3D" parent="Cover"]
-position = Vector3(18, 0.6, 2)
+[node name="Crate7" type="CSGBox3D" parent="Cover" unique_id=1450422474]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0.6, 2)
 use_collision = true
 size = Vector3(1.2, 1.2, 1.2)
 material = SubResource("Mat_crate")
 
-[node name="Patrols" type="Node3D" parent="."]
+[node name="Patrols" type="Node3D" parent="." unique_id=928385]
 
-[node name="PathA" type="Node3D" parent="Patrols"]
+[node name="PathA" type="Node3D" parent="Patrols" unique_id=1994386338]
 
-[node name="P1" type="Marker3D" parent="Patrols/PathA"]
-position = Vector3(-2, 0, 2)
+[node name="P1" type="Marker3D" parent="Patrols/PathA" unique_id=1417557309]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 2)
 
-[node name="P2" type="Marker3D" parent="Patrols/PathA"]
-position = Vector3(-2, 0, -9)
+[node name="P2" type="Marker3D" parent="Patrols/PathA" unique_id=1717160188]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -9)
 
-[node name="P3" type="Marker3D" parent="Patrols/PathA"]
-position = Vector3(4, 0, -9)
+[node name="P3" type="Marker3D" parent="Patrols/PathA" unique_id=867287662]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -9)
 
-[node name="P4" type="Marker3D" parent="Patrols/PathA"]
-position = Vector3(4, 0, 2)
+[node name="P4" type="Marker3D" parent="Patrols/PathA" unique_id=849452154]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 2)
 
-[node name="PathB" type="Node3D" parent="Patrols"]
+[node name="PathB" type="Node3D" parent="Patrols" unique_id=1259468875]
 
-[node name="P1" type="Marker3D" parent="Patrols/PathB"]
-position = Vector3(-19, 0, 12)
+[node name="P1" type="Marker3D" parent="Patrols/PathB" unique_id=1833248701]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19, 0, 12)
 
-[node name="P2" type="Marker3D" parent="Patrols/PathB"]
-position = Vector3(-19, 0, -12)
+[node name="P2" type="Marker3D" parent="Patrols/PathB" unique_id=418540214]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19, 0, -12)
 
-[node name="PathC" type="Node3D" parent="Patrols"]
+[node name="PathC" type="Node3D" parent="Patrols" unique_id=2022495740]
 
-[node name="P1" type="Marker3D" parent="Patrols/PathC"]
-position = Vector3(-10, 0, -17)
+[node name="P1" type="Marker3D" parent="Patrols/PathC" unique_id=1623572921]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -17)
 
-[node name="P2" type="Marker3D" parent="Patrols/PathC"]
-position = Vector3(10, 0, -17)
+[node name="P2" type="Marker3D" parent="Patrols/PathC" unique_id=47790700]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -17)
 
-[node name="PathD" type="Node3D" parent="Patrols"]
+[node name="PathD" type="Node3D" parent="Patrols" unique_id=2029476020]
 
-[node name="P1" type="Marker3D" parent="Patrols/PathD"]
-position = Vector3(-14, 4.01, -17)
+[node name="P1" type="Marker3D" parent="Patrols/PathD" unique_id=201542514]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 4.01, -17)
 
-[node name="P2" type="Marker3D" parent="Patrols/PathD"]
-position = Vector3(0, 4.01, -17)
+[node name="P2" type="Marker3D" parent="Patrols/PathD" unique_id=1057454716]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.01, -17)
 
-[node name="StartSign" type="Label3D" parent="."]
-position = Vector3(0, 3.4, 17)
+[node name="StartSign" type="Label3D" parent="." unique_id=1186847870]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 17)
 pixel_size = 0.01
 billboard = 1
+text = "STEALTH COMPOUND
+GROUND FLOOR
+Crouch. Stay out of sight and earshot."
 font_size = 72
 outline_size = 14
-text = "STEALTH COMPOUND\nGROUND FLOOR\nCrouch. Stay out of sight and earshot."
 
-[node name="Guard1" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(-2, 0, 2)
+[node name="Guard1" parent="." unique_id=1311587439 instance=ExtResource("3_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 2)
 ai = ExtResource("4_soldier")
 respawn_delay = 4.0
 use_awareness = true
 patrol_path = NodePath("../Patrols/PathA")
 
-[node name="Guard2" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(-19, 0, 12)
+[node name="Guard2" parent="." unique_id=1663752426 instance=ExtResource("3_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19, 0, 12)
 ai = ExtResource("4_soldier")
 respawn_delay = 4.0
 use_awareness = true
 patrol_path = NodePath("../Patrols/PathB")
 
-[node name="Guard3" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(20, 0, 6)
-rotation = Vector3(0, 1.5708, 0)
+[node name="Guard3" parent="." unique_id=1483624332 instance=ExtResource("3_enemy")]
+transform = Transform3D(-0.69580024, 0, 0.7182354, 0, 1, 0, -0.7182354, 0, -0.69580024, 20, 0, 6)
 ai = ExtResource("4_soldier")
 respawn_delay = 4.0
 use_awareness = true
 
-[node name="Guard4" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(-10, 0, -17)
-ai = ExtResource("5_duelist")
+[node name="Guard4" parent="." unique_id=1073866911 instance=ExtResource("3_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -17)
 respawn_delay = 4.0
 use_awareness = true
 patrol_path = NodePath("../Patrols/PathC")
 
-[node name="Guard5" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(17, 0, 12)
-rotation = Vector3(0, 1.5708, 0)
+[node name="Guard5" parent="." unique_id=129483566 instance=ExtResource("3_enemy")]
+transform = Transform3D(-3.6199901e-06, 0, 1, 0, 1, 0, -1, 0, -3.6199901e-06, 17, 0, 12)
 ai = ExtResource("4_soldier")
 respawn_delay = 4.0
 use_awareness = true
 
-[node name="MidLevel" type="Node3D" parent="."]
+[node name="MidLevel" type="Node3D" parent="." unique_id=1390599624]
 
-[node name="CatwalkWest" type="CSGBox3D" parent="MidLevel"]
-position = Vector3(-19, 3.8, -2.5)
+[node name="CatwalkWest" type="CSGBox3D" parent="MidLevel" unique_id=64954326]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19, 3.8, -2.5)
 use_collision = true
 size = Vector3(4, 0.4, 33)
 material = SubResource("Mat_catwalk")
 
-[node name="CatwalkNorth" type="CSGBox3D" parent="MidLevel"]
-position = Vector3(-8.5, 3.8, -17)
+[node name="CatwalkNorth" type="CSGBox3D" parent="MidLevel" unique_id=335971792]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 3.8, -17)
 use_collision = true
 size = Vector3(25, 0.4, 4)
 material = SubResource("Mat_catwalk")
 
-[node name="RampMid" type="CSGBox3D" parent="MidLevel"]
+[node name="RampMid" type="CSGBox3D" parent="MidLevel" unique_id=311844019]
 transform = Transform3D(1, 0, 0, 0, 0.8944, -0.4472, 0, 0.4472, 0.8944, -19, 1.8211, 17.9106)
 use_collision = true
 size = Vector3(4, 0.4, 8.9443)
 material = SubResource("Mat_ramp")
 
-[node name="LedgeStep" type="CSGBox3D" parent="MidLevel"]
-position = Vector3(-12, 0.8, -14)
+[node name="LedgeStep" type="CSGBox3D" parent="MidLevel" unique_id=291714529]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.8, -14)
 use_collision = true
 size = Vector3(2, 1.6, 2)
 material = SubResource("Mat_crate")
 
-[node name="ShaftWallA" type="CSGBox3D" parent="MidLevel"]
-position = Vector3(-9, 2.3, -13.8)
+[node name="ShaftWallA" type="CSGBox3D" parent="MidLevel" unique_id=846271713]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 2.3, -13.8)
 use_collision = true
 size = Vector3(0.4, 4.6, 2.4)
 material = SubResource("Mat_wall")
 
-[node name="ShaftWallB" type="CSGBox3D" parent="MidLevel"]
-position = Vector3(-6.6, 2.3, -13.8)
+[node name="ShaftWallB" type="CSGBox3D" parent="MidLevel" unique_id=100005999]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.6, 2.3, -13.8)
 use_collision = true
 size = Vector3(0.4, 4.6, 2.4)
 material = SubResource("Mat_wall")
 
-[node name="Roof" type="Node3D" parent="."]
+[node name="Roof" type="Node3D" parent="." unique_id=139911259]
 
-[node name="RoofPlatform" type="CSGBox3D" parent="Roof"]
-position = Vector3(17, 7.8, -17)
+[node name="RoofPlatform" type="CSGBox3D" parent="Roof" unique_id=451700953]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 7.8, -17)
 use_collision = true
 size = Vector3(10, 0.4, 10)
 material = SubResource("Mat_catwalk")
 
-[node name="RampRoof" type="CSGBox3D" parent="Roof"]
+[node name="RampRoof" type="CSGBox3D" parent="Roof" unique_id=386028831]
 transform = Transform3D(0.8944, -0.4472, 0, 0.4472, 0.8944, 0, 0, 0, 1, 8.0894, 5.8211, -17)
 use_collision = true
 size = Vector3(8.9443, 0.4, 4)
 material = SubResource("Mat_ramp")
 
-[node name="MidSign" type="Label3D" parent="."]
-position = Vector3(-19, 3.4, 21)
+[node name="MidSign" type="Label3D" parent="." unique_id=1928227662]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19, 3.4, 21)
 pixel_size = 0.01
 billboard = 1
+text = "MID LEVEL (4 m)
+Walk up this ramp, or use the ledge step and
+the wall-jump shaft on the north side.
+Drop onto a guard from above."
 font_size = 56
-outline_size = 12
-text = "MID LEVEL (4 m)\nWalk up this ramp, or use the ledge step and\nthe wall-jump shaft on the north side.\nDrop onto a guard from above."
 
-[node name="ShaftSign" type="Label3D" parent="."]
-position = Vector3(-7.8, 6.2, -11.5)
+[node name="ShaftSign" type="Label3D" parent="." unique_id=281887555]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.8, 6.2, -11.5)
 pixel_size = 0.01
 billboard = 1
-font_size = 56
-outline_size = 12
 text = "WALL-JUMP SHAFT"
+font_size = 56
 
-[node name="RoofSign" type="Label3D" parent="."]
-position = Vector3(17, 10.2, -13)
+[node name="RoofSign" type="Label3D" parent="." unique_id=694776651]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 10.2, -13)
 pixel_size = 0.01
 billboard = 1
+text = "ROOF (8 m)
+A lookout, and the boss at the far end."
 font_size = 56
-outline_size = 12
-text = "ROOF (8 m)\nA lookout, and the boss at the far end."
 
-[node name="Guard6" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(-14, 4.01, -17)
+[node name="Guard6" parent="." unique_id=1448215692 instance=ExtResource("3_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 4.01, -17)
 ai = ExtResource("4_soldier")
 respawn_delay = 4.0
 use_awareness = true
 patrol_path = NodePath("../Patrols/PathD")
 
-[node name="Guard7" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(-19, 4.01, -2)
-rotation = Vector3(0, -1.5708, 0)
-ai = ExtResource("5_duelist")
+[node name="Guard7" parent="." unique_id=59074643 instance=ExtResource("3_enemy")]
+transform = Transform3D(-3.6199901e-06, 0, -1, 0, 1, 0, 1, 0, -3.6199901e-06, -19, 4.01, -2)
 respawn_delay = 4.0
 use_awareness = true
 
-[node name="Guard8" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(17, 8.01, -13.5)
-rotation = Vector3(0, 3.1416, 0)
+[node name="Guard8" parent="." unique_id=1016792173 instance=ExtResource("3_enemy")]
+transform = Transform3D(-1, 0, -7.2399803e-06, 0, 1, 0, 7.2399803e-06, 0, -1, 17, 8.01, -13.5)
 ai = ExtResource("4_soldier")
 respawn_delay = 4.0
 use_awareness = true
 
-[node name="BossMonk" parent="." instance=ExtResource("3_enemy")]
-position = Vector3(19, 8.01, -17)
-rotation = Vector3(0, 1.5708, 0)
+[node name="BossMonk" parent="." unique_id=231130830 instance=ExtResource("3_enemy")]
+transform = Transform3D(-3.6199901e-06, 0, 1, 0, 1, 0, -1, 0, -3.6199901e-06, 19, 8.01, -17)
 ai = ExtResource("6_monk")
+respawn_delay = 4.0
 boss = true
 display_name = "Monk"
-respawn_delay = 4.0
 use_awareness = true
 
-[node name="Player" parent="." instance=ExtResource("1_player")]
-position = Vector3(0, 0.01, 20)
+[node name="Player" parent="." unique_id=585354500 instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 20)

@@ -22,6 +22,8 @@ enum Level { UNAWARE, SUSPICIOUS, ALERT }
 
 ## Seconds between two line-of-sight checks (a ray each), and how far (m) a check is made at all.
 const LOS_INTERVAL: float = 0.1
+## Seconds between two looks for a body (item 7d).
+const CORPSE_INTERVAL: float = 0.2
 const LOS_RANGE: float = 22.0
 ## A patrol waypoint, post or search spot counts as reached this close (m).
 const ARRIVE_DISTANCE: float = 0.6
@@ -58,6 +60,7 @@ var _search_yaw: float = 0.0
 
 var _since_sensed: float = 99.0
 var _los_timer: float = 0.0
+var _corpse_timer: float = 0.0
 var _has_los: bool = false
 var _can_see: bool = false
 var _stuck: float = 0.0
@@ -89,9 +92,11 @@ func setup() -> void:
 ## Every physics frame while the enemy is in Phase.IDLE. Returns true when it spots the player.
 func update(delta: float, has_target: bool) -> bool:
 	_tick_symbol(delta)
+	if _ai.notices_corpses and level == Level.UNAWARE and _search_left <= 0.0:
+		_look_for_corpses(delta)
 	var target := _enemy.get_target()
 	var to_target := Vector3.ZERO
-	if has_target and target != null:
+	if has_target and target != null and not _is_undetectable(target):
 		to_target = target.global_position - _enemy.global_position
 		_sense(delta, target, to_target)
 	else:
@@ -195,6 +200,12 @@ func debug_text() -> String:
 
 # --- Senses -------------------------------------------------------------------------------------
 
+## The player's debug switch (F4): nothing is sensed.
+func _is_undetectable(target: Node3D) -> bool:
+	var player := target as Player
+	return player != null and player.debug_undetectable
+
+
 func _sense(delta: float, target: Node3D, to_target: Vector3) -> void:
 	var distance := to_target.length()
 	_los_timer -= delta
@@ -286,6 +297,63 @@ func _shout() -> void:
 		var distance := (other.global_position - _enemy.global_position).length()
 		if distance <= _ai.shout_radius:
 			other.hear_shout(where, distance <= _ai.shout_radius * 0.5)
+
+
+# --- Corpses (item 7d) ----------------------------------------------------------------------------
+
+## Every CORPSE_INTERVAL: the first undiscovered body inside `corpse_sight_range`, within `max_vertical_reach`
+## of height, in the view cone and with a clear line is marked discovered and reacted to.
+func _look_for_corpses(delta: float) -> void:
+	_corpse_timer -= delta
+	if _corpse_timer > 0.0:
+		return
+	_corpse_timer = CORPSE_INTERVAL
+	for node: Node3D in Enemies.all():
+		var other := node as Enemy
+		if other == null or other == _enemy or not other.is_undiscovered_corpse():
+			continue
+		var to_body := other.global_position - _enemy.global_position
+		if absf(to_body.y) > _ai.max_vertical_reach:
+			continue
+		var flat := Vector3(to_body.x, 0.0, to_body.z)
+		if flat.length() > _ai.corpse_sight_range or not _in_cone(flat):
+			continue
+		if not _line_to_point_is_clear(other.global_position + Vector3.UP * 0.4):
+			continue
+		other.mark_corpse_discovered()
+		_react_to_corpse(other.global_position)
+		return
+
+
+func _react_to_corpse(position: Vector3) -> void:
+	match _ai.corpse_reaction:
+		EnemyAIData.CorpseReaction.SUSPICIOUS:
+			hear_shout(position, false)
+		EnemyAIData.CorpseReaction.ALERT:
+			begin_search(position)
+		EnemyAIData.CorpseReaction.ALARM:
+			begin_search(position)
+			for node: Node3D in Enemies.all():
+				var other := node as Enemy
+				if other == null or other == _enemy or not other.use_awareness:
+					continue
+				if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
+					continue
+				if (other.global_position - _enemy.global_position).length() <= _ai.shout_radius:
+					other.hear_shout(position, false)
+
+
+## A ray from the enemy's eye to `point` hits only the world (the same rules as _line_is_clear).
+func _line_to_point_is_clear(point: Vector3) -> bool:
+	var from := _enemy.global_position + Vector3.UP * _ai.sight_eye_height
+	var query := PhysicsRayQueryParameters3D.create(from, point, Layers.WORLD)
+	var skip: Array[RID] = []
+	for node: Node3D in Enemies.all():
+		var body := node as CollisionObject3D
+		if body != null:
+			skip.append(body.get_rid())
+	query.exclude = skip
+	return _enemy.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 
 # --- Behaviors ----------------------------------------------------------------------------------

@@ -80,6 +80,10 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## hears it, instead of at `aggro_range` through walls. It can patrol, search and shout, and it has the edge
 ## guard. Off (the default): the old behavior, nothing else changes. The numbers are in the `ai` preset.
 @export var use_awareness: bool = false
+## Item 7d: with `use_awareness`, an enemy that dies stays where it fell (tipped over, grey, no collider, no
+## bar) until the scene reloads, and guards can find the body (see EnemyAIData.notices_corpses). Off, or a boss
+## or an enemy without awareness: it vanishes and respawns after `respawn_delay`, as before.
+@export var leaves_corpse: bool = true
 ## A node whose Marker3D children are the patrol waypoints, walked in a loop. Empty: it stands at its post and scans.
 @export var patrol_path: NodePath
 ## Seconds it waits at each waypoint (a random time between the two).
@@ -110,6 +114,10 @@ var _awareness: EnemyAwareness
 var _stood_down: bool = false
 ## Item 7b: seconds left in which a fresh spot (not a hit) can still be stealth-killed (see can_be_stealth_killed).
 var _stealth_grace_left: float = 0.0
+## Item 7d: this enemy died and left a body; set once a guard has seen it.
+var _is_corpse: bool = false
+var corpse_discovered: bool = false
+var _corpse_material: StandardMaterial3D
 ## Awareness enemies only: it was in combat when it stood down, so it yields when the player is back (an unaware one
 ## just carries on).
 var _stand_down_was_combat: bool = false
@@ -284,7 +292,7 @@ func _physics_process(delta: float) -> void:
 					_enter_combat()
 			else:
 				_decelerate(delta)
-				if has_target and distance <= ai.aggro_range:
+				if has_target and distance <= ai.aggro_range and not _player_undetectable():
 					_set_phase(Phase.CHASE)
 		Phase.CHASE:
 			_update_chase(delta, to_player, distance, has_target)
@@ -319,6 +327,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _is_corpse:
+		return  # the body keeps its tipped-over pose (item 7d)
 	_update_crouch(delta)
 	var bobbing := _bobble_loop or _bobble_clock < _bobble_length
 	if _recoil <= 0.0 and not bobbing and _crouch <= 0.0:
@@ -987,6 +997,45 @@ func _enter_combat(by_hit: bool = false) -> void:
 	_set_phase(Phase.CHASE)
 
 
+## The player's debug switch (F4): this enemy cannot notice the player at `aggro_range`.
+func _player_undetectable() -> bool:
+	var player := _player as Player
+	return player != null and player.debug_undetectable
+
+
+## Item 7d: the enemy stays down: it tips over backward, goes grey, loses its collider, hurtbox and bar, and
+## never respawns (the scene reload does it). Guards find it through is_undiscovered_corpse().
+func _become_corpse() -> void:
+	_is_corpse = true
+	corpse_discovered = false
+	bar.visible = false
+	body_shape.set_deferred("disabled", true)
+	var hurtbox := get_node_or_null("Hurtbox") as Area3D
+	if hurtbox != null:
+		hurtbox.set_deferred("monitorable", false)
+		hurtbox.set_deferred("monitoring", false)
+	if _corpse_material == null:
+		_corpse_material = StandardMaterial3D.new()
+		_corpse_material.albedo_color = Color(0.3, 0.3, 0.33)
+	body.material_override = _corpse_material
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(visual, "rotation:x", deg_to_rad(90.0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(visual, "position:y", 0.4, 0.35)
+
+
+func is_corpse() -> bool:
+	return _is_corpse
+
+
+## A body no guard has seen yet.
+func is_undiscovered_corpse() -> bool:
+	return _is_corpse and not corpse_discovered
+
+
+func mark_corpse_discovered() -> void:
+	corpse_discovered = true
+
+
 ## Item 7b: can a fresh attack press kill this enemy silently right now? It needs awareness, and either
 ## Phase.IDLE (unaware, suspicious or searching) or the short grace after it spotted the player by sight or sound.
 func can_be_stealth_killed() -> bool:
@@ -1216,6 +1265,9 @@ func _on_died() -> void:
 	_end_pose()
 	_end_stun_bobble()
 	body.material_override = _base_material
+	if leaves_corpse and use_awareness and not boss:
+		_become_corpse()
+		return
 	visual.visible = false
 	bar.visible = false
 	body_shape.set_deferred("disabled", true)
