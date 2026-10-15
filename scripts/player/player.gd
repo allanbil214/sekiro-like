@@ -175,6 +175,14 @@ var sheathed: bool = false
 @export var noise_action: float = 8.0
 @export var noise_hard_land: float = 12.0
 
+@export_group("Stealth deathblow (Phase 2 item 7b)")
+## A fresh attack press kills an enemy that has not started fighting you (see Enemy.can_be_stealth_killed)
+## when it is within this distance (m, flat) ...
+@export var stealth_kill_range: float = 2.2
+## ... and within this height difference (m).
+@export var stealth_kill_height: float = 1.2
+## How far (m) the stealth deathblow can be heard while it plays (instead of the loud action radius).
+@export var noise_stealth_kill: float = 3.0
 @export_group("Posture and deathblow")
 ## A deathblow needs an enemy with an open window within this distance (m, flat, center to center) ...
 ## (Personal space keeps you about 2 m from a living enemy, so this leaves room to be pushed or to drift.)
@@ -281,6 +289,8 @@ var _visual_tween: Tween
 var _reach_arms: ReachArms
 ## The enemy a deathblow was started on (read by DeathblowState).
 var deathblow_target: Node3D
+## True when the deathblow in progress is a stealth kill (item 7b).
+var deathblow_stealth: bool = false
 var _stagger_pending: bool = false
 ## Forced movement (knockback, head slide, personal space) and the placeholder body reactions (the hit
 ## wobble, the lean, the kneel), Phase 1.5 item 5c.
@@ -389,7 +399,9 @@ func _physics_process(delta: float) -> void:
 func get_noise_radius() -> float:
 	var radius := 0.0
 	var current := state_machine.current
-	if current is ActionState:
+	if current is DeathblowState and deathblow_stealth:
+		radius = noise_stealth_kill
+	elif current is ActionState:
 		radius = noise_action
 	elif is_on_floor() and (current is LocomotionState or current is CrouchState or current is GuardState \
 			or current is DashState or current is HealState):
@@ -871,6 +883,43 @@ func find_deathblow_target() -> Node3D:
 	return best
 
 
+## Item 7b: the nearest enemy this player could stealth-kill right now, or null.
+func find_stealth_target() -> Node3D:
+	var best: Node3D = null
+	var best_distance := stealth_kill_range
+	for node: Node in Enemies.all():
+		var enemy := node as Enemy
+		if enemy == null or not can_stealth_kill(enemy):
+			continue
+		var to_enemy := enemy.global_position - global_position
+		to_enemy.y = 0.0
+		var distance := to_enemy.length()
+		if distance <= best_distance:
+			best = enemy
+			best_distance = distance
+	return best
+
+
+## Item 7b: is `enemy` in a state that allows a stealth kill, and in reach: you on the floor, within
+## stealth_kill_range and stealth_kill_height, facing it within deathblow_facing_degrees.
+func can_stealth_kill(enemy: Enemy) -> bool:
+	if not is_on_floor() or state_machine.current is DeadState or not enemy.can_be_stealth_killed():
+		return false
+	if absf(enemy.global_position.y - global_position.y) > stealth_kill_height:
+		return false
+	var to_enemy := enemy.global_position - global_position
+	to_enemy.y = 0.0
+	var distance := to_enemy.length()
+	if distance > stealth_kill_range:
+		return false
+	var facing := get_facing_direction()
+	facing.y = 0.0
+	if distance > 0.01 and facing.length_squared() > 0.0001 and facing.normalized().dot(to_enemy.normalized()) \
+			< cos(deg_to_rad(deathblow_facing_degrees * 0.5)):
+		return false
+	return true
+
+
 ## A fresh attack press next to a stunned enemy is a deathblow, not a normal attack.
 func _try_deathblow() -> void:
 	if weapon == null or not input_buffer.has_pressed(Actions.ATTACK, deathblow_buffer_time) or not is_on_floor():
@@ -886,10 +935,15 @@ func _try_deathblow() -> void:
 	if is_crouched and not can_stand():
 		return
 	var target := find_deathblow_target()
+	var stealth := false
+	if target == null:
+		target = find_stealth_target()
+		stealth = target != null
 	if target == null:
 		return
 	input_buffer.clear(Actions.ATTACK)
 	deathblow_target = target
+	deathblow_stealth = stealth
 	state_machine.transition_to(StateName.DEATHBLOW)
 
 

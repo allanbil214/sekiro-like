@@ -108,6 +108,8 @@ var _player: Node3D
 var _awareness: EnemyAwareness
 ## True while the player is dead and this enemy is standing down (Step 10).
 var _stood_down: bool = false
+## Item 7b: seconds left in which a fresh spot (not a hit) can still be stealth-killed (see can_be_stealth_killed).
+var _stealth_grace_left: float = 0.0
 ## Awareness enemies only: it was in combat when it stood down, so it yields when the player is back (an unaware one
 ## just carries on).
 var _stand_down_was_combat: bool = false
@@ -259,6 +261,7 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 	_find_player()
+	_update_stealth_marker(delta)
 	_think_timer = maxf(_think_timer - delta, 0.0)
 	var to_player := _flat_to_player()
 	var distance := to_player.length()
@@ -976,11 +979,31 @@ func get_target() -> Node3D:
 
 
 ## It spotted the player or was hit while unaware: it enters combat after a short reaction time, and shouts.
-func _enter_combat() -> void:
+func _enter_combat(by_hit: bool = false) -> void:
+	_stealth_grace_left = 0.0 if by_hit else ai.stealth_grace_time
 	if _awareness != null:
 		_awareness.on_spotted()
 	_think_timer = maxf(_think_timer, ai.spot_reaction_time)
 	_set_phase(Phase.CHASE)
+
+
+## Item 7b: can a fresh attack press kill this enemy silently right now? It needs awareness, and either
+## Phase.IDLE (unaware, suspicious or searching) or the short grace after it spotted the player by sight or sound.
+func can_be_stealth_killed() -> bool:
+	if _awareness == null or combatant.dead or combatant.deathblow_open or _stood_down:
+		return false
+	if phase == Phase.IDLE:
+		return true
+	return phase == Phase.CHASE and _stealth_grace_left > 0.0
+
+
+## Counts the grace down and shows the red marker while the player could stealth-kill this enemy now.
+func _update_stealth_marker(delta: float) -> void:
+	_stealth_grace_left = maxf(_stealth_grace_left - delta, 0.0)
+	if _awareness == null:
+		return
+	var player := _player as Player
+	bar.set_stealth_marker(player != null and can_be_stealth_killed() and player.can_stealth_kill(self))
 
 
 ## Another enemy shouted (EnemyAwareness): `player_position` is where the player is.
@@ -1103,8 +1126,9 @@ func _return_to_spawn() -> void:
 ## An unguarded hit landed: the recoil wobble always, a flinch if this moment allows it.
 func _on_damaged(hit: HitData, _amount: float) -> void:
 	# A hit on an enemy that had not noticed the player: it notices at once (item 7a).
+	_stealth_grace_left = 0.0
 	if _awareness != null and phase == Phase.IDLE and not combatant.dead:
-		_enter_combat()
+		_enter_combat(true)
 	_defense.on_unguarded_hit()
 	_recoil = 1.0
 	_recoil_scale = 1.0
@@ -1140,6 +1164,8 @@ func _guard_reaction(hit: HitData, deflect: bool) -> void:
 
 ## Stunned (empty bar or posture break): drop any swing, guard, and pose, and turn pale.
 func _on_deathblow_opened() -> void:
+	# Item 7b: a stealth kill that left a boss on empty health: it now knows about the player.
+	var was_unaware := combatant.stealth_kill_active and _awareness != null and phase == Phase.IDLE
 	_abort_attack()
 	drop_guard()
 	_defense.riposte_pending = false
@@ -1147,10 +1173,12 @@ func _on_deathblow_opened() -> void:
 	_set_phase(Phase.STUNNED)
 	body.material_override = _stun_material
 	_start_stun_bobble()
+	if was_unaware:
+		_awareness.on_spotted()
 
 
 ## The window closed: back to normal. A landed deathblow also makes it recoil from the player.
-func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
+func _on_deathblow_closed(executed: bool, killed: bool) -> void:
 	if executed:
 		var blow := Vector3.ZERO
 		if _player != null:
@@ -1161,6 +1189,9 @@ func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 	_end_stun_bobble()
 	if phase == Phase.STUNNED:
 		_start_recover()
+	# Item 7b: a boss that survived a stealth kill turns to combat (the sound and the shout).
+	if executed and not killed and combatant.stealth_kill_active and _awareness != null and phase == Phase.IDLE:
+		_enter_combat(true)
 	if executed and _player != null:
 		var away := global_position - _player.global_position
 		away.y = 0.0
@@ -1171,6 +1202,7 @@ func _on_deathblow_closed(executed: bool, _killed: bool) -> void:
 
 
 func _on_died() -> void:
+	bar.set_stealth_marker(false)
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_DEATH, global_position + Vector3.UP * 1.0)
 	if boss and ai != null:
 		# Step 11d: the VictoryScreen (group "victory_screen") shows the boss-slain banner.

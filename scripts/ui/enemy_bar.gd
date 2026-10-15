@@ -84,6 +84,8 @@ var _posture_flash_left: float = 0.0
 var _pips: Array[MeshInstance3D] = []
 var _marker: Sprite3D
 var _marker_time: float = 0.0
+var _deathblow_window_open: bool = false
+var _stealth_marker_on: bool = false
 ## True while the boss HUD shows this enemy's health and posture: the bars and dots are hidden (the
 ## deathblow marker stays). See set_bars_hidden().
 var _bars_hidden: bool = false
@@ -174,14 +176,30 @@ func _on_health_changed(current: float, maximum: float) -> void:
 
 
 func _on_deathblow_opened() -> void:
-	_marker_time = 0.0
-	_marker.scale = Vector3.ONE
-	_marker.modulate.a = 1.0
-	_marker.visible = true
+	_deathblow_window_open = true
+	_refresh_marker()
 
 
 func _on_deathblow_closed(_executed: bool, _killed: bool) -> void:
-	_marker.visible = false
+	_deathblow_window_open = false
+	_refresh_marker()
+
+
+## Item 7b: the same marker shows while the player could stealth-kill this enemy right now.
+func set_stealth_marker(on: bool) -> void:
+	if on == _stealth_marker_on:
+		return
+	_stealth_marker_on = on
+	_refresh_marker()
+
+
+func _refresh_marker() -> void:
+	var marker_on := _deathblow_window_open or _stealth_marker_on
+	if marker_on and not _marker.visible:
+		_marker_time = 0.0
+		_marker.scale = Vector3.ONE
+		_marker.modulate.a = 1.0
+	_marker.visible = marker_on
 
 
 ## The marker image: a red glow, a thick dark-red outline, and a white-reddish dot (all from the

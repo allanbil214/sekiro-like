@@ -26,6 +26,7 @@ var _executed: bool = false
 var _swing_played: bool = false
 var _landed: bool = false
 var _visual_action: ActionData
+var _stealth: bool = false
 
 
 func _ready() -> void:
@@ -44,6 +45,7 @@ func _on_action_enter(_previous: StringName) -> void:
 	if Sfx.deathblow_open_enabled():
 		Sfx.play(player.get_tree(), Sfx.Id.DEATHBLOW_OPEN)
 	_target = player.deathblow_target
+	_stealth = player.deathblow_stealth
 	_visual_action = THRUST_VISUAL
 	if player.sheathed and player.weapon != null and player.weapon.draw_attack != null:
 		_visual_action = player.weapon.draw_attack
@@ -82,7 +84,10 @@ func _on_action_update(_delta: float) -> void:
 		var combatant: Combatant = null
 		if is_instance_valid(_target):
 			combatant = Combatant.of(_target)
-		if combatant != null and combatant.execute_deathblow():
+		var landed := false
+		if combatant != null:
+			landed = combatant.execute_stealth_kill() if _stealth else combatant.execute_deathblow()
+		if landed:
 			_landed = true
 			Hitstop.request(player.get_tree(), landing_hitstop)
 			player.notify_combat()

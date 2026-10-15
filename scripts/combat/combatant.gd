@@ -149,6 +149,8 @@ var _since_posture_hit: float = 0.0
 ## The current deflect window was opened as a repulse (press_guard(true)).
 var _window_repulse: bool = false
 var _guard_hold: float = 0.0
+## True only while execute_stealth_kill() runs (item 7b), so the owner's signal handlers can tell it from a normal deathblow.
+var stealth_kill_active: bool = false
 
 
 func _ready() -> void:
@@ -356,6 +358,38 @@ func execute_deathblow() -> bool:
 	bars_changed.emit(bars_left, health_bars)
 	deathblow_closed.emit(true, true)
 	died.emit()
+	return true
+
+
+## The stealth deathblow (item 7b): a silent kill on an enemy that has not started fighting. A non-boss dies
+## outright whatever its bars. A boss loses one bar; on its last bar its health goes to empty (the normal
+## deathblow window opens). If a deathblow window is already open it is a normal deathblow. Returns false if dead.
+func execute_stealth_kill() -> bool:
+	if dead:
+		return false
+	if deathblow_open:
+		return execute_deathblow()
+	stealth_kill_active = true
+	if not boss:
+		bars_left = 0
+		health = 0.0
+		dead = true
+		health_changed.emit(health, max_health)
+		bars_changed.emit(bars_left, health_bars)
+		deathblow_closed.emit(true, true)
+		died.emit()
+	elif bars_left > 1:
+		bars_left -= 1
+		health = max_health
+		reset_posture()
+		health_changed.emit(health, max_health)
+		bars_changed.emit(bars_left, health_bars)
+		deathblow_closed.emit(true, false)
+	else:
+		health = 0.0
+		health_changed.emit(health, max_health)
+		_health_empty()
+	stealth_kill_active = false
 	return true
 
 

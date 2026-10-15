@@ -266,6 +266,9 @@ extends Resource
 @export var stuck_time: float = 1.5
 ## After it spots you it waits this long (s) before its first attack.
 @export var spot_reaction_time: float = 0.4
+## Stealth deathblow (item 7b): for this long (s) after it spots you by sight or sound, a fresh attack press
+## still kills it silently (inside its reaction pause). A hit on it ends the grace at once.
+@export var stealth_grace_time: float = 0.35
 ## The "?" and "!" over its head: height (m above the feet), font size and pixel size.
 @export var symbol_height: float = 2.4
 @export var symbol_font_size: int = 150

@@ -86,6 +86,7 @@ func _process(_delta: float) -> void:
 			posture.posture, posture.max_posture, "  BROKEN" if posture.posture_full else "",
 			"in reach" if _player.find_deathblow_target() != null else "-",
 		]
+	text += "\nStealth target: %s" % ("in reach" if _player.find_stealth_target() != null else "-")
 	text += "\n" + _player.lock_on.get_debug_text()
 	var aware_text := _awareness_text()
 	if not aware_text.is_empty():
