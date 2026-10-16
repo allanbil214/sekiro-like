@@ -1258,6 +1258,7 @@ func _on_died() -> void:
 		# Step 11d: the VictoryScreen (group "victory_screen") shows the boss-slain banner.
 		get_tree().call_group(Groups.VICTORY_SCREEN, "show_victory", ai.victory_kanji, ai.victory_text)
 	if _awareness != null:
+		_awareness.drop_carried()
 		_awareness.reset()
 	_abort_attack()
 	drop_guard()

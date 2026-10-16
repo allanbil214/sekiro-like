@@ -19,6 +19,15 @@ extends RefCounted
 ## All numbers are in EnemyAIData ("Awareness").
 
 enum Level { UNAWARE, SUSPICIOUS, ALERT }
+## The body routine of the guard that found a body (item 7e). GO to CHECK, ROAM and RETURN it investigates (it
+## shows "?" or "!"); RESPECT_GO to PLACE it is calm again and respects the body.
+enum Tend { NONE, GO, CHECK, ROAM, RETURN, RESPECT_GO, LIFT, CARRY, PLACE }
+## Half the width (m) of a lying body, and how far (m) behind the laid body the carrier stands.
+const BODY_HALF_WIDTH: float = 0.45
+const CARRIER_BACK_OFF: float = 0.8
+const ROAM_CLEARANCE: float = 0.9
+## Rays fanned out from a body to find the nearest wall.
+const WALL_RAYS: int = 32
 
 ## Seconds between two line-of-sight checks (a ray each), and how far (m) a check is made at all.
 const LOS_INTERVAL: float = 0.1
@@ -65,6 +74,22 @@ var _has_los: bool = false
 var _can_see: bool = false
 var _stuck: float = 0.0
 
+var _tend: Tend = Tend.NONE
+var _tend_body: Enemy
+var _tend_timer: float = 0.0
+var _check_angle: float = 0.0
+var _check_dir: float = 1.0
+var _check_left: float = 0.0
+var _carrying: bool = false
+var _has_wall: bool = false
+var _wall_spot: Vector3 = Vector3.ZERO
+var _wall_body: Vector3 = Vector3.ZERO
+var _wall_yaw: float = 0.0
+var _roam_points: Array[Vector3] = []
+var _roam_index: int = 0
+var _roam_timer: float = -1.0
+var _roam_yaw: float = 0.0
+
 
 func _init(enemy: Enemy) -> void:
 	_enemy = enemy
@@ -104,6 +129,9 @@ func update(delta: float, has_target: bool) -> bool:
 		_has_los = false
 		_since_sensed += delta
 	var reachable := absf(to_target.y) <= _ai.max_vertical_reach
+	# The player (or a shout) made it properly suspicious while it investigated a body: it will respect the body later.
+	if _investigating() and meter >= _ai.suspicious_at:
+		_set_tend(Tend.RESPECT_GO, "made suspicious while investigating")
 	if _search_left > 0.0:
 		_search_left -= delta
 		meter = 1.0
@@ -117,14 +145,22 @@ func update(delta: float, has_target: bool) -> bool:
 		if _search_left <= 0.0:
 			begin_search(_last_known if _has_last_known else _enemy.global_position)
 	if _search_left > 0.0:
+		_on_distracted()
 		_apply_level(Level.ALERT)
 		_run_search(delta, target)
+	elif _investigating():
+		_apply_level(_investigation_level())
+		_run_investigation(delta)
 	elif meter >= _ai.suspicious_at:
+		_on_distracted()
 		_apply_level(Level.SUSPICIOUS)
 		_run_suspicious(delta)
 	else:
 		_apply_level(Level.UNAWARE)
-		_run_unaware(delta)
+		if _tend != Tend.NONE:
+			_run_respect(delta)
+		else:
+			_run_unaware(delta)
 	return false
 
 
@@ -134,6 +170,11 @@ func on_spotted() -> void:
 	Sfx.play(_enemy.get_tree(), Sfx.Id.DETECTED)
 	meter = 1.0
 	_search_left = 0.0
+	# In combat: a carried body is dropped; a pending routine resumes at the respect once it is calm again.
+	if _carrying:
+		_drop_body()
+	if _tend != Tend.NONE:
+		_set_tend(Tend.RESPECT_GO if _body_ok() else Tend.NONE, "combat, resume at the respect")
 	_apply_level(Level.UNAWARE)
 	_shout()
 
@@ -144,7 +185,7 @@ func begin_search(position: Vector3) -> void:
 	_has_last_known = true
 	_investigate = position
 	meter = 1.0
-	_search_left = _ai.search_time
+	_search_left = _search_cap()
 	_search_arrived = false
 	_since_sensed = 0.0
 	_stuck = 0.0
@@ -164,6 +205,9 @@ func hear_shout(player_position: Vector3, close: bool) -> void:
 
 ## Back to the start (respawn, the player died): unaware, nothing remembered, the symbol hidden.
 func reset() -> void:
+	_set_tend(Tend.NONE, "reset")
+	_tend_body = null
+	_carrying = false
 	meter = 0.0
 	_search_left = 0.0
 	_pause_left = 0.0
@@ -195,7 +239,8 @@ func edge_safe(direction: Vector3) -> bool:
 
 
 func debug_text() -> String:
-	return "%s %s %.2f%s" % [_enemy.name, Level.keys()[level], meter, "  SEES" if _can_see else ""]
+	var tending := "  TEND:%s" % Tend.keys()[_tend] if _tend != Tend.NONE else ""
+	return "%s %s %.2f%s%s" % [_enemy.name, Level.keys()[level], meter, "  SEES" if _can_see else "", tending]
 
 
 # --- Senses -------------------------------------------------------------------------------------
@@ -321,11 +366,22 @@ func _look_for_corpses(delta: float) -> void:
 		if not _line_to_point_is_clear(other.global_position + Vector3.UP * 0.4):
 			continue
 		other.mark_corpse_discovered()
-		_react_to_corpse(other.global_position)
+		_react_to_corpse(other)
 		return
 
 
-func _react_to_corpse(position: Vector3) -> void:
+func _react_to_corpse(body: Enemy) -> void:
+	var position := body.global_position
+	if _ai.tends_corpses:
+		# Item 7e: the whole routine, in the style of `corpse_reaction`.
+		if _carrying:
+			_drop_body()
+		_tend_body = body
+		_set_tend(Tend.GO, "found a body")
+		_stuck = 0.0
+		if _ai.corpse_reaction == EnemyAIData.CorpseReaction.ALARM:
+			_alert_allies(position)
+		return
 	match _ai.corpse_reaction:
 		EnemyAIData.CorpseReaction.SUSPICIOUS:
 			hear_shout(position, false)
@@ -333,14 +389,19 @@ func _react_to_corpse(position: Vector3) -> void:
 			begin_search(position)
 		EnemyAIData.CorpseReaction.ALARM:
 			begin_search(position)
-			for node: Node3D in Enemies.all():
-				var other := node as Enemy
-				if other == null or other == _enemy or not other.use_awareness:
-					continue
-				if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
-					continue
-				if (other.global_position - _enemy.global_position).length() <= _ai.shout_radius:
-					other.hear_shout(position, false)
+			_alert_allies(position)
+
+
+## Allies inside `shout_radius` that are calm turn suspicious about `position`.
+func _alert_allies(position: Vector3) -> void:
+	for node: Node3D in Enemies.all():
+		var other := node as Enemy
+		if other == null or other == _enemy or not other.use_awareness:
+			continue
+		if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
+			continue
+		if (other.global_position - _enemy.global_position).length() <= _ai.shout_radius:
+			other.hear_shout(position, false)
 
 
 ## A ray from the enemy's eye to `point` hits only the world (the same rules as _line_is_clear).
@@ -354,6 +415,294 @@ func _line_to_point_is_clear(point: Vector3) -> bool:
 			skip.append(body.get_rid())
 	query.exclude = skip
 	return _enemy.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+
+# --- The body routine (item 7e) ---------------------------------------------------------------------
+# Go to the body, check it on an arc, roam for the culprit, come back (these four show "?" or "!"), then, calm
+# again: lift it, carry it to the nearest wall, lay it down. Being made suspicious by the player or a shout
+# during the first four skips ahead to RESPECT_GO; combat or anything that makes the guard suspicious or alert
+# drops a carried body and resumes at RESPECT_GO once it is calm. A body that is gone, or no wall in range,
+# ends the routine.
+
+## Every change of the routine's stage goes through here, so `debug_log` shows why it ran or gave up.
+func _set_tend(stage: Tend, why: String = "") -> void:
+	if stage != _tend and _enemy.debug_log and OS.is_debug_build():
+		print("[Awareness] %s tend %s -> %s %s" % [_enemy.name, Tend.keys()[_tend], Tend.keys()[stage], why])
+	_tend = stage
+
+
+func _investigating() -> bool:
+	return _tend >= Tend.GO and _tend <= Tend.RETURN
+
+
+func _investigation_level() -> Level:
+	return Level.SUSPICIOUS if _ai.corpse_reaction == EnemyAIData.CorpseReaction.SUSPICIOUS else Level.ALERT
+
+
+func _style_speed() -> float:
+	return _ai.investigate_speed if _ai.corpse_reaction == EnemyAIData.CorpseReaction.SUSPICIOUS else _ai.search_speed
+
+
+func _body_ok() -> bool:
+	return is_instance_valid(_tend_body) and _tend_body.is_corpse()
+
+
+func _flat_distance_to(point: Vector3) -> float:
+	var to := point - _enemy.global_position
+	to.y = 0.0
+	return to.length()
+
+
+## Suspicious or alert for another reason: put a carried body down and respect it later.
+func _on_distracted() -> void:
+	if _carrying:
+		_drop_body()
+	if _investigating() or _tend >= Tend.LIFT:
+		_set_tend(Tend.RESPECT_GO, "distracted, resume at the respect")
+
+
+## A carried body is put down where the guard stands (it died, or something made it drop everything).
+func drop_carried() -> void:
+	if _carrying:
+		_drop_body()
+
+
+func _run_investigation(delta: float) -> void:
+	if not _body_ok():
+		_set_tend(Tend.NONE, "body gone")
+		return
+	var body_pos := _tend_body.global_position
+	match _tend:
+		Tend.GO:
+			if _flat_distance_to(body_pos) <= _ai.corpse_check_radius + 0.3 \
+					or _walk_to(body_pos, _style_speed(), delta):
+				_begin_check(body_pos)
+		Tend.CHECK:
+			_run_check(body_pos, delta)
+		Tend.ROAM:
+			if _roam_step(_style_speed(), delta):
+				_set_tend(Tend.RETURN, "")
+		Tend.RETURN:
+			if _flat_distance_to(body_pos) <= _ai.corpse_pickup_distance \
+					or _walk_to(body_pos, _style_speed(), delta):
+				_begin_lift()
+
+
+## Calm again: walk to the body (when it was interrupted), lift it, carry it to the wall, lay it down.
+func _run_respect(delta: float) -> void:
+	if not _body_ok():
+		_set_tend(Tend.NONE, "body gone")
+		return
+	var body_pos := _tend_body.global_position
+	match _tend:
+		Tend.RESPECT_GO:
+			if _flat_distance_to(body_pos) <= _ai.corpse_pickup_distance \
+					or _walk_to(body_pos, _ai.patrol_speed, delta):
+				_begin_lift()
+		Tend.LIFT:
+			_stop(delta)
+			_face_point(body_pos, delta)
+			_tend_timer += delta
+			if _tend_timer >= _ai.corpse_pickup_pause:
+				_carrying = true
+				_set_tend(Tend.CARRY, "")
+				_hold_body()
+		Tend.CARRY:
+			_hold_body()
+			if _walk_to(_wall_spot, _ai.corpse_carry_speed, delta):
+				_put_down(true)
+				_set_tend(Tend.PLACE, "")
+				_tend_timer = 0.0
+		Tend.PLACE:
+			_stop(delta)
+			_tend_timer += delta
+			if _tend_timer >= _ai.corpse_place_pause:
+				_set_tend(Tend.NONE, "done")
+				_tend_body = null
+				_resume_patrol()
+
+
+func _begin_check(body_pos: Vector3) -> void:
+	if _flat_distance_to(body_pos) > _ai.corpse_check_radius + 3.0:
+		_set_tend(Tend.NONE, "blocked, could not get near the body")  # it could not get close (blocked): give the body up
+		return
+	var from_body := _enemy.global_position - body_pos
+	from_body.y = 0.0
+	_check_angle = atan2(from_body.z, from_body.x) if from_body.length_squared() > 0.01 else 0.0
+	_check_dir = 1.0 if randf() < 0.5 else -1.0
+	_check_left = deg_to_rad(_ai.corpse_check_arc_degrees)
+	_tend_timer = 0.0
+	_stuck = 0.0
+	_set_tend(Tend.CHECK, "")
+
+
+## Walk an arc around the body, always facing it (the target point moves ahead along the ring), then pause.
+func _run_check(body_pos: Vector3, delta: float) -> void:
+	if _check_left > 0.0:
+		var radius := maxf(_ai.corpse_check_radius, 0.5)
+		var target := body_pos + Vector3(cos(_check_angle), 0.0, sin(_check_angle)) * radius
+		target.y = _enemy.global_position.y
+		if _flat_distance_to(target) <= 1.0:
+			var step := _ai.corpse_check_speed / radius * delta
+			_check_angle += _check_dir * step
+			_check_left -= step
+		if _walk_facing(target, _ai.corpse_check_speed, body_pos, delta):
+			_check_left = 0.0  # blocked: that is enough checking
+		return
+	_stop(delta)
+	_face_point(body_pos, delta)
+	_tend_timer += delta
+	if _tend_timer >= _ai.corpse_check_pause:
+		_roam_begin(body_pos, _ai.corpse_roam_radius)
+		_set_tend(Tend.ROAM, "")
+
+
+func _begin_lift() -> void:
+	if not _body_ok() or _flat_distance_to(_tend_body.global_position) > _ai.corpse_pickup_distance * 2.5:
+		_set_tend(Tend.NONE, "could not reach the body to lift it")  # it could not get to the body
+		return
+	if not _find_wall_spot():
+		_set_tend(Tend.NONE, "no wall within %d m, leaves the body" % int(_ai.corpse_wall_search))  # no wall in range: it leaves the body where it lies
+		return
+	_set_tend(Tend.LIFT, "")
+	_tend_timer = 0.0
+
+
+## Fan WALL_RAYS rays at chest height from the body; the nearest nearly vertical hit is the wall. The body is laid
+## `corpse_wall_gap` from it along the wall, and the carrier stands a little farther out.
+func _find_wall_spot() -> bool:
+	_has_wall = false
+	var origin := _tend_body.global_position + Vector3.UP * ROAM_CLEARANCE
+	var space := _enemy.get_world_3d().direct_space_state
+	var rids := _enemy_rids()
+	var best := INF
+	for i in range(WALL_RAYS):
+		var angle := TAU * float(i) / float(WALL_RAYS)
+		var direction := Vector3(cos(angle), 0.0, sin(angle))
+		var query := PhysicsRayQueryParameters3D.create(
+				origin, origin + direction * _ai.corpse_wall_search, Layers.WORLD)
+		query.exclude = rids
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			continue
+		var normal: Vector3 = hit.normal
+		if absf(normal.y) > 0.35:
+			continue
+		var point: Vector3 = hit.position
+		var distance := origin.distance_to(point)
+		if distance >= best:
+			continue
+		best = distance
+		var out := Vector3(normal.x, 0.0, normal.z).normalized()
+		_wall_body = Vector3(point.x, _tend_body.global_position.y, point.z) + out * _ai.corpse_wall_gap
+		_wall_spot = _wall_body + out * CARRIER_BACK_OFF
+		var along := Vector3(-out.z, 0.0, out.x)
+		_wall_yaw = atan2(along.x, along.z)
+		_has_wall = true
+	return _has_wall
+
+
+## The body floats across the carrier's arms (a placeholder for a carry animation).
+func _hold_body() -> void:
+	if not _body_ok():
+		return
+	var forward := -_enemy.global_transform.basis.z
+	_tend_body.global_position = _enemy.global_position + forward * 0.45 + Vector3.UP * _ai.corpse_carry_height
+	_tend_body.global_rotation = Vector3(0.0, _enemy.rotation.y + PI * 0.5, 0.0)
+
+
+## Lay the body down: along the wall when the carrier got there, otherwise in front of it.
+func _put_down(at_wall: bool) -> void:
+	_carrying = false
+	if not _body_ok():
+		return
+	if at_wall and _has_wall and _flat_distance_to(_wall_spot) <= 1.5:
+		_tend_body.global_position = Vector3(_wall_body.x, _enemy.global_position.y, _wall_body.z)
+		_tend_body.global_rotation = Vector3(0.0, _wall_yaw, 0.0)
+		return
+	var forward := -_enemy.global_transform.basis.z
+	_tend_body.global_position = _enemy.global_position + forward * 0.7
+	_tend_body.global_rotation = Vector3(0.0, _enemy.rotation.y + PI * 0.5, 0.0)
+
+
+func _drop_body() -> void:
+	_put_down(false)
+
+
+# --- Roaming (the body routine and the alert search) ----------------------------------------------------
+
+## `roam_points` points evenly around a ring of `radius` from `center`, the first at the guard's own angle.
+## A point behind a wall is pulled back in front of it, and one with no floor nearby is left out.
+func _roam_begin(center: Vector3, radius: float) -> void:
+	_roam_points.clear()
+	_roam_index = 0
+	_roam_timer = -1.0
+	_stuck = 0.0
+	var from_center := _enemy.global_position - center
+	from_center.y = 0.0
+	var start := atan2(from_center.z, from_center.x) if from_center.length_squared() > 0.01 else 0.0
+	var count := maxi(_ai.roam_points, 1)
+	for i in range(count):
+		var angle := start + TAU * float(i) / float(count)
+		var point := center + Vector3(cos(angle), 0.0, sin(angle)) * radius
+		point = _clamp_to_wall(center, point)
+		if _has_floor_near(point, center.y):
+			_roam_points.append(point)
+
+
+## Visit the next point, pause there and sweep the view. True once every point has been visited.
+func _roam_step(speed: float, delta: float) -> bool:
+	if _roam_index >= _roam_points.size():
+		return true
+	if _roam_timer < 0.0:
+		if _walk_to(_roam_points[_roam_index], speed, delta):
+			_roam_timer = 0.0
+			_roam_yaw = _enemy.rotation.y
+		return false
+	_stop(delta)
+	_roam_timer += delta
+	var phase := _roam_timer / maxf(_ai.roam_pause, 0.1)
+	_turn_to_yaw(_roam_yaw + sin(phase * TAU) * deg_to_rad(_ai.roam_sweep_degrees), delta, _ai.look_turn_speed)
+	if _roam_timer >= _ai.roam_pause:
+		_roam_index += 1
+		_roam_timer = -1.0
+	return false
+
+
+func _clamp_to_wall(center: Vector3, point: Vector3) -> Vector3:
+	var from := center + Vector3.UP * ROAM_CLEARANCE
+	var to := Vector3(point.x, center.y + ROAM_CLEARANCE, point.z)
+	var query := PhysicsRayQueryParameters3D.create(from, to, Layers.WORLD)
+	query.exclude = _enemy_rids()
+	var hit := _enemy.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return point
+	var hit_point: Vector3 = hit.position
+	var back := from - hit_point
+	back.y = 0.0
+	if back.length_squared() < 0.0001:
+		return Vector3(center.x, point.y, center.z)
+	return Vector3(hit_point.x, point.y, hit_point.z) + back.normalized() * ROAM_CLEARANCE
+
+
+func _has_floor_near(point: Vector3, y: float) -> bool:
+	var query := PhysicsRayQueryParameters3D.create(
+			point + Vector3.UP * 1.0, point + Vector3.DOWN * 2.0, Layers.WORLD)
+	query.exclude = _enemy_rids()
+	var hit := _enemy.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return false
+	var hit_point: Vector3 = hit.position
+	return absf(hit_point.y - y) <= 1.0
+
+
+func _enemy_rids() -> Array[RID]:
+	var rids: Array[RID] = []
+	for node: Node3D in Enemies.all():
+		var body := node as CollisionObject3D
+		if body != null:
+			rids.append(body.get_rid())
+	return rids
 
 
 # --- Behaviors ----------------------------------------------------------------------------------
@@ -400,18 +749,30 @@ func _run_suspicious(delta: float) -> void:
 func _run_search(delta: float, target: Node3D) -> void:
 	if _can_see and target != null:
 		# It sees you but cannot reach you (another level): stay alert, stand and watch.
-		_search_left = _ai.search_time
+		_search_left = _search_cap()
 		_stop(delta)
 		_face_point(target.global_position, delta)
 		return
 	if not _search_arrived:
 		_search_arrived = _walk_to(_last_known, _ai.search_speed, delta)
 		_search_yaw = _enemy.rotation.y
+		if _search_arrived and _ai.search_roams:
+			_roam_begin(Vector3(_last_known.x, _enemy.global_position.y, _last_known.z), _ai.search_roam_radius)
+		return
+	if _ai.search_roams:
+		# Item 7e: one lap of points around the last known spot, then the search is over.
+		if _roam_step(_ai.search_speed, delta):
+			_end_search()
 		return
 	_stop(delta)
 	_scan_clock += delta
 	var sweep := sin(_scan_clock * TAU / maxf(_ai.scan_period * 0.6, 0.1)) * deg_to_rad(70.0)
 	_turn_to_yaw(_search_yaw + sweep, delta, _ai.look_turn_speed)
+
+
+## How long the alert search may last: one lap of the roam ends it itself, otherwise `search_time`.
+func _search_cap() -> float:
+	return 9999.0 if _ai.search_roams else _ai.search_time
 
 
 func _end_search() -> void:
@@ -420,7 +781,11 @@ func _end_search() -> void:
 	_since_sensed = 0.0
 	_stuck = 0.0
 	_apply_level(Level.UNAWARE)
-	# Resume the patrol at the nearest waypoint (a post sends it home by itself).
+	_resume_patrol()
+
+
+## Resume the patrol at the nearest waypoint (a post sends it home by itself).
+func _resume_patrol() -> void:
 	var best := 0
 	var best_distance := INF
 	for i in range(_waypoints.size()):
@@ -453,6 +818,34 @@ func _walk_to(point: Vector3, speed: float, delta: float) -> bool:
 		if _stuck >= _ai.stuck_time:
 			_stuck = 0.0
 			_stop(delta)
+			return true
+	else:
+		_stuck = 0.0
+	return false
+
+
+## Like _walk_to, but it keeps facing `face_point` (a strafe around a body) and only reports true when it is
+## stuck (it never "arrives"; the caller moves the point).
+func _walk_facing(point: Vector3, speed: float, face_point: Vector3, delta: float) -> bool:
+	var to := point - _enemy.global_position
+	var flat := Vector3(to.x, 0.0, to.z)
+	var distance := flat.length()
+	if distance <= 0.15 or absf(to.y) > _ai.max_vertical_reach:
+		_stop(delta)
+		_face_point(face_point, delta)
+		_stuck = 0.0
+		return false
+	var direction := flat / distance
+	var wanted := direction * speed
+	if not edge_safe(direction):
+		wanted = Vector3.ZERO
+	_steer(wanted, delta)
+	_face_point(face_point, delta)
+	var moving := Vector2(_enemy.velocity.x, _enemy.velocity.z).length()
+	if moving < speed * 0.25:
+		_stuck += delta
+		if _stuck >= _ai.stuck_time:
+			_stuck = 0.0
 			return true
 	else:
 		_stuck = 0.0

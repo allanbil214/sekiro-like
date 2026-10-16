@@ -245,6 +245,7 @@ extends Resource
 @export_range(0.0, 1.0) var suspicious_at: float = 0.5
 @export var suspicious_pause: float = 0.6
 ## Alert: how long (s) it searches at the last place it knew you were (it stays alert while it sees you).
+## Only used when `search_roams` is off (a roaming search lasts one lap).
 @export var search_time: float = 6.0
 ## Speeds (m/s) of patrolling, of creeping toward a sound, and of the alert search; and how fast it turns to look.
 @export var patrol_speed: float = 1.6
@@ -265,6 +266,33 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var notices_corpses: bool = true
 @export var corpse_sight_range: float = 10.0
 @export var corpse_reaction: CorpseReaction = CorpseReaction.SUSPICIOUS
+## Body routine (item 7e): the guard that found a body goes to it, checks it on an arc, roams around for the
+## culprit, comes back and respects it (carries it to the nearest wall and lays it down). Off: it only reacts.
+@export var tends_corpses: bool = true
+## The check: a ring (m) around the body, the arc walked (degrees), the speed (m/s) and the pause (s) at the end.
+@export var corpse_check_radius: float = 2.0
+@export var corpse_check_arc_degrees: float = 150.0
+@export var corpse_check_speed: float = 1.4
+@export var corpse_check_pause: float = 1.2
+## The roam: this many points evenly around a ring (m) from the body, a pause (s) and a view sweep (degrees) at each.
+@export var corpse_roam_radius: float = 6.0
+@export var roam_points: int = 5
+@export var roam_pause: float = 1.0
+@export var roam_sweep_degrees: float = 60.0
+## Respecting the body: how close (m) it must be to lift it, the pauses (s) to lift and to lay it down, the carry
+## speed (m/s) and the height (m) the body floats at, how far (m) it looks for a wall, and how far (m) from the
+## wall the body is laid. No wall in range: it leaves the body where it lies.
+@export var corpse_pickup_distance: float = 1.0
+@export var corpse_pickup_pause: float = 0.8
+@export var corpse_place_pause: float = 0.8
+@export var corpse_carry_speed: float = 1.4
+@export var corpse_carry_height: float = 0.55
+@export var corpse_wall_search: float = 25.0
+@export var corpse_wall_gap: float = 0.6
+## The alert search (after losing the player) roams too: it visits `roam_points` points on a ring (m) around
+## the last known spot and the search ends after one lap. Off: it stands there for `search_time` seconds.
+@export var search_roams: bool = true
+@export var search_roam_radius: float = 5.0
 ## It has no pathfinding: it only walks, chases and searches toward a spot within this height difference (m);
 ## from another level it stands and watches. Chasing gives up past this + 1 m.
 @export var max_vertical_reach: float = 3.0
