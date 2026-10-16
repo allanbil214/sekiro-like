@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/interact/door.gd" id="1_door"]
+
+[node name="Door" type="Node3D"]
+script = ExtResource("1_door")
+
+[node name="Pivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0)
+
+[node name="Leaf" type="CSGBox3D" parent="Pivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1.2, 0)
+use_collision = true
+size = Vector3(2, 2.4, 0.15)

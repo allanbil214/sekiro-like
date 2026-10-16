@@ -114,6 +114,13 @@ signal resurrected
 @export_group("Input")
 @export var input_buffer_time: float = 0.15
 
+@export_group("Interact (Phase 2 item 8)")
+## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
+## in front it must be (1 = dead ahead, 0.5 = within 60 degrees).
+@export var interact_range: float = 2.5
+@export var interact_height_range: float = 1.6
+@export_range(-1.0, 1.0, 0.05) var interact_min_dot: float = 0.5
+
 @export_group("Combat")
 ## The equipped weapon: its combo, blade size, and rest pose.
 @export var weapon: WeaponData
@@ -261,6 +268,9 @@ var coyote_timer: float = 0.0
 var input_buffer: InputBuffer
 ## Finds walls, ledges, and hang spots (Step 12C). Created in _ready().
 var ledge_sensor: LedgeSensor
+## The interactable the press of `interact` would use right now (ground, Locomotion or Crouch only).
+var interact_target: Interactable
+var _interact_picker: InteractPicker
 var is_crouched: bool = false
 var _noise_spike: float = 0.0
 var _noise_spike_left: float = 0.0
@@ -322,6 +332,7 @@ var sword_visual: SwordVisual
 ## The left arm that lifts the gourd while healing (Step 11, HealState drives it).
 @onready var heal_arm: HealArm = $Visual/HealArm
 @onready var screen_fade: ScreenFade = $ScreenFade
+@onready var _interact_prompt: InteractPrompt = $InteractPrompt
 
 
 func _ready() -> void:
@@ -329,6 +340,7 @@ func _ready() -> void:
 	_spawn_position = global_position
 	_spawn_yaw = visual.rotation.y
 	ledge_sensor = LedgeSensor.new(self)
+	_interact_picker = InteractPicker.new(self)
 	_forced = PlayerForcedMovement.new(self)
 	_reaction = PlayerBodyReaction.new(self)
 	Fx.blood_enabled = show_blood
@@ -382,6 +394,7 @@ func _physics_process(delta: float) -> void:
 	_update_repulse()
 	_try_deathblow()
 	_try_heal()
+	_update_interact_target()
 	state_machine.physics_update(delta)
 	# DeadState can reload the scene during the update; this node is out of the tree then.
 	if not is_inside_tree():
@@ -449,6 +462,31 @@ func get_move_input() -> Vector3:
 
 func get_move_speed() -> float:
 	return walk_speed if walk_only else run_speed
+
+
+## Picks the interactable in reach and in front (item 8) and feeds the prompt. Only on the ground in
+## Locomotion or Crouch; everywhere else there is none.
+func _update_interact_target() -> void:
+	var current := state_machine.current
+	interact_target = null
+	if current is LocomotionState or current is CrouchState:
+		interact_target = _interact_picker.pick()
+	_interact_prompt.set_target(interact_target, self)
+
+
+## Called by Locomotion and Crouch on a fresh `interact` press: uses the picked interactable.
+## Returns true if one was used (the press is then used up so it can't also grab a ledge).
+func try_interact() -> bool:
+	if interact_target == null:
+		return false
+	input_buffer.consume(Actions.INTERACT)
+	interact_target.interact(self)
+	return true
+
+
+## A line of text near the bottom of the screen (an NPC's line, "It is empty.").
+func show_interact_line(text: String) -> void:
+	_interact_prompt.show_line(text)
 
 
 func get_facing_direction() -> Vector3:

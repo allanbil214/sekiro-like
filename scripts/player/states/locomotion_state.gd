@@ -15,6 +15,8 @@ func physics_update(delta: float) -> void:
 	if player.input_buffer.consume(Actions.DODGE):
 		machine.transition_to(StateName.DODGE)
 		return
+	if Input.is_action_just_pressed(Actions.INTERACT) and player.try_interact():
+		return
 	if player.input_buffer.has_pressed(Actions.GUARD):
 		machine.transition_to(StateName.GUARD)
 		return

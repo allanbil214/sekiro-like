@@ -66,6 +66,7 @@ var _buttons: Array[Button] = []
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	Settings.ensure_loaded()
+	GameFlags.clear()
 	_version.text = _version_text()
 	_buttons = [_start_button, _arenas_button, _options_button, _quit_button]
 	_remember_text_bases()

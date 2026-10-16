@@ -4,6 +4,10 @@
 [ext_resource type="PackedScene" path="res://scenes/enemy/dummy.tscn" id="2_kti05"]
 [ext_resource type="PackedScene" uid="uid://bwl4ivdc22duh" path="res://scenes/enemy/enemy.tscn" id="2_wt5dk"]
 [ext_resource type="Script" uid="uid://cckm17n0luvoa" path="res://scripts/combat/fall_zone.gd" id="4_kaasr"]
+[ext_resource type="PackedScene" path="res://scenes/interact/door.tscn" id="5_door"]
+[ext_resource type="PackedScene" path="res://scenes/interact/chest.tscn" id="6_chest"]
+[ext_resource type="PackedScene" path="res://scenes/interact/switch.tscn" id="7_switch"]
+[ext_resource type="PackedScene" path="res://scenes/interact/npc.tscn" id="8_npc"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -125,3 +129,35 @@ script = ExtResource("4_kaasr")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone" unique_id=1127990186]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, 0)
 shape = SubResource("BoxShape3D_wynvb")
+
+[node name="InteractWallLeft" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 2.25, -22)
+use_collision = true
+size = Vector3(4.2, 4, 0.4)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="InteractWallRight" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 2.25, -22)
+use_collision = true
+size = Vector3(4.2, 4, 0.4)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="InteractLintel" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -22)
+use_collision = true
+size = Vector3(2, 1.5, 0.4)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="InteractDoor" parent="." instance=ExtResource("5_door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, -22)
+locked_by_flag = &"switch_1"
+
+[node name="InteractSwitch" parent="." instance=ExtResource("7_switch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.25, -19.5)
+flag = &"switch_1"
+
+[node name="InteractChest" parent="." instance=ExtResource("6_chest")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.25, -19.5)
+
+[node name="InteractNpc" parent="." instance=ExtResource("8_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.25, -16)
