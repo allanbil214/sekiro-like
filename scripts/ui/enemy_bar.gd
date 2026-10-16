@@ -49,6 +49,12 @@ extends Node3D
 @export var pip_outline_color: Color = Color(0.32, 0.02, 0.04)
 ## Outline thickness as a share of the dot's radius (0 = none).
 @export_range(0.0, 0.5) var pip_outline_ratio: float = 0.28
+@export_group("Combat fade")
+## The health bar, the dots and the posture bar fade in over this long (s) when the enemy starts fighting the
+## player, stay `linger_time` after it stops, then fade out over `fade_out_time` (see set_in_combat).
+@export var fade_in_time: float = 0.2
+@export var fade_out_time: float = 0.6
+@export var linger_time: float = 1.5
 @export_group("Deathblow marker")
 ## Width (m) of the whole marker including the glow (the dot itself is about 55% of it).
 @export var marker_size: float = 0.65
@@ -89,6 +95,12 @@ var _stealth_marker_on: bool = false
 ## True while the boss HUD shows this enemy's health and posture: the bars and dots are hidden (the
 ## deathblow marker stays). See set_bars_hidden().
 var _bars_hidden: bool = false
+## What the boss HUD asked for (set_bars_hidden); `_bars_hidden` is that, or fully faded out (item: combat fade).
+var _hud_hidden: bool = false
+var _fade_alpha: float = 1.0
+var _fade_target: float = 1.0
+var _in_combat: bool = true
+var _linger_left: float = 0.0
 var _bars_left: int = 0
 
 
@@ -123,6 +135,51 @@ func _ready() -> void:
 ## Hide or show the health bar, the dots, and the posture bar (the boss HUD takes them over while it
 ## shows this enemy). The deathblow marker is not part of it and stays.
 func set_bars_hidden(hidden: bool) -> void:
+	_hud_hidden = hidden
+	_refresh_hidden()
+
+
+## The enemy is fighting the player (true) or not (false): the bars fade in at once, and fade out after
+## `linger_time`. `instant` skips the fade (spawn, respawn).
+func set_in_combat(on: bool, instant: bool = false) -> void:
+	_in_combat = on
+	if on:
+		_fade_target = 1.0
+		_linger_left = 0.0
+	else:
+		_linger_left = 0.0 if instant else linger_time
+		if instant:
+			_fade_target = 0.0
+	if instant:
+		_fade_alpha = _fade_target
+		_apply_fade()
+
+
+func _update_fade(delta: float) -> void:
+	if not _in_combat and _linger_left > 0.0:
+		_linger_left -= delta
+		if _linger_left <= 0.0:
+			_fade_target = 0.0
+	if is_equal_approx(_fade_alpha, _fade_target):
+		return
+	var time := fade_in_time if _fade_target > _fade_alpha else fade_out_time
+	_fade_alpha = move_toward(_fade_alpha, _fade_target, delta / maxf(time, 0.01))
+	_apply_fade()
+
+
+## One fade value on every quad (the instance transparency), and hidden once fully faded out.
+func _apply_fade() -> void:
+	var transparency := 1.0 - _fade_alpha
+	for quad: MeshInstance3D in [_back, _yellow, _red, _posture_back, _posture_left, _posture_right]:
+		if quad != null:
+			quad.transparency = transparency
+	for pip in _pips:
+		pip.transparency = transparency
+	_refresh_hidden()
+
+
+func _refresh_hidden() -> void:
+	var hidden := _hud_hidden or _fade_alpha <= 0.001
 	_bars_hidden = hidden
 	_back.visible = not hidden
 	_posture_back.visible = not hidden
@@ -152,6 +209,7 @@ func bind(combatant: Combatant) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_fade(delta)
 	_update_posture(delta)
 	if _marker.visible and marker_pulse:
 		_marker_time += delta
@@ -278,6 +336,7 @@ func _build_pips(total: int) -> void:
 		var pip_x := left_edge + pip_size * 0.5 + float(i) * (pip_size + pip_gap)
 		(pip.mesh as QuadMesh).center_offset = Vector3(pip_x, row_y, 0.0)
 		_pips.append(pip)
+		pip.transparency = 1.0 - _fade_alpha
 
 
 ## A round dot: red inside, a maroon ring, smooth edge (drawn once in code).
@@ -336,7 +395,7 @@ func _apply_posture() -> void:
 
 
 func _on_damaged(_hit: HitData, amount: float) -> void:
-	if show_damage_numbers and amount > 0.0 and not _bars_hidden:
+	if show_damage_numbers and amount > 0.0 and not _hud_hidden:
 		_spawn_number(amount)
 
 

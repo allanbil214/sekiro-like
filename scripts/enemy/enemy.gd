@@ -84,6 +84,9 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## bar) until the scene reloads, and guards can find the body (see EnemyAIData.notices_corpses). Off, or a boss
 ## or an enemy without awareness: it vanishes and respawns after `respawn_delay`, as before.
 @export var leaves_corpse: bool = true
+## The health bar, the dots and the posture bar show only while this enemy is fighting the player (any phase but
+## IDLE) and fade in and out (see EnemyBar's "Combat fade"). Off: they are always shown.
+@export var bars_only_in_combat: bool = true
 ## A node whose Marker3D children are the patrol waypoints, walked in a loop. Empty: it stands at its post and scans.
 @export var patrol_path: NodePath
 ## Seconds it waits at each waypoint (a random time between the two).
@@ -221,6 +224,7 @@ func _ready() -> void:
 	aura.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	aura.visible = false
 	bar.bind(combatant)
+	bar.set_in_combat(not bars_only_in_combat, true)
 	combatant.damaged.connect(_on_damaged)
 	combatant.hit_guarded.connect(_on_guarded)
 	combatant.hit_deflected.connect(_on_deflected)
@@ -1154,6 +1158,8 @@ func _set_phase(new_phase: Phase) -> void:
 		print("[Enemy] %s -> %s" % [Phase.keys()[phase], Phase.keys()[new_phase]])
 	var old_phase := phase
 	phase = new_phase
+	if bar != null:
+		bar.set_in_combat(not bars_only_in_combat or new_phase != Phase.IDLE)
 	if not EnemyDefense.phase_allows_guard(new_phase):
 		drop_guard()
 	if _awareness != null:
@@ -1277,6 +1283,7 @@ func _on_died() -> void:
 	combatant.reset()
 	visual.visible = true
 	bar.visible = true
+	bar.set_in_combat(not bars_only_in_combat, true)
 	body_shape.set_deferred("disabled", false)
 	_defense.reset_for_respawn()
 	_flinch_immunity = 0.0
