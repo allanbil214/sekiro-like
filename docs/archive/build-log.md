@@ -1289,3 +1289,20 @@ A refactor with no gameplay change. Tested and verified by the user 2026-10-13.
 **Not done.** A real pickup and carry animation (the body floats across the arms), sounds, pathfinding, any way for the player to move or hide bodies, and a difficulty option for the routine.
 
 **Noticed, not fixed.** The body floats with no hand pose; at a wall on uneven ground it may sit slightly off the floor. A guard that is far from the body when it starts walks the whole way at its investigate or search speed, which can take a while in this yard. Tested by the user, 2026-10-15.
+
+### Phase 2 addendum: enemy bars only in combat (2026-10-16)
+
+**Decision (agreed in the check, with the fade the user asked for).** The enemy's floating health bar, life dots and posture bar show only while the enemy fights the player, and fade in and out like the boss HUD does (0.3 s in, 0.6 s out there). Phase `IDLE` means calm (unaware, suspicious, searching, tending a body, patrolling); any other phase counts as combat, so a hit on an unaware enemy shows the bars at once.
+
+**What exists.**
+- `Enemy.bars_only_in_combat` (default true). `_set_phase()` calls `bar.set_in_combat(not bars_only_in_combat or new_phase != Phase.IDLE)`. `_ready` (after `bar.bind()`) and the respawn call `set_in_combat(not bars_only_in_combat, true)` so an enemy starts and respawns already faded out. `_on_died()` still hides the bar.
+- `EnemyBar` (group "Combat fade"): `fade_in_time` 0.2, `fade_out_time` 0.6, `linger_time` 1.5 (the bars stay this long after combat ends, so a guard that briefly loses the player does not flicker). `set_in_combat(on, instant)`, `_update_fade()` (from `_process`), `_apply_fade()` (one `transparency` value on the health quads, the posture quads and every pip) and `_refresh_hidden()`. `_hud_hidden` is what the boss HUD asked for through `set_bars_hidden()`; `_bars_hidden` (used by every visibility check) is that, or fully faded out. New pips take the current fade (`_build_pips`).
+- Damage numbers now check only `_hud_hidden`, so the first hit on an unaware enemy still shows its number while the bars are still fading in.
+
+**Files.** Changed: `scripts/ui/enemy_bar.gd`, `scripts/enemy/enemy.gd`. No new files, no scenes, no `.tres`.
+
+**Rules that are not obvious from the code.** The `Dummy` never calls `set_in_combat`, so its bars stay on (`_in_combat` starts true). The deathblow marker, the stealth marker, the awareness symbols and the boss HUD are not part of the fade. The fade uses the instance `transparency`, not the materials' albedo alpha, so the bars' own colors and the posture flash are untouched.
+
+**Not done.** Fading the deathblow marker or the damage numbers; a setting for the fade times outside the Inspector.
+
+**Noticed, not fixed.** A stunned enemy and an enemy in its recover phase keep the bars (they are in combat); only a return to `IDLE` starts the linger. Done after the user's request to log it on 2026-10-16.
