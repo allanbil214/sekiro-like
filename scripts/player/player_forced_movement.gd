@@ -77,7 +77,7 @@ func update_personal_space(delta: float) -> void:
 		return
 	var current := player.state_machine.current
 	if current is DeathblowState or current is DeadState or current is LedgeHangState \
-			or current is LedgeClimbState:
+			or current is LedgeClimbState or current is WallHugState:
 		return
 	var push := Vector3.ZERO
 	for node: Node in Enemies.all():

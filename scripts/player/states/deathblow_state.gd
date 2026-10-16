@@ -25,6 +25,10 @@ const HELM_VISUAL: ActionData = preload("res://actions/helm_splitter.tres")
 @export var plunge_contact_height: float = 2.2
 @export var plunge_timeout: float = 1.2
 @export var plunge_land_flat: float = 2.5
+## Stealth kill from the wall hug (item 9): the target glides to `hug_pull_distance` (m) in front of the
+## player over `hug_pull_time` (s) before the thrust, so it reads as a grab and stab.
+@export var hug_pull_time: float = 0.15
+@export var hug_pull_distance: float = 0.9
 ## Hitstop (s) when the deathblow lands.
 @export var landing_hitstop: float = 0.15
 ## The player is invulnerable for the whole deathblow (the `iframes` window of its ActionData), and for
@@ -43,6 +47,10 @@ var _plunging: bool = false
 var _plunge_time: float = 0.0
 var _plunge_limit: float = 1.2
 var _visual_clock: float = 0.0
+## The wall hug pull (item 9).
+var _pull: bool = false
+var _pull_time: float = 0.0
+var _pull_from: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -88,6 +96,11 @@ func _on_action_enter(_previous: StringName) -> void:
 			player.snap_facing(_move_dir)
 		if _aerial:
 			_move_dir = Vector3.ZERO
+	_pull = player.deathblow_from_hug and _stealth and not _aerial and is_instance_valid(_target)
+	_pull_time = 0.0
+	if _pull:
+		_pull_from = _target.global_position
+		_move_dir = Vector3.ZERO
 
 
 func _on_action_exit() -> void:
@@ -98,6 +111,7 @@ func _on_action_exit() -> void:
 		player.reset_air_actions()
 	_aerial = false
 	_plunging = false
+	_pull = false
 	if player.sword_visual != null:
 		player.sword_visual.end_combo()
 
@@ -147,6 +161,26 @@ func _update_plunge(delta: float) -> void:
 		player.sword_visual.update_action(_visual_action, _visual_clock)
 
 
+## The wall hug pull (item 9): the target glides to the front of the player before the strike.
+func _update_pull(delta: float) -> void:
+	if not is_instance_valid(_target):
+		_pull = false
+		return
+	_pull_time += delta
+	var to_target := _pull_from - player.global_position
+	to_target.y = 0.0
+	var direction := to_target.normalized() if to_target.length_squared() > 0.0001 else player.get_facing_direction()
+	var goal := player.global_position + direction * hug_pull_distance
+	goal.y = _pull_from.y
+	var u := smoothstep(0.0, 1.0, clampf(_pull_time / maxf(hug_pull_time, 0.001), 0.0, 1.0))
+	_target.global_position = _pull_from.lerp(goal, u)
+	var body := _target as CharacterBody3D
+	if body != null:
+		body.velocity = Vector3.ZERO
+	if u >= 1.0:
+		_pull = false
+
+
 func _abort_plunge() -> void:
 	_plunging = false
 	machine.transition_to(StateName.LOCOMOTION if player.is_on_floor() else StateName.AIR)
@@ -170,6 +204,8 @@ func _on_action_update(delta: float) -> void:
 	if _plunging:
 		_update_plunge(delta)
 		return
+	if _pull:
+		_update_pull(delta)
 	if _target != null and is_instance_valid(_target) and _move_dir != Vector3.ZERO:
 		var to_target := _target.global_position - player.global_position
 		to_target.y = 0.0

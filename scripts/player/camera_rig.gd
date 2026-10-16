@@ -8,6 +8,8 @@ extends Node3D
 
 @export var target: Node3D
 @export var follow_height: float = 1.5
+## How fast (per second) the camera eases to and from a wall-hug peek.
+@export var peek_follow_speed: float = 8.0
 @export var follow_smoothing: float = 20.0
 @export var mouse_sensitivity: float = 0.0025
 @export var stick_sensitivity: float = 3.0
@@ -68,6 +70,9 @@ var _shake_yaw: float = 0.0
 var _shake_pitch: float = 0.0
 var _shake_roll: float = 0.0
 var _noise: FastNoiseLite
+## The wall hug's peek (item 9): a world-space offset the camera eases toward (set by WallHugState).
+var _peek_target: Vector3 = Vector3.ZERO
+var _peek_now: Vector3 = Vector3.ZERO
 
 @onready var _arm: SpringArm3D = $SpringArm3D
 @onready var _camera: Camera3D = $SpringArm3D/Camera3D
@@ -133,8 +138,14 @@ func _process(delta: float) -> void:
 	var player := target as Player
 	var crouch_wanted := crouch_height_drop if player != null and player.is_crouched else 0.0
 	_crouch_drop_now = lerpf(_crouch_drop_now, crouch_wanted, 1.0 - exp(-crouch_follow_speed * delta))
-	var goal := target.global_position + Vector3.UP * (_height_now - _crouch_drop_now)
+	_peek_now = _peek_now.lerp(_peek_target, 1.0 - exp(-peek_follow_speed * delta))
+	var goal := target.global_position + Vector3.UP * (_height_now - _crouch_drop_now) + _peek_now
 	global_position = global_position.lerp(goal, 1.0 - exp(-follow_smoothing * delta))
+
+
+## The wall hug's peek (item 9): shift the camera by this world-space offset; Vector3.ZERO ends it.
+func set_peek(offset: Vector3) -> void:
+	_peek_target = offset
 
 
 ## -1 when the Options menu inverts the vertical look, else 1.

@@ -16,6 +16,9 @@ signal death_confirmed(fade_time: float)
 @warning_ignore("unused_signal")
 signal resurrected
 
+## The radius of the standing-room check capsule (m).
+const HEADROOM_RADIUS: float = 0.38
+
 @export_group("Movement")
 @export var run_speed: float = 6.5
 @export var walk_speed: float = 2.5
@@ -113,6 +116,28 @@ signal resurrected
 
 @export_group("Input")
 @export var input_buffer_time: float = 0.15
+
+@export_group("Wall hug (Phase 2 item 9)")
+## Sidle speed along the wall (m/s), the gap (m) between the body and the wall, and how far (m) past
+## the body the wall may be before the hug ends.
+@export var wall_hug_speed: float = 1.2
+@export var wall_hug_gap: float = 0.05
+## The body capsule's radius (m) while hugging: a slim "pillar" so the back sits close to the wall and
+## she fits past corners. The normal radius comes back on leaving.
+@export var wall_hug_radius: float = 0.2
+@export var wall_hug_edge_reach: float = 0.3
+## How squarely the player must face the wall to start a hug (1 = dead on), and how firmly the input must
+## point away from it to leave (1 = straight away).
+@export_range(0.0, 1.0, 0.05) var wall_hug_facing_dot: float = 0.6
+@export_range(0.0, 1.0, 0.05) var wall_hug_exit_dot: float = 0.6
+## Seconds to ease against the wall when the hug starts.
+@export var wall_hug_snap_time: float = 0.1
+## How far (m) the camera shifts past the end of a wall.
+@export var wall_hug_peek_distance: float = 0.8
+## While hugging: the noise radius (m), and the multiplier on how fast guards' sight fills (on top of
+## crouching).
+@export var wall_hug_noise: float = 0.5
+@export_range(0.0, 1.0, 0.05) var wall_hug_sight_multiplier: float = 0.5
 
 @export_group("Interact (Phase 2 item 8)")
 ## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
@@ -298,6 +323,8 @@ var ledge_block_until_ms: int = 0
 var wall_jump_forced_away: bool = false
 
 var _headroom_shape: CapsuleShape3D
+## The body capsule's radius from the scene (restored after a wall hug, item 9).
+var _default_body_radius: float = 0.38
 var _hurt_shape: CollisionShape3D
 ## A repulse (an enemy's special deflect, Step 7b) is waiting to cancel the current attack.
 var _repulse_pending: bool = false
@@ -314,6 +341,8 @@ var deathblow_target: Node3D
 var deathblow_stealth: bool = false
 ## True when it is a death from above (item 7c): the deathblow starts with a plunge onto the target.
 var deathblow_aerial: bool = false
+## True when the stealth kill in progress started from the wall hug (item 9): the target is pulled in first.
+var deathblow_from_hug: bool = false
 var _stagger_pending: bool = false
 ## Forced movement (knockback, head slide, personal space) and the placeholder body reactions (the hit
 ## wobble, the lean, the kneel), Phase 1.5 item 5c.
@@ -352,8 +381,9 @@ func _ready() -> void:
 	sheathed = start_sheathed and weapon != null
 	if sheathed and sword_visual != null:
 		sword_visual.snap_sheathed()
+	_default_body_radius = (_collision_shape.shape as CapsuleShape3D).radius
 	_headroom_shape = CapsuleShape3D.new()
-	_headroom_shape.radius = 0.38
+	_headroom_shape.radius = HEADROOM_RADIUS
 	_headroom_shape.height = stand_height - 0.07
 	add_to_group(Groups.PLAYER)
 	# The awareness HUD (item 7a): the triangles that show enemies noticing the player.
@@ -431,6 +461,8 @@ func get_noise_radius() -> float:
 		radius = noise_stealth_kill
 	elif current is ActionState:
 		radius = noise_action
+	elif current is WallHugState:
+		radius = wall_hug_noise if Vector2(velocity.x, velocity.z).length() >= 0.3 else 0.0
 	elif is_on_floor() and (current is LocomotionState or current is CrouchState or current is GuardState \
 			or current is DashState or current is HealState):
 		var horizontal := Vector2(velocity.x, velocity.z).length()
@@ -478,10 +510,19 @@ func _update_interact_target() -> void:
 ## Returns true if one was used (the press is then used up so it can't also grab a ledge).
 func try_interact() -> bool:
 	if interact_target == null:
-		return false
+		# Nothing to use: a wall in front is a wall hug (item 9).
+		var hug := state_machine.get_state(StateName.WALL_HUG) as WallHugState
+		if hug == null:
+			push_error("Player: no WallHug node under StateMachine (Phase 2 item 9, add it in the editor).")
+			return false
+		return hug.try_begin()
 	input_buffer.consume(Actions.INTERACT)
 	interact_target.interact(self)
 	return true
+
+
+func is_wall_hugging() -> bool:
+	return state_machine.current is WallHugState
 
 
 ## A line of text near the bottom of the screen (an NPC's line, "It is empty.").
@@ -624,6 +665,16 @@ func get_body_radius() -> float:
 	return (_collision_shape.shape as CapsuleShape3D).radius
 
 
+## The body radius from the scene, whatever it is right now (a wall hug makes it slimmer).
+func get_default_body_radius() -> float:
+	return _default_body_radius
+
+
+## Sets the body capsule's radius (on the shape resource). The wall hug uses it.
+func set_body_radius(radius: float) -> void:
+	(_collision_shape.shape as CapsuleShape3D).radius = radius
+
+
 ## True if there is room above to stand up (checked with a standing-sized capsule).
 func can_stand() -> bool:
 	return fits_standing_at(global_position)
@@ -631,6 +682,8 @@ func can_stand() -> bool:
 
 ## True if a standing capsule fits with its feet at the given point.
 func fits_standing_at(feet: Vector3) -> bool:
+	# A slimmer body (the wall hug) needs less room at the sides.
+	_headroom_shape.radius = minf(HEADROOM_RADIUS, get_body_radius())
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = _headroom_shape
 	params.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (0.07 + _headroom_shape.height * 0.5))
@@ -794,6 +847,9 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	var hang := state_machine.current as LedgeHangState
 	if hang != null:
 		hang.knock_off()
+	var hug := state_machine.current as WallHugState
+	if hug != null:
+		hug.knock_off()
 
 
 ## The guard blocked a hit (no health lost unless chip damage is on): a heavier wobble, an orange
@@ -1025,6 +1081,7 @@ func begin_aerial_kill(target: Node3D) -> void:
 	deathblow_target = target
 	deathblow_stealth = true
 	deathblow_aerial = true
+	deathblow_from_hug = false
 	state_machine.transition_to(StateName.DEATHBLOW)
 
 
@@ -1053,6 +1110,7 @@ func _try_deathblow() -> void:
 	deathblow_target = target
 	deathblow_stealth = stealth
 	deathblow_aerial = false
+	deathblow_from_hug = stealth and current is WallHugState
 	state_machine.transition_to(StateName.DEATHBLOW)
 
 

@@ -25,7 +25,7 @@
 | 5 | Loading screens: a proper one with tips and a black-screen one (section 3, item 5) | feature | [x] done and tested 2026-10-13 |
 | 6 | Options screen in two parts: 6a the audio and gameplay menus, 6b the controls (section 3, item 6) | feature | [x] done and tested (6a and 6b on 2026-10-13) |
 | 7 | Enemy awareness and the stealth deathblow, with a multi-level stealth arena (7a awareness core and the arena's ground floor, 7b the stealth deathblow, 7c the upper levels and the death from above; 7d corpse discovery, 7e tending the body; section 3, item 7) | feature | [ ] in progress: **7a to 7e built and tested (2026-10-15)**, item 7 is complete |
-| 8 | Generic interact system (section 3, item 8) | feature | [ ] planned (discussed 2026-10-16), not started |
+| 8 | Generic interact system (section 3, item 8) | feature | [x] done and tested 2026-10-16 |
 | 9 | Wall hug (section 3, item 9) | feature | [ ] planned (discussed 2026-10-16), not started |
 | 10 | Non-lethal combat (section 3, item 10) | feature | [ ] planned (discussed 2026-10-16), not started |
 | 11 | Throwables: 11a tap throw and ammo, 11b hold to aim (section 3, item 11) | feature | [ ] planned (discussed 2026-10-16), not started |
@@ -47,7 +47,7 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **7. Enemy awareness and the stealth deathblow (2026-10-15, addendum 2026-10-16).** 7a awareness core and the Stealth Compound's ground floor, 7b stealth deathblow, 7c upper levels and the death from above, 7d corpse discovery, 7e tending the body; the bars-in-combat addendum. **Rule kept for every item:** `Enemy.use_awareness` is off by default (per instance), so every existing arena and preset behaves as before; the numbers are in `EnemyAIData`. Not included: a light and shadow system, hiding places, throwables (item 11 now), enemy dialogue.
 
 ### 8. Generic interact system
-- **Status:** planned, discussed 2026-10-16, **not agreed as build decisions** (the full check settles them). Background and the bigger picture: `docs/phase-3-4-notes.md` (sections 4, 5 and 11).
+- **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Interact system"). The text below is the plan as discussed. Decisions made at the full check: the menu OK sound for everything, the demo in `test_arena`, flags kept across the death reload and cleared at the main menu, no group or physics layer (a static registry), `GameFlags` static (no autoload). Background and the bigger picture: `docs/phase-3-4-notes.md` (sections 4, 5 and 11).
 - **What:** an `Interactable` (prompt text, priority, `can_interact()`) in the world and a picker on the player: the nearest interactable in front within about 2.5 m, with an on-screen prompt such as "E: Open". What happens after the press is separate from the picker, so Phase 3 can add behaviors (notice board, shop, minigame) without touching it.
 - **First interactables (proposed):** a door (can be locked by a flag), a chest, a switch, and a placeholder NPC that shows one line of text. A crowd NPC is also an interactable with one or two generic lines from a pool (chosen by reputation in Phase 3).
 - **`GameFlags` (proposed):** a small in-memory flag store, so a door's lock has something to read now; Phase 3 adds saving without changing any door.

@@ -30,6 +30,7 @@
 [ext_resource type="Script" uid="uid://dgsq4xks6kmrc" path="res://scripts/player/states/dead_state.gd" id="26_5q8fn"]
 [ext_resource type="Script" uid="uid://ckyykx3ke8fdi" path="res://scripts/player/states/guard_state.gd" id="26_uniwh"]
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="27_28m0y"]
+[ext_resource type="Script" uid="uid://cu132jjjynak8" path="res://scripts/player/states/wall_hug_state.gd" id="27_rw8a5"]
 [ext_resource type="Script" uid="uid://c3t1jclb0bed4" path="res://scripts/player/states/stagger_state.gd" id="27_tffgl"]
 [ext_resource type="Script" uid="uid://2gky22glbhj6" path="res://scripts/player/states/deathblow_state.gd" id="28_pk8ii"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
@@ -139,6 +140,10 @@ script = ExtResource("25_8qxvo")
 
 [node name="Dead" type="Node" parent="StateMachine" unique_id=1098696889]
 script = ExtResource("26_5q8fn")
+
+[node name="WallHug" type="Node" parent="StateMachine" unique_id=303664052]
+script = ExtResource("27_rw8a5")
+metadata/_custom_type_script = "uid://cu132jjjynak8"
 
 [node name="Combatant" type="Node" parent="." unique_id=1176548210]
 script = ExtResource("28_uniwh")
