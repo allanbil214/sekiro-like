@@ -202,7 +202,6 @@ script = ExtResource("32_pk8ii")
 
 [node name="DebugOverlay" type="CanvasLayer" parent="." unique_id=1008711021]
 script = ExtResource("9_fcs02")
-show_debug_text = true
 
 [node name="PlayerHud" type="CanvasLayer" parent="." unique_id=1145584402]
 script = ExtResource("36_wva7c")

@@ -26,6 +26,9 @@ extends Node
 signal damaged(hit: HitData, amount: float)
 signal health_changed(current: float, maximum: float)
 signal died
+## Knocked out (Phase 2 item 10): the same end as `died` for everything that checks `dead`, but alive and
+## unconscious. Emitted instead of `died` when the finishing blow was not lethal.
+signal knocked_out
 ## A plain guard blocked the hit. `chip` is the health lost (0 unless chip damage is on).
 signal hit_guarded(hit: HitData, chip: float)
 signal hit_deflected(hit: HitData)
@@ -119,6 +122,10 @@ signal deathblow_closed(executed: bool, killed: bool)
 
 var health: float = 0.0
 var dead: bool = false
+## True after a knockout (`dead` is true too, so every "ignore the dead" check also skips an unconscious one).
+var unconscious: bool = false
+## Was the last blow that took health, or the last deathblow, lethal? Decides between `died` and `knocked_out`.
+var last_blow_lethal: bool = true
 var bars_left: int = 1
 var posture: float = 0.0
 ## True from the moment posture is full until reset_posture() (or the deathblow window ends).
@@ -262,6 +269,7 @@ func take_hit(hit: HitData) -> float:
 		add_posture(hit.posture_damage * posture_factor_guard)
 		return chip
 	_reset_spam("taking a hit")
+	last_blow_lethal = hit.lethal
 	var breaks_guard := hit.grab or (guarding and hit.perilous and _in_cone(hit))
 	var multiplier := staggered_damage_multiplier if vulnerable else 1.0
 	var amount := minf(hit.damage * multiplier * health_taken_multiplier, health)
@@ -339,9 +347,10 @@ func tick_posture(delta: float, paused: bool) -> void:
 
 
 ## A deathblow lands inside the window. Returns false if none is open.
-func execute_deathblow() -> bool:
+func execute_deathblow(lethal: bool = true) -> bool:
 	if not deathblow_open:
 		return false
+	last_blow_lethal = lethal
 	deathblow_open = false
 	if bars_left > 1:
 		bars_left -= 1
@@ -357,18 +366,19 @@ func execute_deathblow() -> bool:
 	health_changed.emit(health, max_health)
 	bars_changed.emit(bars_left, health_bars)
 	deathblow_closed.emit(true, true)
-	died.emit()
+	_finish()
 	return true
 
 
 ## The stealth deathblow (item 7b): a silent kill on an enemy that has not started fighting. A non-boss dies
 ## outright whatever its bars. A boss loses one bar; on its last bar its health goes to empty (the normal
 ## deathblow window opens). If a deathblow window is already open it is a normal deathblow. Returns false if dead.
-func execute_stealth_kill() -> bool:
+func execute_stealth_kill(lethal: bool = true) -> bool:
 	if dead:
 		return false
 	if deathblow_open:
-		return execute_deathblow()
+		return execute_deathblow(lethal)
+	last_blow_lethal = lethal
 	stealth_kill_active = true
 	if not boss:
 		bars_left = 0
@@ -377,7 +387,7 @@ func execute_stealth_kill() -> bool:
 		health_changed.emit(health, max_health)
 		bars_changed.emit(bars_left, health_bars)
 		deathblow_closed.emit(true, true)
-		died.emit()
+		_finish()
 	elif bars_left > 1:
 		bars_left -= 1
 		health = max_health
@@ -423,6 +433,8 @@ func revive(fraction: float = 0.5) -> void:
 func reset() -> void:
 	health = max_health
 	dead = false
+	unconscious = false
+	last_blow_lethal = true
 	bars_left = health_bars
 	deathblow_open = false
 	reset_posture()
@@ -447,8 +459,7 @@ func _health_empty() -> void:
 		health = 0.0
 		_open_deathblow()
 		return
-	dead = true
-	died.emit()
+	_finish()
 
 
 ## Fill posture and start the window (once).
@@ -472,12 +483,23 @@ func _deathblow_missed() -> void:
 		if bars_left <= 1 and not boss:
 			dead = true
 			deathblow_closed.emit(false, true)
-			died.emit()
+			_finish()
 			return
 		health = 1.0
 		health_changed.emit(health, max_health)
 	reset_posture()
 	deathblow_closed.emit(false, false)
+
+
+## The end: dead (`died`) after a lethal blow, unconscious (`knocked_out`) after a non-lethal one. Both set
+## `dead`, so the rest of the game treats them the same.
+func _finish() -> void:
+	dead = true
+	unconscious = not last_blow_lethal
+	if last_blow_lethal:
+		died.emit()
+	else:
+		knocked_out.emit()
 
 
 func _resolve(hit: HitData) -> int:

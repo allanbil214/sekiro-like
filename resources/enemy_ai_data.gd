@@ -289,6 +289,8 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var corpse_carry_height: float = 0.55
 @export var corpse_wall_search: float = 25.0
 @export var corpse_wall_gap: float = 0.6
+## An unconscious body (Phase 2 item 10): the pause (s) a guard takes to wake it by hand once it is next to it.
+@export var wake_pause: float = 1.5
 ## The alert search (after losing the player) roams too: it visits `roam_points` points on a ring (m) around
 ## the last known spot and the search ends after one lap. Off: it stands there for `search_time` seconds.
 @export var search_roams: bool = true

@@ -9,6 +9,9 @@ extends ActionState
 ## The action defaults to res://actions/deathblow.tres if none is set in the Inspector.
 
 const DEFAULT_ACTION: ActionData = preload("res://actions/deathblow.tres")
+## The choke (Phase 2 item 10): the stealth kill with the blade reversed. A longer action: the target is pulled
+## in front of the player and held (arms squeezing, the target struggling and then limp), then knocked out.
+const CHOKE_ACTION: ActionData = preload("res://actions/choke.tres")
 const THRUST_VISUAL: ActionData = preload("res://actions/deathblow_thrust.tres")
 ## The helm splitter's dive pose, drawn during a death from above (item 7c).
 const HELM_VISUAL: ActionData = preload("res://actions/helm_splitter.tres")
@@ -47,6 +50,9 @@ var _plunging: bool = false
 var _plunge_time: float = 0.0
 var _plunge_limit: float = 1.2
 var _visual_clock: float = 0.0
+## Item 10: this run is a choke, and the action the node was given (the choke swaps `action` while it runs).
+var _choke: bool = false
+var _default_action: ActionData
 ## The wall hug pull (item 9).
 var _pull: bool = false
 var _pull_time: float = 0.0
@@ -56,6 +62,18 @@ var _pull_from: Vector3 = Vector3.ZERO
 func _ready() -> void:
 	if action == null:
 		action = DEFAULT_ACTION
+	_default_action = action
+
+
+func enter(previous: StringName) -> void:
+	action = CHOKE_ACTION if _wants_choke() else _default_action
+	super(previous)
+
+
+## A ground stealth kill with the blade reversed on an enemy is a choke.
+func _wants_choke() -> bool:
+	return player.blade_reversed and player.deathblow_stealth and not player.deathblow_aerial \
+			and player.deathblow_target is Enemy
 
 
 func _slows_active_window() -> bool:
@@ -79,6 +97,7 @@ func _on_action_enter(_previous: StringName) -> void:
 		_plunge_limit += (_target.global_position - player.global_position).length() \
 			/ maxf(minf(plunge_speed, player.hard_land_speed - 1.0), 1.0)
 	_visual_clock = 0.0
+	_choke = action == CHOKE_ACTION
 	_visual_action = THRUST_VISUAL
 	if player.sheathed and player.weapon != null and player.weapon.draw_attack != null:
 		_visual_action = player.weapon.draw_attack
@@ -86,8 +105,13 @@ func _on_action_enter(_previous: StringName) -> void:
 		_visual_action = HELM_VISUAL
 		if player.sheathed and player.weapon != null and player.weapon.draw_helm_action != null:
 			_visual_action = player.weapon.draw_helm_action
-	if player.sword_visual != null:
+	if player.sword_visual != null and not _choke:
 		player.sword_visual.begin_action(_visual_action)
+	if _choke:
+		# No swing sound, the arms reach out, and the target is held.
+		_swing_played = true
+		player.play_choke_arms()
+		(_target as Enemy).set_held(true)
 	if _target != null:
 		var to_target := _target.global_position - player.global_position
 		to_target.y = 0.0
@@ -96,7 +120,7 @@ func _on_action_enter(_previous: StringName) -> void:
 			player.snap_facing(_move_dir)
 		if _aerial:
 			_move_dir = Vector3.ZERO
-	_pull = player.deathblow_from_hug and _stealth and not _aerial and is_instance_valid(_target)
+	_pull = (player.deathblow_from_hug or _choke) and _stealth and not _aerial and is_instance_valid(_target)
 	_pull_time = 0.0
 	if _pull:
 		_pull_from = _target.global_position
@@ -104,6 +128,7 @@ func _on_action_enter(_previous: StringName) -> void:
 
 
 func _on_action_exit() -> void:
+	var held_target := _target as Enemy
 	_target = null
 	if _landed:
 		player.grant_invulnerability(invulnerable_after)
@@ -112,6 +137,11 @@ func _on_action_exit() -> void:
 	_aerial = false
 	_plunging = false
 	_pull = false
+	if _choke:
+		_choke = false
+		player.release_arms()
+		if held_target != null and is_instance_valid(held_target):
+			held_target.set_held(false)
 	if player.sword_visual != null:
 		player.sword_visual.end_combo()
 
@@ -177,7 +207,7 @@ func _update_pull(delta: float) -> void:
 	var body := _target as CharacterBody3D
 	if body != null:
 		body.velocity = Vector3.ZERO
-	if u >= 1.0:
+	if u >= 1.0 and not _choke:
 		_pull = false
 
 
@@ -206,12 +236,15 @@ func _on_action_update(delta: float) -> void:
 		return
 	if _pull:
 		_update_pull(delta)
+	if _choke and is_instance_valid(_target):
+		var strike := action.active_hit.x + (action.active_hit.y - action.active_hit.x) * 0.5
+		(_target as Enemy).set_held_amount(action_time / maxf(strike, 0.001))
 	if _target != null and is_instance_valid(_target) and _move_dir != Vector3.ZERO:
 		var to_target := _target.global_position - player.global_position
 		to_target.y = 0.0
 		if to_target.length() <= stop_distance:
 			_move_dir = Vector3.ZERO
-	if player.sword_visual != null:
+	if player.sword_visual != null and not _choke:
 		player.sword_visual.update_action(_visual_action, _visual_time())
 	if not _swing_played and action_time >= maxf(action.active_hit.x - swing_sound_lead, 0.0):
 		_swing_played = true
@@ -232,8 +265,11 @@ func _strike() -> void:
 	if is_instance_valid(_target):
 		combatant = Combatant.of(_target)
 	var landed := false
+	if _choke and is_instance_valid(_target):
+		(_target as Enemy).set_held(false)
 	if combatant != null:
-		landed = combatant.execute_stealth_kill() if _stealth else combatant.execute_deathblow()
+		var lethal := not player.blade_reversed
+		landed = combatant.execute_stealth_kill(lethal) if _stealth else combatant.execute_deathblow(lethal)
 	if landed:
 		_landed = true
 		Hitstop.request(player.get_tree(), landing_hitstop)

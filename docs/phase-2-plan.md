@@ -26,8 +26,8 @@
 | 6 | Options screen in two parts: 6a the audio and gameplay menus, 6b the controls (section 3, item 6) | feature | [x] done and tested (6a and 6b on 2026-10-13) |
 | 7 | Enemy awareness and the stealth deathblow, with a multi-level stealth arena (7a awareness core and the arena's ground floor, 7b the stealth deathblow, 7c the upper levels and the death from above; 7d corpse discovery, 7e tending the body; section 3, item 7) | feature | [ ] in progress: **7a to 7e built and tested (2026-10-15)**, item 7 is complete |
 | 8 | Generic interact system (section 3, item 8) | feature | [x] done and tested 2026-10-16 |
-| 9 | Wall hug (section 3, item 9) | feature | [ ] planned (discussed 2026-10-16), not started |
-| 10 | Non-lethal combat (section 3, item 10) | feature | [ ] planned (discussed 2026-10-16), not started |
+| 9 | Wall hug (section 3, item 9) | feature | [x] done and tested 2026-10-16 |
+| 10 | Non-lethal combat (section 3, item 10) | feature | [x] done and tested 2026-10-16 |
 | 11 | Throwables: 11a tap throw and ammo, 11b hold to aim (section 3, item 11) | feature | [ ] planned (discussed 2026-10-16), not started |
 | 12 | Navigation: a navmesh for enemies (section 3, item 12) | feature | [ ] planned (discussed 2026-10-16), not started |
 | 13 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
@@ -55,7 +55,7 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Not included:** the dialogue freeze and a real dialogue box (Phase 3), saving, the notice board, shops.
 
 ### 9. Wall hug
-- **Status:** planned, discussed 2026-10-16.
+- **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Wall hug"). The text below is the plan as discussed. Decisions made at the full check: a single press, an automatic latched peek at a wall end (no button), attack, guard, dodge and jump just leave the hug and act normally, the stealth kill from the hug pulls the target in over 0.15 s (a cheap glide), the stealth numbers are Player exports (not `EnemyAIData`), a slim 0.2 m body and no personal space push while hugging, the demo wall in `test_arena`.
 - **What (user):** the Sekiro and Tenchu move. Press `interact` while facing a wall, on the ground, and the character presses her back to it. Called "wall hug" so it is not confused with the ledge shimmy (hanging from a ledge).
 - **Entry and exit (user, proposed single press):** `interact` facing a wall within reach, in any stance. Leave with `interact` again, moving away from the wall, a jump or a dodge. **Open:** a single press (default) or the double press some Sekiro PC players describe.
 - **Sidle:** slow and quiet along the wall. **Peek around a corner** by shifting the camera.
@@ -64,7 +64,7 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Not included in the first version:** an ambush attack from the hug when a guard walks past (Tenchu style).
 
 ### 10. Non-lethal combat
-- **Status:** planned, discussed 2026-10-16. Reasons and the reputation link: `docs/phase-3-4-notes.md`, sections 6 and 7.
+- **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Non-lethal combat"). The text below is the plan as discussed. Decisions made at the full check: one sword with a toggle (T, D-pad Up), posture damage full, a boss is knocked out too (no banner), enemies wake by themselves after 300 s (a boss never) or by a guard, the stealth kill with the reversed blade is a code-drawn 1.5 s choke, reputation counting is Phase 3. Reasons and the reputation link: `docs/phase-3-4-notes.md`, sections 6 and 7.
 - **What (user):** a **reverse blade** toggle (WoTS sakabato): health damage halved, a deathblow that makes the enemy **unconscious**, and a stealth deathblow that becomes a **choke** until unconscious.
 - **Posture damage:** the user asked whether it is halved too. **Proposed default: full** (**open**).
 - **Technical shape (proposed):** a lethal flag on `HitData`, a knocked-out state on `Combatant` and `Enemy` (a knockout replaces death at zero health), and unconscious bodies that reuse the 7d and 7e body code with a milder reaction ("wake him up", not an alarm).

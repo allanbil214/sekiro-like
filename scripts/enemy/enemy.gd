@@ -84,6 +84,11 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## bar) until the scene reloads, and guards can find the body (see EnemyAIData.notices_corpses). Off, or a boss
 ## or an enemy without awareness: it vanishes and respawns after `respawn_delay`, as before.
 @export var leaves_corpse: bool = true
+## Non-lethal combat (Phase 2 item 10): a knocked-out enemy wakes after this many seconds (0 = never; a boss
+## never wakes), but not while the player is within `wake_player_distance` (m). It wakes at its post, healthy
+## and unaware; a guard that wakes it by hand (EnemyAIData.wake_pause) wakes it where it lies.
+@export var wake_time: float = 300.0
+@export var wake_player_distance: float = 8.0
 ## The health bar, the dots and the posture bar show only while this enemy is fighting the player (any phase but
 ## IDLE) and fade in and out (see EnemyBar's "Combat fade"). Off: they are always shown.
 @export var bars_only_in_combat: bool = true
@@ -119,6 +124,13 @@ var _stood_down: bool = false
 var _stealth_grace_left: float = 0.0
 ## Item 7d: this enemy died and left a body; set once a guard has seen it.
 var _is_corpse: bool = false
+## Item 10: knocked out (tipped over, no collider), and the seconds left before it wakes by itself.
+var _unconscious: bool = false
+var _wake_left: float = 0.0
+## Item 10: held by the player's choke: no AI, no movement, a struggle and then a droop (0 to 1) drawn on `visual`.
+var _held: bool = false
+var _held_amount: float = 0.0
+var _held_clock: float = 0.0
 var corpse_discovered: bool = false
 var _corpse_material: StandardMaterial3D
 ## Awareness enemies only: it was in combat when it stood down, so it yields when the player is back (an unaware one
@@ -146,6 +158,7 @@ var _recoil: float = 0.0
 var _recoil_scale: float = 1.0
 var _recoil_direction: Vector3 = Vector3.ZERO
 var _base_material: StandardMaterial3D
+var _unconscious_material: StandardMaterial3D
 var _stun_material: StandardMaterial3D
 var _spawn_position: Vector3 = Vector3.ZERO
 var _spawn_yaw: float = 0.0
@@ -229,6 +242,7 @@ func _ready() -> void:
 	combatant.hit_guarded.connect(_on_guarded)
 	combatant.hit_deflected.connect(_on_deflected)
 	combatant.died.connect(_on_died)
+	combatant.knocked_out.connect(_on_knocked_out)
 	combatant.deathblow_opened.connect(_on_deathblow_opened)
 	combatant.deathblow_closed.connect(_on_deathblow_closed)
 	combatant.posture_broken.connect(_on_posture_broken)
@@ -255,6 +269,12 @@ func _exit_tree() -> void:
 
 func _physics_process(delta: float) -> void:
 	if combatant.dead:
+		if _unconscious:
+			_tick_wake(delta)
+		return
+	if _held:
+		# The choke has hold of it (item 10): it stays where the player put it.
+		velocity = Vector3.ZERO
 		return
 	if global_position.y < -30.0:
 		_return_to_spawn()
@@ -331,8 +351,11 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if _is_corpse:
-		return  # the body keeps its tipped-over pose (item 7d)
+	if _is_corpse or _unconscious:
+		return  # the body keeps its tipped-over pose (items 7d and 10)
+	if _held:
+		_update_held_pose(delta)
+		return
 	_update_crouch(delta)
 	var bobbing := _bobble_loop or _bobble_clock < _bobble_length
 	if _recoil <= 0.0 and not bobbing and _crouch <= 0.0:
@@ -1031,6 +1054,43 @@ func is_corpse() -> bool:
 	return _is_corpse
 
 
+## Item 10: knocked out and lying there.
+func is_unconscious() -> bool:
+	return _unconscious
+
+
+## A body (dead or unconscious) no guard has seen yet.
+func is_undiscovered_body() -> bool:
+	return (_is_corpse or _unconscious) and not corpse_discovered
+
+
+## Item 10: the player's choke holds this enemy (true) or lets go (false).
+func set_held(held: bool) -> void:
+	if _held == held:
+		return
+	_held = held
+	_held_amount = 0.0
+	_held_clock = 0.0
+	velocity = Vector3.ZERO
+	if not held:
+		visual.position = Vector3.ZERO
+		visual.basis = Basis.IDENTITY
+
+
+## The choke's progress, 0 to 1: it struggles at first (a shake and a lean back), then goes limp (it droops forward).
+func set_held_amount(amount: float) -> void:
+	_held_amount = clampf(amount, 0.0, 1.0)
+
+
+func _update_held_pose(delta: float) -> void:
+	_held_clock += delta
+	var limp := smoothstep(0.55, 1.0, _held_amount)
+	var shake := (1.0 - limp) * 0.04
+	visual.position = Vector3(sin(_held_clock * 58.0) * shake, 0.0, cos(_held_clock * 47.0) * shake * 0.5)
+	var lean := lerpf(deg_to_rad(-14.0), deg_to_rad(38.0), limp)
+	visual.basis = Basis(Vector3.RIGHT, lean)
+
+
 ## A body no guard has seen yet.
 func is_undiscovered_corpse() -> bool:
 	return _is_corpse and not corpse_discovered
@@ -1235,7 +1295,7 @@ func _on_deathblow_opened() -> void:
 
 ## The window closed: back to normal. A landed deathblow also makes it recoil from the player.
 func _on_deathblow_closed(executed: bool, killed: bool) -> void:
-	if executed:
+	if executed and combatant.last_blow_lethal:
 		var blow := Vector3.ZERO
 		if _player != null:
 			blow = global_position - _player.global_position
@@ -1255,6 +1315,90 @@ func _on_deathblow_closed(executed: bool, killed: bool) -> void:
 			_recoil = 1.0
 			_recoil_scale = 1.0
 			_recoil_direction = away.normalized()
+
+
+## Item 10: a non-lethal blow finished it. Like dying (nothing keeps fighting, a carried body is dropped, the
+## awareness resets) but it stays here, tipped over, and wakes later (see `_tick_wake`). No victory banner.
+func _on_knocked_out() -> void:
+	bar.set_stealth_marker(false)
+	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_FLINCH, global_position + Vector3.UP * 1.0)
+	set_held(false)
+	if _awareness != null:
+		_awareness.drop_carried()
+		_awareness.reset()
+	_abort_attack()
+	drop_guard()
+	_defense.riposte_pending = false
+	_end_pose()
+	_end_stun_bobble()
+	_set_phase(Phase.IDLE)
+	_unconscious = true
+	corpse_discovered = false
+	_wake_left = wake_time if not boss else 0.0
+	bar.visible = false
+	body_shape.set_deferred("disabled", true)
+	var hurtbox := get_node_or_null("Hurtbox") as Area3D
+	if hurtbox != null:
+		hurtbox.set_deferred("monitorable", false)
+		hurtbox.set_deferred("monitoring", false)
+	if _unconscious_material == null:
+		_unconscious_material = StandardMaterial3D.new()
+		_unconscious_material.albedo_color = Color(0.35, 0.42, 0.62)
+	body.material_override = _unconscious_material
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(visual, "rotation:x", deg_to_rad(90.0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(visual, "position:y", 0.4, 0.35)
+
+
+## Counts down to waking up by itself (a boss and `wake_time` 0 never do), and waits while the player is near.
+func _tick_wake(delta: float) -> void:
+	if _wake_left <= 0.0 and (boss or wake_time <= 0.0):
+		return
+	_wake_left = maxf(_wake_left - delta, 0.0)
+	if _wake_left > 0.0:
+		return
+	if _player == null or not is_instance_valid(_player):
+		_find_player()
+	if _player != null:
+		var away := _player.global_position - global_position
+		away.y = 0.0
+		if away.length() < wake_player_distance:
+			return
+	wake_up(Vector3.ZERO, true)
+
+
+## Wake up (item 10): upright, healthy, solid again. `at_post` puts it back at its post, unaware (the timer);
+## otherwise it wakes where it lies and is made suspicious about `from_position` (a guard woke it).
+func wake_up(from_position: Vector3, at_post: bool) -> void:
+	if not _unconscious:
+		return
+	_unconscious = false
+	corpse_discovered = false
+	body.material_override = _base_material
+	visual.rotation.x = 0.0
+	visual.position = Vector3.ZERO
+	if at_post:
+		_return_to_spawn()
+	combatant.reset()
+	bar.visible = true
+	bar.set_in_combat(not bars_only_in_combat, true)
+	body_shape.set_deferred("disabled", false)
+	var hurtbox := get_node_or_null("Hurtbox") as Area3D
+	if hurtbox != null:
+		hurtbox.set_deferred("monitorable", true)
+		hurtbox.set_deferred("monitoring", true)
+	_defense.reset_for_respawn()
+	_flinch_immunity = 0.0
+	_burst_armored = false
+	_peril_cooldown = 0.0
+	_head_bounce_time = 0.0
+	_peril_history.clear()
+	_think_timer = 0.5
+	_set_phase(Phase.IDLE)
+	if _awareness != null:
+		_awareness.reset()
+		if not at_post:
+			_awareness.hear_shout(from_position, false)
 
 
 func _on_died() -> void:

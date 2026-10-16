@@ -15,11 +15,20 @@ extends Node3D
 ## Pose angle while climbing a ledge: 180 = arms straight up.
 @export var climb_angle_deg: float = 180.0
 @export var color: Color = Color(1.0, 0.6, 0.15)
+## Item 10, the choke pose: how far forward the arms point (90 = straight ahead), how close (m) to the middle
+## they close in, and the size (degrees) and speed (per second) of the squeeze.
+@export var choke_angle_deg: float = 85.0
+@export var choke_arm_offset: float = 0.16
+@export var choke_pulse_degrees: float = 6.0
+@export var choke_pulse_speed: float = 26.0
 
 var _pivots: Array[Node3D] = []
 var _tween: Tween
 var _angle_deg: float = 140.0
 var _amount: float = 0.0
+## The choke (item 10): the arms reach forward and close in, then squeeze in a small pulse.
+var _choking: bool = false
+var _choke_clock: float = 0.0
 
 
 func _ready() -> void:
@@ -58,6 +67,26 @@ func hold_forward(shoulder_y: float) -> void:
 	_hold(slide_angle_deg, shoulder_y)
 
 
+## Item 10: reach forward and close in around a head at `shoulder_y`, squeezing until release().
+func hold_choke(shoulder_y: float) -> void:
+	_hold(choke_angle_deg, shoulder_y)
+	_choking = true
+	_choke_clock = 0.0
+	for i in _pivots.size():
+		var side := -1.0 if i == 0 else 1.0
+		_pivots[i].position.x = side * choke_arm_offset
+
+
+func _process(delta: float) -> void:
+	if not _choking:
+		return
+	_choke_clock += delta
+	var squeeze := 1.0 + deg_to_rad(choke_pulse_degrees) / deg_to_rad(maxf(choke_angle_deg, 1.0)) \
+			* sin(_choke_clock * choke_pulse_speed)
+	for pivot in _pivots:
+		pivot.rotation.x = deg_to_rad(_angle_deg) * _amount * squeeze
+
+
 ## Swing the arms straight up (climb_angle_deg) and keep them there until release().
 func hold_up() -> void:
 	_hold(climb_angle_deg, shoulder_height)
@@ -75,6 +104,10 @@ func _hold(angle_deg: float, shoulder_y: float) -> void:
 
 ## Lower the arms and hide them.
 func release() -> void:
+	if _choking:
+		_choking = false
+		for i in _pivots.size():
+			_pivots[i].position.x = (-1.0 if i == 0 else 1.0) * shoulder_offset
 	if not visible:
 		return
 	if _tween != null:

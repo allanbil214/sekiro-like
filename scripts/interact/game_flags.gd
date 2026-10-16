@@ -4,6 +4,9 @@ extends RefCounted
 ## and write flags here. Kept across the death reload, cleared when the main menu opens. Phase 3 adds
 ## saving and loading to this class without changing any door.
 
+## The reversed blade (Phase 2 item 10) is a flag too.
+const BLADE_REVERSED: StringName = &"blade_reversed"
+
 static var _flags: Dictionary = {}
 
 

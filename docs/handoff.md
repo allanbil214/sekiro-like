@@ -199,7 +199,7 @@ Everything in steps 1 to 13 is **done and tested**; the original list with all i
 | 11 | Polish: sound, effects, camera shake, boss-slain screen, shockwaves, swing trail, crouch vignette | `docs/design-later-steps.md`, 3.12 |
 | 12 | Cleanup refactor (A to D) | `docs/design-later-steps.md`, 3.13 |
 | 13 | Phase 1.5 hardening (11 items) | `docs/phase-1-5-plan.md` |
-| 14 | **Phase 2, new features** (items 1 to 8 done; 9 to 12 planned) | `docs/phase-2-plan.md` |
+| 14 | **Phase 2, new features** (items 1 to 10 done; 11 and 12 planned) | `docs/phase-2-plan.md` |
 | later | Phase 3 (game flow, a small slice), Phase 4 (content and systems), Phase 5 (art) | `docs/phase-3-4-notes.md` (discussion notes, not agreed decisions) |
 
 ---
@@ -227,7 +227,7 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - [x] 11a to 11g. Sound, sparks and effects, camera shake, boss-slain screen and heal arm, shockwaves, swing trail, crouch vignette
 - [x] 12A to 12D. Cleanup refactor: no fallbacks, `StateName`, `LedgeSensor`, `ActionRunner`
 - [x] 13. Phase 1.5 (11 items): `Groups`, `Enemies`, `Actions`, `EnemyDefense`, `SwordGuardPoses`, `PlayerForcedMovement`, `PlayerBodyReaction`, pooled `Fx` and `Sfx`, typed trail points, debug-only prints
-- [ ] 14. Phase 2, new features (`docs/phase-2-plan.md`; items numbered as in that file; 9 to 12 are planned, numbers match the build order):
+- [ ] 14. Phase 2, new features (`docs/phase-2-plan.md`; items numbered as in that file; 11 and 12 are planned, numbers match the build order):
   - [x] 1. Main menu (title screen, START, ARENAS or the chooser in a release build, OPTIONS, QUIT, shared `ui_theme.tres`, music and menu sounds)
   - [x] 2. Pause menu (the game pauses; Esc or Start; Resume, Options, Quit to Title, debug-only Change arena)
   - [x] 3. Arena chooser and arenas: fall zone, `ArenaData`, fighting arenas and variants, invisible walls, boss HUD, movement arenas; the release-build START follow-up
@@ -236,20 +236,21 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
   - [x] 6a, 6b. Options: Audio and Gameplay pages, Controls and rebinding, `user://settings.cfg`; plus the fixes after the friends' release test
   - [x] 7a to 7e. Enemy awareness, the stealth deathblow, the Stealth Compound arena with upper levels and the death from above, corpse discovery, tending the body, the F4 undetectable switch; plus the 2026-10-16 addendum (enemy bars only in combat)
   - [x] 8. Generic interact system (`Interactable`, nearest-in-front picker, prompt, in-memory `GameFlags`; door, chest, switch, placeholder NPC; demo in `test_arena`)
-  - [ ] 9. Wall hug (`interact` facing a wall; shares the button with ledges and the interact picker)
-  - [ ] 10. Non-lethal combat (reverse blade, knockout, choke)
+  - [x] 9. Wall hug (`WallHugState`: `interact` facing a wall, sidle, latched corner peek, slim body, stealth bonus, stealth kill with a pull; demo in `test_arena`)
+  - [x] 10. Non-lethal combat (the `reverse_blade` toggle, `HitData.lethal`, `Combatant` knockout, unconscious enemies that wake, guards waking them, the choke)
   - [ ] 11a. Throwables: tap throw, `ThrowableData` ammo, noise at a position, HUD readout. 11b. Hold-to-aim camera, crosshair, arc preview
   - [ ] 12. Navigation (navmesh, `use_navigation`)
 
-**Current state (2026-10-16):** Steps 1 to 13 are done and tested. Phase 2 items 1 to 8 are done and tested (item 7, enemy awareness and the stealth deathblow, ended with 7e and the bars-in-combat addendum; item 8 is the interact system). Items 9 to 12 are planned and not started, and the next one is **9, the wall hug**. Phases 3 to 5 exist only as discussion notes in `docs/phase-3-4-notes.md`. Every arena and enemy preset behaves exactly as before unless a per-instance switch (`use_awareness`, later `use_navigation`) is on.
+**Current state (2026-10-16):** Steps 1 to 13 are done and tested. Phase 2 items 1 to 10 are done and tested (item 7, enemy awareness and the stealth deathblow, ended with 7e and the bars-in-combat addendum; item 8 is the interact system; item 9 is the wall hug; item 10 is non-lethal combat). Items 11 and 12 are planned and not started, and the next one is **11a, throwables (the tap throw)**. Phases 3 to 5 exist only as discussion notes in `docs/phase-3-4-notes.md`. Every arena and enemy preset behaves exactly as before unless a per-instance switch (`use_awareness`, later `use_navigation`) is on.
 
 ### Where things live (a map; behavior details: `docs/built-reference.md`, each script's header comment, the build log)
 
-- **Player:** `scripts/player/player.gd` (the `CharacterBody3D` root: shared data and helpers, drives the states), `states/` (one script per state: locomotion, crouch, slide, dash, dodge, air, wall_jump, ledge_hang, ledge_climb, attack, air_attack, helm_splitter, guard, deathblow, stagger, heal, dead; `state_machine.gd`, `state_name.gd`, `state.gd`, and `action_state.gd`, which runs an `ActionData` clock), `input_buffer.gd`, `actions.gd` (Input Map names), `ledge_sensor.gd` (walls and ledges), `player_forced_movement.gd` and `player_body_reaction.gd` (helpers made in `Player._ready()`), `camera_rig.gd`, `lock_on.gd`. Scene: `scenes/player/player.tscn`.
+- **Player:** `scripts/player/player.gd` (the `CharacterBody3D` root: shared data and helpers, drives the states), `states/` (one script per state: locomotion, crouch, wall_hug, slide, dash, dodge, air, wall_jump, ledge_hang, ledge_climb, attack, air_attack, helm_splitter, guard, deathblow, stagger, heal, dead; `state_machine.gd`, `state_name.gd`, `state.gd`, and `action_state.gd`, which runs an `ActionData` clock), `input_buffer.gd`, `actions.gd` (Input Map names), `ledge_sensor.gd` (walls and ledges), `player_forced_movement.gd` and `player_body_reaction.gd` (helpers made in `Player._ready()`), `camera_rig.gd`, `lock_on.gd`. Scene: `scenes/player/player.tscn`.
 - **Sword and body visuals (placeholders):** `sword_visual.gd`, `sword_guard_poses.gd`, `heal_arm.gd`, `reach_arms.gd` (debug); the `Hitbox` sits under `SwordVisual`.
 - **Combat core:** `scripts/combat/`: `combatant.gd` (health, posture, guard and deathblow rules), `hitbox.gd`, `hurtbox.gd`, `hurtbox_profile.gd`, `hit_data.gd`, `hitstop.gd`, `action_runner.gd` (the shared action clock), `layers.gd`, `groups.gd`, `enemies.gd` (the list of enemies), `fall_zone.gd`, `fx.gd` and `shockwave.gd` (effects and shake).
 - **Enemy:** `scripts/enemy/enemy.gd` (scene `scenes/enemy/enemy.tscn`), `enemy_defense.gd`, `enemy_awareness.gd`, `dummy.gd` (`scenes/enemy/dummy.tscn`). AI presets in `ai/*.tres`.
 - **Data (tuned values live in the `.tres`):** `resources/` (`action_data.gd`, `weapon_data.gd`, `enemy_ai_data.gd`, `arena_data.gd`, `sfx_data.gd`, `sfx_slot.gd`, `ui_theme.tres`, `hurtbox/`), `actions/*.tres`, `weapons/katana.tres`, `ai/`, `arenas/*.tres`, `audio/sfx_data.tres`, `data/loading_tips.csv`.
+- **Non-lethal combat (item 10):** the toggle is `Player.toggle_reverse_blade()` (`GameFlags.BLADE_REVERSED`), the knockout is `Combatant._finish()` and `knocked_out`, the sleeper is `Enemy._on_knocked_out()` and `wake_up()`, the guards wake it in `EnemyAwareness._run_wake()`, and the choke is `DeathblowState` with `actions/choke.tres`.
 - **Interact system (item 8):** `scripts/interact/` (`interactable.gd` and its behaviors `door`, `chest`, `switch`, `npc_line`; `interact_picker.gd`, made in `Player._ready()`; `game_flags.gd`), `scripts/ui/interact_prompt.gd`; small scenes in `scenes/interact/`.
 - **Sound:** `scripts/audio/sfx.gd` (static `Sfx`), wavs under `audio/`.
 - **HUDs and overlays drawn in code:** `scripts/ui/player_hud.gd`, `boss_hud.gd`, `awareness_hud.gd`, `enemy_bar.gd`, `danger_symbol.gd`, `crouch_vignette.gd`, `debug_overlay.gd`, `screen_fade.gd`.
@@ -340,8 +341,10 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - [x] Carrying bodies (the finder checks the body in an arc, roams, then carries it to a wall) **(built as Phase 2 item 7e, done and tested by the user 2026-10-15; hiding bodies from the player stays out)**
 - [ ] Enemy variety (jumpers/chasers, ranged rock throwers) as data flags in `EnemyAIData` (archers, revolvers and rifles are planned for Phase 4, on the projectile system of Phase 2 item 11; see `docs/phase-3-4-notes.md`)
 - [x] Generic interact system (doors, chests, NPCs; nearest-in-front priority, on-screen prompt) **(built as Phase 2 item 8, done and tested by the user 2026-10-16)**
-- [ ] Wall hug (`interact` facing a wall: sidle along it, peek around corners, stealth bonus) **(planned as Phase 2 item 9, discussed 2026-10-16)**
-- [ ] Non-lethal combat (reverse blade, half health damage, knockout deathblow, choke as the stealth kill, unconscious bodies) **(planned as Phase 2 item 10, discussed 2026-10-16)**
+- [x] Wall hug (`interact` facing a wall: sidle along it, peek around corners, stealth bonus) **(built as Phase 2 item 9, done and tested by the user 2026-10-16)**
+- [ ] Wall hug extras (not built): the grab-and-pull stealth kill with real animations (the 0.15 s glide is a placeholder), an ambush attack from the hug, a lean pose, hugging in the air, vaulting and corner-to-corner moves
+- [x] Non-lethal combat (reverse blade, half health damage, knockout deathblow, choke as the stealth kill, unconscious bodies) **(built as Phase 2 item 10, done and tested by the user 2026-10-16)**
+- [ ] Non-lethal extras (not built): a boss cutscene when a boss is knocked out, counting kills and knockouts for the reputation system (Phase 3, the `knocked_out` signal exists), carrying unconscious bodies, a real choke animation
 - [ ] Throwables (one throw action, selectable ammo: rock, shuriken, kunai, broken ceramic; lethal or non-lethal; noise at the landing point; hold to aim with a crosshair and an arc preview) **(planned as Phase 2 item 11, 11a and 11b, discussed 2026-10-16)**
 - [ ] Navigation (a navmesh and `NavigationAgent3D`, a per-enemy `use_navigation` flag off by default) **(planned as Phase 2 item 12, discussed 2026-10-16)**
 - [ ] Game flow, the hub, quests, reputation, streaming, ranged enemies, art: **Phases 3 to 5, see `docs/phase-3-4-notes.md`** (discussion notes, not agreed build decisions)

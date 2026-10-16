@@ -21,7 +21,8 @@ extends RefCounted
 enum Level { UNAWARE, SUSPICIOUS, ALERT }
 ## The body routine of the guard that found a body (item 7e). GO to CHECK, ROAM and RETURN it investigates (it
 ## shows "?" or "!"); RESPECT_GO to PLACE it is calm again and respects the body.
-enum Tend { NONE, GO, CHECK, ROAM, RETURN, RESPECT_GO, LIFT, CARRY, PLACE }
+## WAKE_GO and WAKE (item 10) are the milder routine for an unconscious body: walk to it, pause, wake it.
+enum Tend { NONE, GO, CHECK, ROAM, RETURN, RESPECT_GO, LIFT, CARRY, PLACE, WAKE_GO, WAKE }
 ## Half the width (m) of a lying body, and how far (m) behind the laid body the carrier stands.
 const BODY_HALF_WIDTH: float = 0.45
 const CARRIER_BACK_OFF: float = 0.8
@@ -157,7 +158,9 @@ func update(delta: float, has_target: bool) -> bool:
 		_run_suspicious(delta)
 	else:
 		_apply_level(Level.UNAWARE)
-		if _tend != Tend.NONE:
+		if _tend == Tend.WAKE_GO or _tend == Tend.WAKE:
+			_run_wake(delta)
+		elif _tend != Tend.NONE:
 			_run_respect(delta)
 		else:
 			_run_unaware(delta)
@@ -358,7 +361,7 @@ func _look_for_corpses(delta: float) -> void:
 	_corpse_timer = CORPSE_INTERVAL
 	for node: Node3D in Enemies.all():
 		var other := node as Enemy
-		if other == null or other == _enemy or not other.is_undiscovered_corpse():
+		if other == null or other == _enemy or not other.is_undiscovered_body():
 			continue
 		var to_body := other.global_position - _enemy.global_position
 		if absf(to_body.y) > _ai.max_vertical_reach:
@@ -375,6 +378,14 @@ func _look_for_corpses(delta: float) -> void:
 
 func _react_to_corpse(body: Enemy) -> void:
 	var position := body.global_position
+	if body.is_unconscious():
+		# Item 10: no alarm for a sleeper, the guard goes and wakes him.
+		if _carrying:
+			_drop_body()
+		_tend_body = body
+		_set_tend(Tend.WAKE_GO, "found an unconscious body")
+		_stuck = 0.0
+		return
 	if _ai.tends_corpses:
 		# Item 7e: the whole routine, in the style of `corpse_reaction`.
 		if _carrying:
@@ -458,6 +469,9 @@ func _flat_distance_to(point: Vector3) -> float:
 
 ## Suspicious or alert for another reason: put a carried body down and respect it later.
 func _on_distracted() -> void:
+	if _tend == Tend.WAKE_GO or _tend == Tend.WAKE:
+		_set_tend(Tend.NONE, "distracted, forget the sleeper")
+		_tend_body = null
 	if _carrying:
 		_drop_body()
 	if _investigating() or _tend >= Tend.LIFT:
@@ -489,6 +503,32 @@ func _run_investigation(delta: float) -> void:
 			if _flat_distance_to(body_pos) <= _ai.corpse_pickup_distance \
 					or _walk_to(body_pos, _style_speed(), delta):
 				_begin_lift()
+
+
+## An unconscious body (item 10): walk to it, pause, wake it. It wakes where it lies, and both guards are then
+## suspicious about the spot (no alarm), then the guard goes back to its patrol.
+func _run_wake(delta: float) -> void:
+	if not is_instance_valid(_tend_body) or not _tend_body.is_unconscious():
+		_set_tend(Tend.NONE, "the sleeper is gone")
+		_tend_body = null
+		return
+	var body_pos := _tend_body.global_position
+	match _tend:
+		Tend.WAKE_GO:
+			if _flat_distance_to(body_pos) <= _ai.corpse_pickup_distance \
+					or _walk_to(body_pos, _ai.patrol_speed, delta):
+				_tend_timer = 0.0
+				_set_tend(Tend.WAKE, "")
+		Tend.WAKE:
+			_stop(delta)
+			_face_point(body_pos, delta)
+			_tend_timer += delta
+			if _tend_timer >= _ai.wake_pause:
+				var here := _enemy.global_position
+				_tend_body.wake_up(here, false)
+				_set_tend(Tend.NONE, "woke the sleeper")
+				_tend_body = null
+				hear_shout(here, false)
 
 
 ## Calm again: walk to the body (when it was interrupted), lift it, carry it to the wall, lay it down.

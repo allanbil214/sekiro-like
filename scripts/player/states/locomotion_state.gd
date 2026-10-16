@@ -34,5 +34,7 @@ func physics_update(delta: float) -> void:
 		return
 	if Input.is_action_just_pressed(Actions.SHEATHE):
 		player.toggle_sheathe()
+	if Input.is_action_just_pressed(Actions.REVERSE_BLADE):
+		player.toggle_reverse_blade()
 	player.apply_horizontal_movement(delta, player.get_move_speed())
 	player.face_input(delta)

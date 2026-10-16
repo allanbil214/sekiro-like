@@ -139,6 +139,12 @@ const HEADROOM_RADIUS: float = 0.38
 @export var wall_hug_noise: float = 0.5
 @export_range(0.0, 1.0, 0.05) var wall_hug_sight_multiplier: float = 0.5
 
+@export_group("Reverse blade (Phase 2 item 10)")
+## While the blade is reversed (the `reverse_blade` toggle): the multipliers on the health damage and the
+## posture damage of the player's hits. Its blows cannot kill; at zero health the enemy is knocked out.
+@export var reverse_damage_multiplier: float = 0.5
+@export var reverse_posture_multiplier: float = 1.0
+
 @export_group("Interact (Phase 2 item 8)")
 ## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
 ## in front it must be (1 = dead ahead, 0.5 = within 60 degrees).
@@ -295,6 +301,10 @@ var input_buffer: InputBuffer
 var ledge_sensor: LedgeSensor
 ## The interactable the press of `interact` would use right now (ground, Locomotion or Crouch only).
 var interact_target: Interactable
+## Item 10: is the blade reversed? Kept in `GameFlags` (so it survives the death reload, not the main menu).
+var blade_reversed: bool:
+	get:
+		return GameFlags.has_flag(GameFlags.BLADE_REVERSED)
 var _interact_picker: InteractPicker
 var is_crouched: bool = false
 var _noise_spike: float = 0.0
@@ -381,6 +391,8 @@ func _ready() -> void:
 	sheathed = start_sheathed and weapon != null
 	if sheathed and sword_visual != null:
 		sword_visual.snap_sheathed()
+	if sword_visual != null:
+		sword_visual.set_reversed(blade_reversed, true)
 	_default_body_radius = (_collision_shape.shape as CapsuleShape3D).radius
 	_headroom_shape = CapsuleShape3D.new()
 	_headroom_shape.radius = HEADROOM_RADIUS
@@ -519,6 +531,16 @@ func try_interact() -> bool:
 	input_buffer.consume(Actions.INTERACT)
 	interact_target.interact(self)
 	return true
+
+
+## Flips the blade (item 10): the blunt back becomes the striking side. Only the visual takes a moment.
+func toggle_reverse_blade() -> void:
+	if weapon == null:
+		return
+	var on := GameFlags.toggle_flag(GameFlags.BLADE_REVERSED)
+	if sword_visual != null:
+		sword_visual.set_reversed(on)
+	Sfx.play_ui(get_tree(), Sfx.Id.MENU_OK)
 
 
 func is_wall_hugging() -> bool:
@@ -705,6 +727,11 @@ func play_reach_arms() -> void:
 
 
 ## Slide pose: arms held straight forward at crouched shoulder height until stop_slide_arms().
+func play_choke_arms() -> void:
+	if _reach_arms != null:
+		_reach_arms.hold_choke(crouch_height - _nose_drop if is_crouched else stand_height - _nose_drop)
+
+
 func play_climb_arms() -> void:
 	if _reach_arms != null:
 		_reach_arms.hold_up()

@@ -29,6 +29,9 @@ var knockback_time: float = -1.0
 var perilous: bool = false
 ## True for the grab: it always breaks the target's guard (guarding or not).
 var grab: bool = false
+## False for a non-lethal blow (the reversed blade, Phase 2 item 10): at zero health the target is knocked out
+## instead of dying.
+var lethal: bool = true
 ## Filled in by the target's Combatant: an Outcome value.
 var outcome: int = Outcome.HIT
 ## Where it connected (the middle of the hitbox), for sparks and sounds later.
@@ -47,6 +50,7 @@ func copy() -> HitData:
 	other.deflect_within = deflect_within
 	other.perilous = perilous
 	other.grab = grab
+	other.lethal = lethal
 	other.knockback = knockback
 	other.knockback_time = knockback_time
 	other.outcome = outcome

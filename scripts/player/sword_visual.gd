@@ -142,6 +142,9 @@ extends Node3D
 @export var idle_color: Color = Color(0.8, 0.8, 0.85)
 @export var active_color: Color = Color(1.0, 0.15, 0.1)
 @export var edge_color: Color = Color(1.0, 0.9, 0.3)
+## Item 10: the strip's color while the blade is reversed (the dull back of the blade) and how long the flip takes (s).
+@export var reversed_edge_color: Color = Color(0.45, 0.5, 0.62)
+@export var reverse_flip_time: float = 0.3
 @export var arm_color: Color = Color(0.45, 0.5, 0.6)
 ## Color of the handle end behind the hand (only built when setup() gets a back length above 0).
 @export var tail_color: Color = Color(0.35, 0.22, 0.12)
@@ -174,6 +177,12 @@ var _arm: Node3D
 var _material: StandardMaterial3D
 var _tip: Vector3 = Vector3.ZERO
 var _blade_dir: Vector3 = Vector3.DOWN
+## Item 10: the edge strip, its material and half the blade's width (the flip moves the strip across).
+var _strip: MeshInstance3D
+var _edge_material: StandardMaterial3D
+var _strip_x: float = 0.0
+var _reversed: bool = false
+var _flip_tween: Tween
 var _edge_dir: Vector3 = Vector3.UP
 var _from_tip: Vector3 = Vector3.ZERO
 var _from_blade: Vector3 = Vector3.DOWN
@@ -253,6 +262,9 @@ func setup(weapon: WeaponData, back_length: float = 0.0) -> void:
 	strip.mesh = strip_mesh
 	strip.material_override = edge_material
 	strip.position = Vector3(width * 0.5, 0.0, -weapon.blade_length * 0.5)
+	_strip = strip
+	_edge_material = edge_material
+	_strip_x = width * 0.5
 	_hand = Node3D.new()
 	_hand.add_child(blade)
 	_hand.add_child(strip)
@@ -326,6 +338,25 @@ func is_busy() -> bool:
 
 
 ## Put the sword in the scabbard at once (no animation), arm relaxed.
+## Item 10: the reversed blade. The strip that marks the cutting edge moves to the other side of the blade and
+## goes dull: the blunt back leads. `snap` skips the 0.3 s flip.
+func set_reversed(reversed: bool, snap: bool = false) -> void:
+	_reversed = reversed
+	if _strip == null:
+		return
+	var x := -_strip_x if reversed else _strip_x
+	var color := reversed_edge_color if reversed else edge_color
+	if _flip_tween != null:
+		_flip_tween.kill()
+	if snap or reverse_flip_time <= 0.0:
+		_strip.position.x = x
+		_edge_material.albedo_color = color
+		return
+	_flip_tween = create_tween().set_parallel(true)
+	_flip_tween.tween_property(_strip, "position:x", x, reverse_flip_time)
+	_flip_tween.tween_property(_edge_material, "albedo_color", color, reverse_flip_time)
+
+
 func snap_sheathed() -> void:
 	if _hand == null:
 		return

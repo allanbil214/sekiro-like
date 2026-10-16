@@ -102,9 +102,23 @@ func _draw_hud() -> void:
 	var s := size.y / maxf(ui_reference_height, 1.0)
 	_draw_status(size, s)
 	_draw_posture(size, s)
+	_draw_reversed_tag(size, s)
 
 
 ## Pips, health bar, and gourd, from the bottom-left corner upward.
+## Item 10: a small tag below the posture bar while the blade is reversed.
+func _draw_reversed_tag(size: Vector2, s: float) -> void:
+	if not _player.blade_reversed:
+		return
+	var font := ThemeDB.fallback_font
+	var px := int(22.0 * s)
+	var text := "REVERSED BLADE"
+	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	var pos := Vector2((size.x - width) * 0.5, size.y - posture_bottom_margin * s + 38.0 * s)
+	_canvas.draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(5.0 * s), Color(0.03, 0.03, 0.03, 0.9))
+	_canvas.draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(0.62, 0.7, 0.9))
+
+
 func _draw_status(size: Vector2, s: float) -> void:
 	var x0 := margin.x * s
 	var gourd_px := gourd_size * s

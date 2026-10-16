@@ -25,6 +25,8 @@ func physics_update(delta: float) -> void:
 		return
 	if Input.is_action_just_pressed(Actions.SHEATHE):
 		player.toggle_sheathe()
+	if Input.is_action_just_pressed(Actions.REVERSE_BLADE):
+		player.toggle_reverse_blade()
 	if Input.is_action_just_pressed(Actions.INTERACT) and player.try_interact():
 		return
 	var headroom := player.can_stand()
