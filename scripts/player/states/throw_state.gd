@@ -7,8 +7,8 @@ extends ActionState
 ## cancelled for free (guard, or a hit) and nothing is used. After the locked window dodge, jump and attack cancel it.
 ## The throw itself is quiet (`Player.noise_throw`), the landing is the noise (`Throwable`).
 ## Placeholder: no arm animation yet; the item simply appears at the hand height.
-## From a hold (item 11b) `AimState` sets `aim_velocity` first: the throw then leaves with exactly that velocity
-## (the one the aim preview showed) and the body faces its flat direction, whatever the lock-on says.
+## The aimed throw (item 11b and 11c) lives in `AimState`; it uses `fire()` below, so the spend, the launch and
+## the sound are the same.
 
 ## Seconds from the start when the item leaves the hand (keep it below `locked_until`).
 @export var release_time: float = 0.18
@@ -16,12 +16,8 @@ extends ActionState
 @export var release_height: float = 1.3
 @export var release_forward: float = 0.5
 
-## Set by `AimState` for one throw (item 11b); used and cleared when the throw starts. ZERO = a tap throw.
-var aim_velocity: Vector3 = Vector3.ZERO
-
 var _item: ThrowableData
 var _aim: Vector3 = Vector3.FORWARD
-var _aimed_velocity: Vector3 = Vector3.ZERO
 var _released: bool = false
 
 
@@ -33,12 +29,7 @@ func _on_action_enter(_previous: StringName) -> void:
 		player.set_crouched(false)
 	for buffered: StringName in [Actions.DODGE, Actions.JUMP, Actions.ATTACK, Actions.GUARD]:
 		player.input_buffer.consume(buffered)
-	_aimed_velocity = aim_velocity
-	aim_velocity = Vector3.ZERO
-	if _aimed_velocity != Vector3.ZERO:
-		_aim = Vector3(_aimed_velocity.x, 0.0, _aimed_velocity.z).normalized()
-	else:
-		_aim = _flat_aim()
+	_aim = _flat_aim()
 	player.snap_facing(_aim)
 
 
@@ -75,18 +66,15 @@ func _on_action_finished() -> void:
 
 func _release() -> void:
 	_released = true
-	if _item == null or not player.item_belt.spend(_item):
+	if _item == null:
 		return
 	var origin := player.global_position + Vector3.UP * release_height + _aim * release_forward
 	var velocity: Vector3
-	if _aimed_velocity != Vector3.ZERO:
-		velocity = _aimed_velocity
-	elif player.lock_on.has_target():
+	if player.lock_on.has_target():
 		velocity = _item.velocity_to(origin, player.lock_on.get_target_position())
 	else:
 		velocity = _item.velocity_forward(_aim)
-	Throwable.launch(player, _item, origin, velocity)
-	Sfx.play(player.get_tree(), Sfx.Id.SWING_ALT)
+	fire(player, _item, origin, velocity)
 
 
 ## The flat direction of the throw: toward the locked target, else the way the camera looks.
@@ -95,3 +83,13 @@ func _flat_aim() -> Vector3:
 	if lock_dir != Vector3.ZERO:
 		return lock_dir
 	return Basis(Vector3.UP, player.camera_rig.global_rotation.y) * Vector3.FORWARD
+
+
+## Spends one `item` and launches it from `origin` with `velocity` (a tap throw here, an aimed one in `AimState`).
+## False (nothing spent, nothing launched) when none are left.
+static func fire(thrower: Player, item: ThrowableData, origin: Vector3, velocity: Vector3) -> bool:
+	if item == null or not thrower.item_belt.spend(item):
+		return false
+	Throwable.launch(thrower, item, origin, velocity)
+	Sfx.play(thrower.get_tree(), Sfx.Id.SWING_ALT)
+	return true

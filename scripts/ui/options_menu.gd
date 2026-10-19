@@ -225,6 +225,9 @@ func _build_gameplay_page() -> void:
 	controls.append(_add_toggle(_gameplay_page, "CROUCH", "HOLD", "TOGGLE",
 		func() -> bool: return Settings.crouch_hold,
 		func(value: bool) -> void: Settings.crouch_hold = value))
+	controls.append(_add_toggle(_gameplay_page, "AIM MODE", "STICKY", "HOLD",
+		func() -> bool: return Settings.sticky_aim,
+		func(value: bool) -> void: Settings.sticky_aim = value))
 	controls.append(_add_toggle(_gameplay_page, "RECENTER CAMERA", "ON", "OFF",
 		func() -> bool: return Settings.recenter_camera,
 		func(value: bool) -> void: Settings.recenter_camera = value))

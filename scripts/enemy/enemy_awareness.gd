@@ -42,6 +42,11 @@ const SYMBOL_POP_SCALE: float = 1.6
 const SUSPICIOUS_COLOR: Color = Color(1.0, 0.85, 0.15)
 const ALERT_COLOR: Color = Color(0.95, 0.12, 0.1)
 
+## Checking a spot (item 11d): GO walks to it, CHECK stands there and looks around until the time is up.
+enum Spot { NONE, GO, CHECK }
+## A new sound this far (m) from the spot being checked moves the spot (the guard walks there).
+const SPOT_RETARGET: float = 1.5
+
 var level: Level = Level.UNAWARE
 ## 0 to 1. Pinned at 1 while it searches.
 var meter: float = 0.0
@@ -67,6 +72,12 @@ var _pause_left: float = 0.0
 var _search_left: float = 0.0
 var _search_arrived: bool = false
 var _search_yaw: float = 0.0
+var _spot_stage: Spot = Spot.NONE
+var _spot: Vector3 = Vector3.ZERO
+var _spot_timer: float = 0.0
+var _spot_yaw: float = 0.0
+## Thrown-item noises heard during the current check (`EnemyAIData.spot_alert_count` makes it furious).
+var _spot_noises: int = 0
 
 var _since_sensed: float = 99.0
 var _los_timer: float = 0.0
@@ -130,6 +141,8 @@ func update(delta: float, has_target: bool) -> bool:
 		_has_los = false
 		_since_sensed += delta
 	var reachable := absf(to_target.y) <= _ai.max_vertical_reach
+	if _spot_stage != Spot.NONE:
+		meter = maxf(meter, _ai.suspicious_at)
 	# The player (or a shout) made it properly suspicious while it investigated a body: it will respect the body later.
 	if _investigating() and meter >= _ai.suspicious_at:
 		_set_tend(Tend.RESPECT_GO, "made suspicious while investigating")
@@ -138,7 +151,7 @@ func update(delta: float, has_target: bool) -> bool:
 		meter = 1.0
 		if _search_left <= 0.0:
 			_end_search()
-	elif _since_sensed > _ai.decay_delay:
+	elif _since_sensed > _ai.decay_delay and _spot_stage == Spot.NONE:
 		meter = maxf(meter - _ai.meter_decay * delta, 0.0)
 	if meter >= 1.0:
 		if _can_see and reachable:
@@ -152,11 +165,12 @@ func update(delta: float, has_target: bool) -> bool:
 	elif _investigating():
 		_apply_level(_investigation_level())
 		_run_investigation(delta)
-	elif meter >= _ai.suspicious_at:
+	elif meter >= _ai.suspicious_at or _spot_stage != Spot.NONE:
 		_on_distracted()
 		_apply_level(Level.SUSPICIOUS)
 		_run_suspicious(delta)
 	else:
+		_spot_noises = 0
 		_apply_level(Level.UNAWARE)
 		if _tend == Tend.WAKE_GO or _tend == Tend.WAKE:
 			_run_wake(delta)
@@ -173,6 +187,7 @@ func on_spotted() -> void:
 	Sfx.play(_enemy.get_tree(), Sfx.Id.DETECTED)
 	meter = 1.0
 	_search_left = 0.0
+	_clear_spot()
 	# In combat: a carried body is dropped; a pending routine resumes at the respect once it is calm again.
 	if _carrying:
 		_drop_body()
@@ -187,6 +202,7 @@ func begin_search(position: Vector3) -> void:
 	_last_known = position
 	_has_last_known = true
 	_investigate = position
+	_clear_spot()
 	meter = 1.0
 	_search_left = _search_cap()
 	_search_arrived = false
@@ -214,6 +230,11 @@ func hear_noise_at(point: Vector3, radius: float) -> void:
 		heard *= _ai.hearing_wall_factor
 	if _enemy.global_position.distance_to(point) > heard:
 		return
+	_spot_noises += 1
+	if _ai.spot_alert_count > 0 and _spot_noises >= _ai.spot_alert_count:
+		# Noise after noise: furious. It goes alert and searches the spot, but it still knows nothing about the player.
+		begin_search(point)
+		return
 	_last_known = point
 	_has_last_known = true
 	_investigate = point
@@ -225,6 +246,7 @@ func hear_noise_at(point: Vector3, radius: float) -> void:
 ## Back to the start (respawn, the player died): unaware, nothing remembered, the symbol hidden.
 func reset() -> void:
 	_set_tend(Tend.NONE, "reset")
+	_clear_spot()
 	_tend_body = null
 	_carrying = false
 	meter = 0.0
@@ -801,8 +823,49 @@ func _run_suspicious(delta: float) -> void:
 		_stop(delta)
 		_face_point(_investigate, delta)
 		return
-	if _walk_to(_investigate, _ai.investigate_speed, delta):
-		_face_point(_investigate, delta)
+	if _spot_stage == Spot.NONE:
+		_spot = _investigate
+		_spot_stage = Spot.GO
+		_stuck = 0.0
+	elif _investigate.distance_to(_spot) > SPOT_RETARGET:
+		# A new sound or glimpse elsewhere: go there instead, and the check starts over.
+		_spot = _investigate
+		_spot_stage = Spot.GO
+		_spot_timer = 0.0
+		_stuck = 0.0
+	if _spot_stage == Spot.GO:
+		if _walk_to(_spot, _ai.investigate_speed, delta):
+			_spot_stage = Spot.CHECK
+			_spot_timer = 0.0
+			_spot_yaw = _enemy.rotation.y
+			_scan_clock = 0.0
+		return
+	# CHECK: stand at the spot and look around until the time is up (sensing something new restarts the time).
+	if _since_sensed < 0.3:
+		_spot_timer = 0.0
+	_spot_timer += delta
+	if _spot_timer >= _ai.spot_check_time:
+		_end_spot()
+		return
+	_stop(delta)
+	_scan_clock += delta
+	var sweep := sin(_scan_clock * TAU / maxf(_ai.scan_period * 0.6, 0.1)) * deg_to_rad(_ai.spot_sweep_degrees)
+	_turn_to_yaw(_spot_yaw + sweep, delta, _ai.look_turn_speed)
+
+
+## The check is over: calm again, and back to the patrol (the nearest waypoint) or the post.
+func _end_spot() -> void:
+	_clear_spot()
+	meter = _ai.suspicious_at * 0.6
+	_since_sensed = 0.0
+	_stuck = 0.0
+	_resume_patrol()
+
+
+func _clear_spot() -> void:
+	_spot_stage = Spot.NONE
+	_spot_timer = 0.0
+	_spot_noises = 0
 
 
 func _run_search(delta: float, target: Node3D) -> void:
@@ -835,6 +898,7 @@ func _search_cap() -> float:
 
 
 func _end_search() -> void:
+	_clear_spot()
 	_search_left = 0.0
 	meter = _ai.suspicious_at * 0.6
 	_since_sensed = 0.0

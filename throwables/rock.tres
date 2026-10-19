@@ -5,6 +5,6 @@
 [resource]
 script = ExtResource("1_throwable")
 launch_angle_degrees = 10.0
-noise = 14.0
+noise = 25.0
 display_name = "Rock"
 icon_color = Color(0.62, 0.6, 0.56, 1)

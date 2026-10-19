@@ -153,6 +153,9 @@ const HEADROOM_RADIUS: float = 0.38
 @export var noise_throw: float = 2.0
 ## Item 11b: holding `use_item` this long (s) starts the aim; a shorter tap throws on release.
 @export var hold_to_aim_time: float = 0.2
+## Item 11c: true = the aim stays when `use_item` is let go (press it again to end the aim); false = letting go
+## ends it. Replaced by `Settings.sticky_aim` (the Options menu) in `_ready()`.
+@export var sticky_aim: bool = true
 
 @export_group("Interact (Phase 2 item 8)")
 ## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
@@ -1139,7 +1142,8 @@ func _try_deathblow() -> void:
 		return
 	var current := state_machine.current
 	if current is StaggerState or current is DeathblowState or current is DeadState or current is AirState \
-			or current is WallJumpState or current is LedgeHangState or current is LedgeClimbState:
+			or current is WallJumpState or current is LedgeHangState or current is LedgeClimbState \
+			or current is AimState:
 		return
 	var action_state := current as ActionState
 	if action_state != null and (not action_state.action.can_cancel(action_state.action_time) \
@@ -1268,7 +1272,7 @@ func _try_heal() -> void:
 	if not allow_heal_at_full_health and combatant.health >= combatant.max_health:
 		return
 	var current := state_machine.current
-	if not (current is LocomotionState or current is CrouchState or current is DashState):
+	if not (current is LocomotionState or current is CrouchState or current is DashState or current is AimState):
 		return
 	if is_crouched and not can_stand():
 		return
@@ -1285,7 +1289,7 @@ func _try_cycle_item() -> void:
 
 ## Uses the selected item (item 11). What happens depends on the item's kind. A throwable waits to see what the
 ## press is: a tap (released within `hold_to_aim_time`) throws on release (`_try_throw`), a hold starts the aim
-## (`_try_aim`, item 11b; `AimState` then throws on release).
+## (`_try_aim`, item 11b; `AimState` then throws on each attack press, item 11c).
 func _try_use_item(delta: float) -> void:
 	if combatant.dead or combatant.vulnerable:
 		_use_pending = false

@@ -26,6 +26,7 @@ static var sfx_volume: float = 1.0
 # Gameplay
 static var camera_shake: bool = true
 static var crouch_hold: bool = false
+static var sticky_aim: bool = true
 static var recenter_camera: bool = false
 static var lock_next: bool = true
 static var mouse_sensitivity: float = 1.0
@@ -50,6 +51,7 @@ static func ensure_loaded() -> void:
 		sfx_volume = _fraction(config, "audio", "sfx", sfx_volume, 0.0, 1.0)
 		camera_shake = bool(config.get_value("gameplay", "camera_shake", camera_shake))
 		crouch_hold = bool(config.get_value("gameplay", "crouch_hold", crouch_hold))
+		sticky_aim = bool(config.get_value("gameplay", "sticky_aim", sticky_aim))
 		recenter_camera = bool(config.get_value("gameplay", "recenter_camera", recenter_camera))
 		lock_next = bool(config.get_value("gameplay", "lock_next", lock_next))
 		mouse_sensitivity = _fraction(config, "gameplay", "mouse_sensitivity", mouse_sensitivity, 0.25, 2.0)
@@ -69,6 +71,7 @@ static func save() -> void:
 	config.set_value("audio", "sfx", sfx_volume)
 	config.set_value("gameplay", "camera_shake", camera_shake)
 	config.set_value("gameplay", "crouch_hold", crouch_hold)
+	config.set_value("gameplay", "sticky_aim", sticky_aim)
 	config.set_value("gameplay", "recenter_camera", recenter_camera)
 	config.set_value("gameplay", "lock_next", lock_next)
 	config.set_value("gameplay", "mouse_sensitivity", mouse_sensitivity)
@@ -91,6 +94,7 @@ static func apply_audio() -> void:
 static func apply_gameplay(player: Player) -> void:
 	ensure_loaded()
 	player.crouch_is_hold = crouch_hold
+	player.sticky_aim = sticky_aim
 	var rig := player.camera_rig as CameraRig
 	rig.shake_enabled = camera_shake
 	rig.mouse_scale = mouse_sensitivity

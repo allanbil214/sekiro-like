@@ -295,6 +295,14 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 ## the last known spot and the search ends after one lap. Off: it stands there for `search_time` seconds.
 @export var search_roams: bool = true
 @export var search_roam_radius: float = 5.0
+## Checking a spot (Phase 2 item 11d). A "go and look" reaction (a noise, a far shout, a glimpse that fades) walks
+## to the spot, then stands there and looks around for `spot_check_time` seconds (the timer restarts whenever it
+## senses something new) before it goes back to its patrol or post. The look sweeps this far (degrees) to each side.
+@export var spot_check_time: float = 30.0
+@export var spot_sweep_degrees: float = 70.0
+## This many noises (thrown items) during one check make it furious: it goes ALERT and searches the last spot
+## (the roaming search), without knowing where the player is. 0 = never.
+@export var spot_alert_count: int = 3
 ## It has no pathfinding: it only walks, chases and searches toward a spot within this height difference (m);
 ## from another level it stands and watches. Chasing gives up past this + 1 m.
 @export var max_vertical_reach: float = 3.0

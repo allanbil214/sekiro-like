@@ -70,3 +70,6 @@
 ### Hold to aim, 11b (2026-10-19)
 - Holding `use_item` for `Player.hold_to_aim_time` (0.2 s) enters `AimState` (a tap throws on release). The camera goes to head height with a short arm and a narrower field of view (`CameraRig.begin_aim`), the body is hidden and faces the camera, you walk slowly, and the lock-on is suspended (a locked target is looked at first, the lock returns on release).
 - `AimPreview` finds the aim point with a camera ray and solves the throw to it (`ThrowableData.velocity_to`); an item with gravity shows an arc of dots (the projectile's own step, gravity and ray), a landing ring and a noise-radius ring; `AimHud` draws the crosshair. Release hands the solved velocity to `ThrowState` (`aim_velocity`). Guard, stagger, death, leaving the ground or running out cancel without spending.
+
+### Sticky aim and click to throw, 11c (2026-10-19)
+- In `AimState`, attack throws (`ThrowState.fire()`) and the aim goes on, with `throw_recovery` (0.3 s) between throws; releasing `use_item` never throws. Options > Gameplay "AIM MODE" (`Settings.sticky_aim`, `Player.sticky_aim`): STICKY (default) keeps the aim after release and ends it on a fresh `use_item` press, dodge or jump; HOLD ends it on release and ignores dodge and jump. Guard and heal end the aim in both; attack never starts a deathblow from the aim.
