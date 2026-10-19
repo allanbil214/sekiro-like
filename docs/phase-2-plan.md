@@ -29,6 +29,7 @@
 | 9 | Wall hug (section 3, item 9) | feature | [x] done and tested 2026-10-16 |
 | 10 | Non-lethal combat (section 3, item 10) | feature | [x] done and tested 2026-10-16 |
 | 11 | Item system and throwables: 11a the item belt, `use_item` / `cycle_item`, the tap throw and the item HUD; 11b hold to aim (section 3, item 11) | feature | [x] done and tested 2026-10-19 (11a the tap throw, 11b hold to aim, 11c sticky aim and click to throw, 11d guards check the spot) |
+| 11.5 | Taunt (addendum to item 11, section 3, item 11.5) | feature | [x] done and tested 2026-10-19 |
 | 12 | Navigation: a navmesh for enemies (section 3, item 12) | feature | [ ] planned (discussed 2026-10-16), not started |
 | 13 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
@@ -87,6 +88,10 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Not included:** any non-throwable item (onigiri, marking rice and so on), pickups, saving (ammo counts are saved in Phase 3), enemy throwers, a real throw animation, moving the gourd to a bottom-right quick slot.
 - **Reuse:** the projectile system is reused by enemy archers, revolvers and rifles in Phase 4; the item system is reused by the Phase 3 and 4 items.
 - **Needs:** item 10's lethal flag, so this comes after it.
+
+### 11.5. Taunt (addendum to item 11)
+- **Status:** **built and tested 2026-10-19** (what was built: `docs/built-reference.md`, "Taunt"). Decisions made with the user: a `taunt` button (V, Back/Select) that makes enemies in combat **provoked** (more aggressive, no advantage for the player, since there is no style meter); a real action with a wind-up, a locked part and a wind-down (like an attack); stacks up to 3 that fade after 10 s; a boss feels half; an unaware enemy hears it as an 8 m noise; the voice lines are wired (two empty sound slots, `taunt` and `enemy_provoked`). Defaults not changed: guard and damage stay as they are.
+- **Not included:** a taunt animation, NPC or crowd reactions (Phase 3), taunt wavs, a reward for the player.
 
 ### 12. Navigation
 - **Status:** planned, discussed 2026-10-16. The hub of Phase 3 and the street encounters are its users (`docs/phase-3-4-notes.md`, section 5).

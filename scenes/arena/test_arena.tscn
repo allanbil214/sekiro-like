@@ -8,7 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/interact/chest.tscn" id="6_chest"]
 [ext_resource type="PackedScene" path="res://scenes/interact/switch.tscn" id="7_switch"]
 [ext_resource type="PackedScene" path="res://scenes/interact/npc.tscn" id="8_npc"]
-[ext_resource type="Resource" uid="uid://dkn2mp6tq5nlj" path="res://ai/enemy_soldier.tres" id="9_soldier"]
+[ext_resource type="Resource" uid="uid://dkn2mp6tq5nlj" path="res://data/ai/enemy_soldier.tres" id="9_soldier"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)

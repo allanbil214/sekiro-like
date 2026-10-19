@@ -1,13 +1,13 @@
 [gd_scene format=3 uid="uid://bwl4ivdc22duh"]
 
 [ext_resource type="Script" uid="uid://ciinp05kct374" path="res://scripts/enemy/enemy.gd" id="1_enemy"]
-[ext_resource type="Resource" uid="uid://clw70htnbxgei" path="res://ai/enemy_duelist.tres" id="2_13gj6"]
-[ext_resource type="Resource" uid="uid://cndijq62ntfbn" path="res://weapons/katana.tres" id="3_weapon"]
+[ext_resource type="Resource" uid="uid://clw70htnbxgei" path="res://data/ai/enemy_duelist.tres" id="2_13gj6"]
+[ext_resource type="Resource" uid="uid://cndijq62ntfbn" path="res://data/weapons/katana.tres" id="3_weapon"]
 [ext_resource type="Script" uid="uid://dgdgib1jc4f4g" path="res://scripts/player/sword_visual.gd" id="4_sword"]
 [ext_resource type="Script" uid="uid://ccpsk46sfaf3q" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="6_hurtbox"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="7_combatant"]
-[ext_resource type="Script" uid="uid://84kjs2gkp6la" path="res://scripts/ui/enemy_bar.gd" id="8_bar"]
+[ext_resource type="Script" uid="uid://84kjs2gkp6la" path="res://scripts/ui/hud/enemy_bar.gd" id="8_bar"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4

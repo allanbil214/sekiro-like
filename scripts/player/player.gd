@@ -59,7 +59,7 @@ const HEADROOM_RADIUS: float = 0.38
 @export var personal_space_push_speed: float = 4.0
 
 @export_group("Footsteps (Step 11a)")
-## Distance (m) walked between two footsteps, per gait. The sounds are in audio/sfx_data.tres.
+## Distance (m) walked between two footsteps, per gait. The sounds are in data/audio/sfx_data.tres.
 @export var step_distance_walk: float = 1.0
 @export var step_distance_run: float = 1.9
 @export var step_distance_crouch: float = 0.9
@@ -146,7 +146,7 @@ const HEADROOM_RADIUS: float = 0.38
 @export var reverse_posture_multiplier: float = 1.0
 
 @export_group("Items (Phase 2 item 11)")
-## The items carried at the start, in the order `cycle_item` steps through them (the four `throwables/*.tres`).
+## The items carried at the start, in the order `cycle_item` steps through them (the four `data/items/*.tres`).
 ## The counts are each item's `start_count`.
 @export var starting_items: Array[ItemData] = []
 ## How far (m) the player can be heard while throwing (the landing makes its own noise).
@@ -195,9 +195,9 @@ var sheathed: bool = false
 ## The player's health (a Node named Combatant with combatant.gd).
 @export var combatant: Combatant
 ## Hurtbox shapes per posture (height / bottom offset). Crouched = crouch, in the air = air.
-@export var stand_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/stand.tres")
-@export var crouch_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/crouch.tres")
-@export var air_hurtbox: HurtboxProfile = preload("res://resources/hurtbox/air.tres")
+@export var stand_hurtbox: HurtboxProfile = preload("res://data/hurtbox/stand.tres")
+@export var crouch_hurtbox: HurtboxProfile = preload("res://data/hurtbox/crouch.tres")
+@export var air_hurtbox: HurtboxProfile = preload("res://data/hurtbox/air.tres")
 @export var max_health: float = 100.0
 @export_group("Heal and resurrection")
 ## Healing gourd charges per run (a scene reload gives them back) and the health one heal restores.

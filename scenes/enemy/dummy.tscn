@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/enemy/dummy.gd" id="1_dummy"]
 [ext_resource type="Script" path="res://scripts/combat/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/combat/combatant.gd" id="3_combatant"]
-[ext_resource type="Script" path="res://scripts/ui/enemy_bar.gd" id="4_bar"]
+[ext_resource type="Script" path="res://scripts/ui/hud/enemy_bar.gd" id="4_bar"]
 [ext_resource type="Script" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]

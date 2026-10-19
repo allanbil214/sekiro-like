@@ -1,7 +1,7 @@
 class_name ThrowState
 extends ActionState
 ## Throws the selected item (Phase 2 item 11a), started by `Player._try_throw()` from Locomotion, Crouch or Dash
-## (a crouch is stood up first). Driven by `actions/throw.tres` (the clock, the locked window, the cancel window).
+## (a crouch is stood up first). Driven by `data/actions/player/throw.tres` (the clock, the locked window, the cancel window).
 ## You turn to the aim direction at once (the locked target, else the way the camera looks) and keep walking
 ## slowly. At `release_time` the item leaves the hand and ONE is spent; before that the throw can still be
 ## cancelled for free (guard, or a hit) and nothing is used. After the locked window dodge, jump and attack cancel it.

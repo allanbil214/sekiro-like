@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ArenaData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/arena_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Squad"
+scene_path = "res://scenes/arena/fighting_squad.tscn"
+description = "Three soldiers and a boss monk at once: lock-on switching and perilous attacks in a crowd. Only the monk is a boss."
+category = 2
+debug_only = false
+sort_order = 7

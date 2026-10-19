@@ -3,8 +3,8 @@
 [ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="Script" uid="uid://cckm17n0luvoa" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
 [ext_resource type="PackedScene" uid="uid://bwl4ivdc22duh" path="res://scenes/enemy/enemy.tscn" id="3_enemy"]
-[ext_resource type="Resource" uid="uid://dkn2mp6tq5nlj" path="res://ai/enemy_soldier.tres" id="4_soldier"]
-[ext_resource type="Resource" uid="uid://bw24ehgay8ov3" path="res://ai/enemy_monk.tres" id="6_monk"]
+[ext_resource type="Resource" uid="uid://dkn2mp6tq5nlj" path="res://data/ai/enemy_soldier.tres" id="4_soldier"]
+[ext_resource type="Resource" uid="uid://bw24ehgay8ov3" path="res://data/ai/enemy_monk.tres" id="6_monk"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)

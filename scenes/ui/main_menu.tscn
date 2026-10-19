@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://dh8cwyrtntakq"]
 
-[ext_resource type="Theme" path="res://resources/ui_theme.tres" id="1_theme"]
-[ext_resource type="Script" uid="uid://ce058rqejajm5" path="res://scripts/ui/main_menu.gd" id="2_script"]
-[ext_resource type="AudioStream" uid="uid://cwbl1s5e7nqsy" path="res://audio/music/main_menu.ogg" id="3_1g8jr"]
+[ext_resource type="Theme" path="res://data/ui/ui_theme.tres" id="1_theme"]
+[ext_resource type="Script" uid="uid://ce058rqejajm5" path="res://scripts/ui/menus/main_menu.gd" id="2_script"]
+[ext_resource type="AudioStream" uid="uid://cwbl1s5e7nqsy" path="res://assets/audio/music/main_menu.ogg" id="3_1g8jr"]
 [ext_resource type="PackedScene" path="res://scenes/ui/arena_chooser.tscn" id="4_chooser"]
 [ext_resource type="PackedScene" path="res://scenes/ui/options_menu.tscn" id="5_options"]
 

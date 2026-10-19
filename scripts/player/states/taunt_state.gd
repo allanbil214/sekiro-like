@@ -1,7 +1,7 @@
 class_name TauntState
 extends ActionState
 ## The taunt (Phase 2 item 11.5), started by `Player._try_taunt()` from Locomotion or Crouch (a crouch is stood up
-## first). Driven by `actions/taunt.tres` like any action: a locked wind-up, the shout at `provoke_time`, a locked
+## first). Driven by `data/actions/player/taunt.tres` like any action: a locked wind-up, the shout at `provoke_time`, a locked
 ## flourish, then a wind-down where dodge, jump and attack cancel (`cancel_window`). Guard, or a hit, cancels it
 ## before the shout and then nothing is provoked.
 ## At `provoke_time` the player shouts (`Sfx.Id.TAUNT`) and every enemy hears it (`Enemy.hear_taunt()`): an enemy in

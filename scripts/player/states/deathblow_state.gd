@@ -4,17 +4,17 @@ extends ActionState
 ## whose deathblow window is open, in front of you). A short scripted slash with no hitbox: the
 ## player steps toward the target (stopping stop_distance short), and halfway through the hit window
 ## the target's Combatant.execute_deathblow() is called. Guard cannot cancel it before then.
-## The sword looks like a thrust (actions/deathblow_thrust.tres, visual only) when drawn, and like the
+## The sword looks like a thrust (data/actions/player/deathblow_thrust.tres, visual only) when drawn, and like the
 ## iai draw slash (the weapon's draw attack poses) while sheathed. Timing always comes from `action`.
-## The action defaults to res://actions/deathblow.tres if none is set in the Inspector.
+## The action defaults to res://data/actions/player/deathblow.tres if none is set in the Inspector.
 
-const DEFAULT_ACTION: ActionData = preload("res://actions/deathblow.tres")
+const DEFAULT_ACTION: ActionData = preload("res://data/actions/player/deathblow.tres")
 ## The choke (Phase 2 item 10): the stealth kill with the blade reversed. A longer action: the target is pulled
 ## in front of the player and held (arms squeezing, the target struggling and then limp), then knocked out.
-const CHOKE_ACTION: ActionData = preload("res://actions/choke.tres")
-const THRUST_VISUAL: ActionData = preload("res://actions/deathblow_thrust.tres")
+const CHOKE_ACTION: ActionData = preload("res://data/actions/player/choke.tres")
+const THRUST_VISUAL: ActionData = preload("res://data/actions/player/deathblow_thrust.tres")
 ## The helm splitter's dive pose, drawn during a death from above (item 7c).
-const HELM_VISUAL: ActionData = preload("res://actions/helm_splitter.tres")
+const HELM_VISUAL: ActionData = preload("res://data/actions/player/helm_splitter.tres")
 
 ## The player stops this close (m, flat) to the target's center.
 @export var stop_distance: float = 1.1

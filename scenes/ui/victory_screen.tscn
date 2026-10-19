@@ -1,8 +1,8 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/ui/victory_screen.gd" id="1_script"]
-[ext_resource type="Theme" path="res://resources/ui_theme.tres" id="2_theme"]
-[ext_resource type="Shader" path="res://shaders/victory_screen.gdshader" id="3_shader"]
+[ext_resource type="Script" path="res://scripts/ui/menus/victory_screen.gd" id="1_script"]
+[ext_resource type="Theme" path="res://data/ui/ui_theme.tres" id="2_theme"]
+[ext_resource type="Shader" path="res://assets/shaders/victory_screen.gdshader" id="3_shader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_screen"]
 resource_local_to_scene = true

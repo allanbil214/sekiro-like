@@ -2,7 +2,7 @@ class_name Sfx
 extends RefCounted
 ## All the game's sound (Step 11a). One static call per sound: Sfx.play(tree, Sfx.Id.JUMP) (not tied to a
 ## place: the player's own sounds, menu sounds) or Sfx.play_at(tree, Sfx.Id.DEFLECT, point) (a sound in the
-## world, louder near the camera). The table (wavs, volume, pitch, cut-off groups) is `audio/sfx_data.tres`
+## world, louder near the camera). The table (wavs, volume, pitch, cut-off groups) is `data/audio/sfx_data.tres`
 ## (SfxData). A slot with no wav is silent. Most game events reach it through `Fx.play()`; the rest are
 ## one-line calls in the states. Nothing here changes a game rule.
 ## Voices (the AudioStreamPlayer nodes) are pooled (Phase 1.5, item 10): a finished voice goes back to an
@@ -25,7 +25,7 @@ enum Id {
 	TAUNT, ENEMY_PROVOKED,
 }
 
-const DATA_PATH: String = "res://audio/sfx_data.tres"
+const DATA_PATH: String = "res://data/audio/sfx_data.tres"
 
 ## Combo steps 1 to 3 always use the main swing, 4 and 5 the second one (the same animation names the
 ## weapon's combo uses). Other slashes pick at random (SfxData.swing_alt_chance).

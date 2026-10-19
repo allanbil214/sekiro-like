@@ -76,3 +76,7 @@
 
 ### Checking a spot, 11d (2026-10-19)
 - A suspicious guard (`EnemyAwareness._run_suspicious()`) walks to the spot, stands there and sweeps its view for `EnemyAIData.spot_check_time` (30 s), then resumes its patrol or post; new sounds more than 1.5 m away move the spot, anything sensed restarts the timer, and the meter stays pinned at `suspicious_at` meanwhile. `spot_alert_count` (3) thrown-item noises in one check make it alert and search the spot (`begin_search()`), still without knowing about the player and without a shout.
+
+### Taunt (Phase 2 item 11.5)
+`taunt` (V, Back/Select) starts `TauntState` (`actions/taunt.tres`) from Locomotion or Crouch on the ground, 1.5 s cooldown: a locked wind-up, the shout at 0.35 s (`Sfx.Id.TAUNT`, then `Enemy.hear_taunt()` for every `Enemy`), a locked flourish, a wind-down (0.8 to 1.1 s) that dodge, jump and attack cancel; guard or a hit before the shout cancels it with nothing provoked. The body lean is the only visual.
+An enemy in combat within 12 m is provoked: stacks up to 3, all cleared 10 s after the last taunt; per stack the yield time x0.75, the wind-up +0.08 speed, the perilous chance +0.08, and from 2 stacks bursts are one attack longer (a boss feels half, a dummy nothing); damage and guard are unchanged and the body tints red. An enemy not in combat hears an 8 m noise instead. Numbers: `EnemyAIData`, group "Provoked"; sound slots `taunt` and `enemy_provoked` are empty until wavs are added.

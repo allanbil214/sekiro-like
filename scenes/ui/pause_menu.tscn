@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="Theme" path="res://resources/ui_theme.tres" id="1_theme"]
-[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="2_script"]
+[ext_resource type="Theme" path="res://data/ui/ui_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/menus/pause_menu.gd" id="2_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/arena_chooser.tscn" id="3_chooser"]
 [ext_resource type="PackedScene" path="res://scenes/ui/options_menu.tscn" id="4_options"]
 

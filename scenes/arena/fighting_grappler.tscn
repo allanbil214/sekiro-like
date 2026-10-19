@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://scenes/arena/fighting_arena.tscn" id="1_base"]
 [ext_resource type="PackedScene" path="res://scenes/enemy/enemy.tscn" id="2_enemy"]
-[ext_resource type="Resource" path="res://ai/enemy_grappler.tres" id="3_ai"]
+[ext_resource type="Resource" path="res://data/ai/enemy_grappler.tres" id="3_ai"]
 
 [node name="FightingGrappler" instance=ExtResource("1_base")]
 
