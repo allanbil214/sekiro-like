@@ -63,13 +63,25 @@ func _physics_process(delta: float) -> void:
 
 ## The first thing between `from` and `to`: the world or an enemy Hurtbox that can be hit. Empty = nothing.
 func _cast(from: Vector3, to: Vector3) -> Dictionary:
+	return trace(_thrower, from, to, make_exclude(_thrower))
+
+
+## The bodies a thrown item passes through: the thrower and every enemy body (only hurtboxes and the world count).
+static func make_exclude(thrower: Player) -> Array[RID]:
 	var exclude: Array[RID] = []
-	exclude.append(_thrower.get_rid())
+	exclude.append(thrower.get_rid())
 	for node: Node3D in Enemies.all():
 		var body := node as CollisionObject3D
 		if body != null:
 			exclude.append(body.get_rid())
-	var space := get_world_3d().direct_space_state
+	return exclude
+
+
+## The ray a flying item uses, also used by the aim preview (item 11b) so the preview and the throw agree: the
+## first world surface or enemy Hurtbox that can be hit between `from` and `to`. Hurtboxes that cannot be hit
+## are added to `exclude` and skipped. Empty = nothing.
+static func trace(thrower: Player, from: Vector3, to: Vector3, exclude: Array[RID]) -> Dictionary:
+	var space := thrower.get_world_3d().direct_space_state
 	for _pass in MAX_PASSES:
 		var query := PhysicsRayQueryParameters3D.create(from, to, Layers.WORLD | Layers.ENEMY_HURTBOX)
 		query.collide_with_areas = true

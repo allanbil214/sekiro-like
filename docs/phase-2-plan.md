@@ -28,7 +28,7 @@
 | 8 | Generic interact system (section 3, item 8) | feature | [x] done and tested 2026-10-16 |
 | 9 | Wall hug (section 3, item 9) | feature | [x] done and tested 2026-10-16 |
 | 10 | Non-lethal combat (section 3, item 10) | feature | [x] done and tested 2026-10-16 |
-| 11 | Item system and throwables: 11a the item belt, `use_item` / `cycle_item`, the tap throw and the item HUD; 11b hold to aim (section 3, item 11) | feature | [ ] planned (discussed 2026-10-16, redesigned as an item system 2026-10-19), not started |
+| 11 | Item system and throwables: 11a the item belt, `use_item` / `cycle_item`, the tap throw and the item HUD; 11b hold to aim (section 3, item 11) | feature | [x] done and tested 2026-10-19 (11a the tap throw, 11b hold to aim) |
 | 12 | Navigation: a navmesh for enemies (section 3, item 12) | feature | [ ] planned (discussed 2026-10-16), not started |
 | 13 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
@@ -71,7 +71,7 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Needed by:** item 11 (the lethal flag of the ammo) and the Phase 3 reputation system.
 
 ### 11. Item system and throwables
-- **Status:** planned, discussed 2026-10-16; **redesigned 2026-10-19** (the user: items work like Tenchu and Nightreign, so the throw is the first item of a general item system). Split in two builds, each tested in turn. The defaults marked *(proposed)* are confirmed at the full check.
+- **Status:** **11a and 11b built and tested 2026-10-19** (what was built: `docs/built-reference.md`, "Item system and throwables, 11a" and "Hold to aim, 11b"). At the 11b full check: the 0.2 s hold threshold (a tap throws on release), free aim from a lock (the camera swings onto the target's chest first, the lock comes back on release), and the throw solved to the crosshair's aim point. Discussed 2026-10-16; **redesigned 2026-10-19** (the user: items work like Tenchu and Nightreign, so the throw is the first item of a general item system). Decisions made at the full check: the defaults below stand (ammo set and counts, no sword draw, keys F and G with D-pad Right and Left); after the test the user set the shuriken and kunai noise to 10 m (the metal throwables are the accurate distraction tool, the rock and ceramic the loud wide lure). The text below is the plan as discussed.
 - **What (user):** a Sekiro-style prosthetic idea done as a **normal throw with selectable ammo**: a rock, a shuriken, a kunai, broken ceramic; each lethal or non-lethal. No player bow (yumi). Later items (Tenchu style: onigiri, rice to mark a spot, and so on) use the same system.
 - **The item system (user, 2026-10-19):**
   - The **gourd keeps its own quick button** (`heal`, Q) and is not part of the item list (Nightreign style: the flask is quick, other items use other buttons).

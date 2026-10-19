@@ -151,6 +151,8 @@ const HEADROOM_RADIUS: float = 0.38
 @export var starting_items: Array[ItemData] = []
 ## How far (m) the player can be heard while throwing (the landing makes its own noise).
 @export var noise_throw: float = 2.0
+## Item 11b: holding `use_item` this long (s) starts the aim; a shorter tap throws on release.
+@export var hold_to_aim_time: float = 0.2
 
 @export_group("Interact (Phase 2 item 8)")
 ## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
@@ -286,6 +288,9 @@ var _guard_lockout: float = 0.0
 var sheathe_idle: float = 0.0
 ## Set by GuardState: forces walking.
 var walk_only: bool = false
+## Item 11b: a throwable's `use_item` press is waiting to become a tap (throws on release) or a hold (aims).
+var _use_pending: bool = false
+var _use_held: float = 0.0
 ## Step 10: gourd charges and resurrections left (set in _ready from the exports).
 var heal_charges: int = 0
 var resurrections_left: int = 0
@@ -373,6 +378,8 @@ var sword_visual: SwordVisual
 @onready var visual: Node3D = $Visual
 @onready var camera_rig: Node3D = $CameraRig
 @onready var lock_on: LockOn = $LockOn
+## The aim solver and arc preview (item 11b), used by `AimState`.
+@onready var aim_preview: AimPreview = $AimPreview
 @onready var state_machine: StateMachine = $StateMachine
 @onready var _collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var _body_mesh: MeshInstance3D = $Visual/Body
@@ -447,7 +454,7 @@ func _physics_process(delta: float) -> void:
 	_try_deathblow()
 	_try_heal()
 	_try_cycle_item()
-	_try_use_item()
+	_try_use_item(delta)
 	_update_interact_target()
 	state_machine.physics_update(delta)
 	# DeadState can reload the scene during the update; this node is out of the tree then.
@@ -483,7 +490,7 @@ func get_noise_radius() -> float:
 	var current := state_machine.current
 	if current is DeathblowState and deathblow_stealth:
 		radius = noise_stealth_kill
-	elif current is ThrowState:
+	elif current is ThrowState or current is AimState:
 		radius = noise_throw
 	elif current is ActionState:
 		radius = noise_action
@@ -852,7 +859,7 @@ func _update_hurtbox() -> void:
 func _update_footsteps(delta: float) -> void:
 	var current := state_machine.current
 	var walking := current is LocomotionState or current is CrouchState or current is GuardState \
-			or current is DashState or current is HealState
+			or current is DashState or current is HealState or current is AimState
 	var horizontal := Vector2(velocity.x, velocity.z).length()
 	if not walking or not is_on_floor() or horizontal < 0.5:
 		# Standing still: the first step comes soon after setting off.
@@ -1276,29 +1283,55 @@ func _try_cycle_item() -> void:
 		Sfx.play_ui(get_tree(), Sfx.Id.MENU_MOVE)
 
 
-## Uses the selected item if `use_item` was just pressed (item 11). What happens depends on the item's kind;
-## a throwable starts the throw (`_try_throw`).
-func _try_use_item() -> void:
-	if not Input.is_action_just_pressed(Actions.USE_ITEM):
-		return
+## Uses the selected item (item 11). What happens depends on the item's kind. A throwable waits to see what the
+## press is: a tap (released within `hold_to_aim_time`) throws on release (`_try_throw`), a hold starts the aim
+## (`_try_aim`, item 11b; `AimState` then throws on release).
+func _try_use_item(delta: float) -> void:
 	if combatant.dead or combatant.vulnerable:
+		_use_pending = false
 		return
-	var item := item_belt.selected()
-	if item == null or item_belt.selected_count() <= 0:
+	if Input.is_action_just_pressed(Actions.USE_ITEM):
+		var item := item_belt.selected()
+		if item == null or item_belt.selected_count() <= 0:
+			return
+		match item.get_kind():
+			ItemData.Kind.THROWABLE:
+				_use_pending = can_start_throw()
+				_use_held = 0.0
 		return
-	match item.get_kind():
-		ItemData.Kind.THROWABLE:
-			_try_throw()
+	if not _use_pending:
+		return
+	if Input.is_action_pressed(Actions.USE_ITEM):
+		_use_held += delta
+		if _use_held >= hold_to_aim_time:
+			_use_pending = false
+			_try_aim()
+	else:
+		_use_pending = false
+		_try_throw()
 
 
-## Starts the throw from Locomotion, Crouch or Dash (a crouch is stood up first; under a low ceiling it cannot).
-func _try_throw() -> void:
+## True in the states a throw or an aim can start from (Locomotion, Crouch, Dash); a crouch needs headroom to stand.
+func can_start_throw() -> bool:
 	var current := state_machine.current
 	if not (current is LocomotionState or current is CrouchState or current is DashState):
+		return false
+	return not is_crouched or can_stand()
+
+
+## Starts the throw (a tap).
+func _try_throw() -> void:
+	if can_start_throw():
+		state_machine.transition_to(StateName.THROW)
+
+
+## Starts the aim (a hold), if the item is still a throwable with some left.
+func _try_aim() -> void:
+	var item := item_belt.selected()
+	if item == null or item_belt.selected_count() <= 0 or item.get_kind() != ItemData.Kind.THROWABLE:
 		return
-	if is_crouched and not can_stand():
-		return
-	state_machine.transition_to(StateName.THROW)
+	if can_start_throw():
+		state_machine.transition_to(StateName.AIM)
 
 
 ## One of the player's attacks connected: restart the auto-sheathe timer and request the hitstop.

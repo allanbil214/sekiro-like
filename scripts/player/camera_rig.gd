@@ -5,6 +5,9 @@ extends Node3D
 ## pitch) from a little higher up, and the mouse and the right stick no longer look around (the mouse
 ## movement is passed to LockOn as a switch flick instead). On release, free look continues from
 ## where the camera is.
+## Aim mode (Phase 2 item 11b): while `AimState` runs, the camera pivot eases to head height, the spring arm
+## shortens almost to nothing (the player's body is hidden, so this reads as a first-person view) and the
+## field of view narrows. A locked target at the start makes the camera swing onto it quickly (`begin_aim`).
 
 @export var target: Node3D
 @export var follow_height: float = 1.5
@@ -24,6 +27,19 @@ extends Node3D
 @export var lock_follow_speed: float = 8.0
 ## How fast a recenter turns the camera behind the player (LockOn.recenter_when_no_target).
 @export var recenter_speed: float = 10.0
+
+@export_group("Aim (item 11b)")
+## Camera pivot height (m above the feet) while aiming: about head height.
+@export var aim_height: float = 1.6
+## The spring arm's length (m) while aiming; it still shortens by itself against a wall.
+@export var aim_arm_length: float = 0.15
+## Field of view (degrees) while aiming; the normal one is read from the camera at startup.
+@export var aim_fov: float = 55.0
+## How fast the arm length, the field of view and the height ease in and out (higher = snappier).
+@export var aim_follow_speed: float = 14.0
+## When aiming starts on a locked target: how fast the camera swings onto it, and for how long (s).
+@export var aim_snap_speed: float = 20.0
+@export var aim_snap_time: float = 0.2
 
 @export_group("Crouch")
 ## How much lower (m) the camera pivot sits while the player is crouched or sliding, so the camera
@@ -73,6 +89,12 @@ var _noise: FastNoiseLite
 ## The wall hug's peek (item 9): a world-space offset the camera eases toward (set by WallHugState).
 var _peek_target: Vector3 = Vector3.ZERO
 var _peek_now: Vector3 = Vector3.ZERO
+## Aim mode (item 11b).
+var _aiming: bool = false
+var _aim_snap_left: float = 0.0
+var _aim_snap_point: Vector3 = Vector3.ZERO
+var _arm_length_default: float = 4.0
+var _fov_default: float = 75.0
 
 @onready var _arm: SpringArm3D = $SpringArm3D
 @onready var _camera: Camera3D = $SpringArm3D/Camera3D
@@ -91,6 +113,8 @@ func _ready() -> void:
 	var body := target as CollisionObject3D
 	if body != null:
 		_arm.add_excluded_object(body.get_rid())
+	_arm_length_default = _arm.spring_length
+	_fov_default = _camera.fov
 	_height_now = follow_height
 	global_position = target.global_position + Vector3.UP * follow_height
 	_lock_on.recenter_requested.connect(_on_recenter_requested)
@@ -126,6 +150,9 @@ func _process(delta: float) -> void:
 			_yaw = lerp_angle(_yaw, _recenter_yaw, 1.0 - exp(-recenter_speed * delta))
 			if absf(angle_difference(_yaw, _recenter_yaw)) < 0.01:
 				_recentering = false
+	if _aiming and _aim_snap_left > 0.0:
+		_aim_snap_left -= delta
+		_aim_at_point(_aim_snap_point, delta)
 	_pitch = clampf(_pitch, deg_to_rad(pitch_min_deg), deg_to_rad(pitch_max_deg))
 
 	_update_shake()
@@ -134,7 +161,14 @@ func _process(delta: float) -> void:
 	_arm.rotation.x = _pitch + _shake_pitch
 
 	var wanted_height := follow_height + (lock_height_bonus if locked else 0.0)
-	_height_now = lerpf(_height_now, wanted_height, 1.0 - exp(-lock_follow_speed * delta))
+	var height_speed := lock_follow_speed
+	if _aiming:
+		wanted_height = aim_height
+		height_speed = aim_follow_speed
+	_height_now = lerpf(_height_now, wanted_height, 1.0 - exp(-height_speed * delta))
+	var aim_weight := 1.0 - exp(-aim_follow_speed * delta)
+	_arm.spring_length = lerpf(_arm.spring_length, aim_arm_length if _aiming else _arm_length_default, aim_weight)
+	_camera.fov = lerpf(_camera.fov, aim_fov if _aiming else _fov_default, aim_weight)
 	var player := target as Player
 	var crouch_wanted := crouch_height_drop if player != null and player.is_crouched else 0.0
 	_crouch_drop_now = lerpf(_crouch_drop_now, crouch_wanted, 1.0 - exp(-crouch_follow_speed * delta))
@@ -146,6 +180,25 @@ func _process(delta: float) -> void:
 ## The wall hug's peek (item 9): shift the camera by this world-space offset; Vector3.ZERO ends it.
 func set_peek(offset: Vector3) -> void:
 	_peek_target = offset
+
+
+## Aim mode on (item 11b; `AimState` calls this). With `snap_to` (the aim point on a locked target, in world
+## space) the camera swings onto that point for `aim_snap_time`, then the player takes over with the mouse.
+func begin_aim(snap_to: Vector3 = Vector3.ZERO, snap: bool = false) -> void:
+	_aiming = true
+	_recentering = false
+	_aim_snap_left = aim_snap_time if snap else 0.0
+	_aim_snap_point = snap_to
+
+
+## Aim mode off: the camera eases back to its normal height, arm length and field of view.
+func end_aim() -> void:
+	_aiming = false
+	_aim_snap_left = 0.0
+
+
+func is_aiming() -> bool:
+	return _aiming
 
 
 ## -1 when the Options menu inverts the vertical look, else 1.
@@ -202,6 +255,17 @@ func _aim_at_lock_target(delta: float) -> void:
 	var weight := 1.0 - exp(-lock_follow_speed * delta)
 	_yaw = lerp_angle(_yaw, atan2(-to.x, -to.z), weight)
 	_pitch = lerpf(_pitch, atan2(to.y, flat) - deg_to_rad(lock_pitch_down_degrees), weight)
+
+
+## Ease yaw and pitch so the camera looks at `point` (the aim snap; no extra downward tilt).
+func _aim_at_point(point: Vector3, delta: float) -> void:
+	var to := point - global_position
+	var flat := Vector2(to.x, to.z).length()
+	if flat < 0.2:
+		return
+	var weight := 1.0 - exp(-aim_snap_speed * delta)
+	_yaw = lerp_angle(_yaw, atan2(-to.x, -to.z), weight)
+	_pitch = lerpf(_pitch, atan2(to.y, flat), weight)
 
 
 func _on_recenter_requested(yaw: float) -> void:
