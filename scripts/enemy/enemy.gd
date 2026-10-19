@@ -97,6 +97,18 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## Seconds it waits at each waypoint (a random time between the two).
 @export var patrol_wait: Vector2 = Vector2(1.5, 3.5)
 
+@export_group("Navigation (Phase 2 item 12a)")
+## On: this enemy walks around walls and obstacles along a baked navmesh (see EnemyNavigation) when it patrols,
+## investigates a noise, searches, walks to a body, or chases the player. Needs a `NavigationAgent3D` child named
+## `NavigationAgent` on this enemy and a baked `NavigationRegion3D` in the arena. Off (the default): the old
+## straight-line walking, nothing else changes. The numbers are in the `ai` preset.
+@export var use_navigation: bool = false
+## Draws this enemy's current path in the game (the agent's own debug line).
+@export var debug_navigation: bool = false
+## Prints one line per second to the Output panel while it walks by navigation: the target, whether the map is
+## ready, the path length and why it has no direction (for finding why an enemy does not move). Debug builds only.
+@export var debug_navigation_log: bool = false
+
 @export_group("Debug")
 ## Print phase changes, attacks, and defense decisions to the Output panel.
 @export var debug_log: bool = false
@@ -118,6 +130,7 @@ var _guarding: bool = false
 
 var _player: Node3D
 var _awareness: EnemyAwareness
+var _navigation: EnemyNavigation
 ## True while the player is dead and this enemy is standing down (Step 10).
 var _stood_down: bool = false
 ## Item 7b: seconds left in which a fresh spot (not a hit) can still be stealth-killed (see can_be_stealth_killed).
@@ -264,6 +277,9 @@ func _ready() -> void:
 	if use_awareness:
 		_awareness = EnemyAwareness.new(self)
 		_awareness.setup()
+	if use_navigation:
+		_navigation = EnemyNavigation.new(self)
+		_navigation.setup()
 
 
 func _exit_tree() -> void:
@@ -467,7 +483,11 @@ func _update_chase(delta: float, to_player: Vector3, distance: float, has_target
 	_face(to_player, delta, ai.turn_speed)
 	if distance > ai.engage_distance:
 		var speed := ai.strafe_speed if _guarding else ai.run_speed
-		_move_toward_velocity(to_player.normalized() * speed, delta)
+		var heading := to_player.normalized()
+		if use_navigation:
+			# Item 12a: follow the path around obstacles (zero when there is none: it stands).
+			heading = nav_direction(_player.global_position)
+		_move_toward_velocity(heading * speed, delta)
 		return
 	_decelerate(delta)
 	if _think_timer <= 0.0 and not _guarding:
@@ -1221,6 +1241,14 @@ func get_awareness_debug() -> String:
 
 
 ## True when the player is on another level than this enemy can follow (no pathfinding, item 7a).
+## Item 12a: the flat unit direction of the next step on the navmesh path toward `point`, or zero when the path
+## is finished, missing, or the navigation could not be set up. Only meaningful when `use_navigation` is on.
+func nav_direction(point: Vector3) -> Vector3:
+	if _navigation == null:
+		return Vector3.ZERO
+	return _navigation.direction_to(point)
+
+
 func _is_out_of_reach() -> bool:
 	return _awareness != null and _player != null \
 			and absf(_player.global_position.y - global_position.y) > ai.max_vertical_reach + 1.0

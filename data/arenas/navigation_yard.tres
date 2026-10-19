@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ArenaData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/arena_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Navigation Yard"
+scene_path = "res://scenes/arena/navigation_yard.tscn"
+description = "Three guards that walk around walls on a navmesh: one patrols across the center wall, one stands in a pen that opens away from you, one watches from the east. Throw a rock behind the wall and see the path they take. Testing map for item 12a."
+category = 0
+debug_only = true
+sort_order = 1

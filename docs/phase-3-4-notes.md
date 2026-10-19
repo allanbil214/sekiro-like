@@ -109,7 +109,7 @@
 ## 10. The phases
 
 - **Phase 2 (still open): items 8 to 12**, in the order of the numbers (the user asked that the numbers match the build order):
-  - **8** interact system, **9** wall hug, **10** non-lethal combat, **11a and 11b** throwables, **12** navmesh. Details and the agreed behavior are in `docs/phase-2-plan.md`.
+  - **8** interact system, **9** wall hug, **10** non-lethal combat, **11a and 11b** throwables, **12a** navmesh and **12b** navigation links (jump, drop, climb). Details and the agreed behavior are in `docs/phase-2-plan.md`.
   - The rest of the old backlog (ledge enhancements, heal and death extras, lock-on extras, sound extras, more enemy body feedback, the sweep duck) stays in handoff section 13 and is picked as the user likes; the sweep duck and real animation wait for real models.
 - **Phase 3, game flow: a small vertical slice.** Enough to feel whether the game wants missions or a free hub.
   - One hub district with NPCs and doors into interiors (the scene loader exists), seamless interior doors with the veil, and the **cell-streaming prototype** (section 3).

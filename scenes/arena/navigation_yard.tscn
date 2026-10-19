@@ -1,0 +1,196 @@
+[gd_scene format=3 uid="uid://brh0d6y2k06r0"]
+
+[ext_resource type="PackedScene" uid="uid://46qh5fq01mth" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="Script" uid="uid://cckm17n0luvoa" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
+[ext_resource type="PackedScene" uid="uid://bwl4ivdc22duh" path="res://scenes/enemy/enemy.tscn" id="3_enemy"]
+[ext_resource type="Resource" uid="uid://dkn2mp6tq5nlj" path="res://data/ai/enemy_soldier.tres" id="4_soldier"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_main"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_main")
+glow_enabled = true
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_yard"]
+vertices = PackedVector3Array(-6.5, 0.5, -7.5, -6.25, 0.5, -7, -5.5, 0.5, -7.5, -5.5, 0.5, -10.25, -9.25, 0.5, -7.5, -4, 0.5, -14.5, -14.5, 0.5, -14.5, -14.5, 0.5, -6, -4, 0.5, -10.5, -9.5, 0.5, -6, 5, 0.5, -12.25, 6, 0.5, -12.5, 6, 0.5, -14.5, -2.5, 0.5, -10.5, -2.25, 0.5, -9.25, 5, 0.5, -9, 7.25, 0.5, -12.25, 11, 0.5, -12.25, 13, 0.5, -12.5, 14.5, 0.5, -14.5, 13.25, 0.5, -6.5, 14.5, 0.5, -6.25, 7.25, 0.5, -6.5, 11, 0.5, -6.5, -4.5, 1.5, -9.5, -4.5, 1.5, -8.5, -3.5, 1.5, -8.5, -3.5, 1.5, -9.5, -6.25, 0.5, -4.75, -2.75, 0.5, -7.25, 6.5, 0.5, -1, 6.75, 0.5, -4.25, 5, 0.5, -4.5, -7.75, 0.5, -4.25, -7.75, 0.5, -1, -2.25, 0.5, -7.75, -8.5, 1.5, -6.5, -8.5, 1.5, -5.5, -7.5, 1.5, -5.5, -7.5, 1.5, -6.5, 13.25, 0.5, -4.75, 14.5, 0.5, 1.25, 9.5, 0.5, -1, 12.75, 0.5, -4.25, 9.75, 0.5, 0.75, 9.25, 0.5, 1.25, -9.25, 0.5, -1, -9.5, 0.5, -4.5, -9.5, 0.5, 0, -14.5, 0.5, 0, -7.25, 0.5, 4.75, -7.25, 0.5, 1.25, -9.25, 0.5, 1.25, -10.25, 0.5, 4.75, -14.5, 0.5, 6, -10.5, 0.5, 6, 5.5, 0.5, 4.75, 7, 0.5, 4.5, 7, 0.5, 1.25, -5.25, 0.5, 5, -5.25, 0.5, 7, 5.5, 0.5, 7.5, 7, 0.5, 14.5, 7, 0.5, 7.75, -7, 0.5, 7.25, -6.75, 0.5, 14.5, 8.75, 0.5, 4.75, 8.75, 0.5, 7.25, 14.5, 0.5, 7.75, 8.25, 0.5, 7.75, 6.5, 1.5, 5.5, 6.5, 1.5, 6.5, 7.5, 1.5, 6.5, 7.5, 1.5, 5.5, -9.5, 1.25, 5.75, -9.5, 1.25, 6.25, -6.5, 1.25, 6.25, -6.5, 1.25, 5.75, -10.25, 0.5, 7.25, -14.5, 0.5, 14.5, 14.5, 0.5, 14.5)
+polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 3), PackedInt32Array(3, 4, 5), PackedInt32Array(5, 4, 7), PackedInt32Array(5, 7, 6), PackedInt32Array(5, 8, 3), PackedInt32Array(3, 0, 4), PackedInt32Array(4, 9, 7), PackedInt32Array(11, 10, 12), PackedInt32Array(12, 10, 13), PackedInt32Array(12, 13, 8), PackedInt32Array(12, 8, 5), PackedInt32Array(14, 13, 15), PackedInt32Array(15, 13, 10), PackedInt32Array(11, 12, 16), PackedInt32Array(16, 12, 17), PackedInt32Array(17, 12, 18), PackedInt32Array(18, 12, 19), PackedInt32Array(20, 18, 21), PackedInt32Array(21, 18, 19), PackedInt32Array(17, 23, 16), PackedInt32Array(16, 23, 22), PackedInt32Array(27, 26, 24), PackedInt32Array(24, 26, 25), PackedInt32Array(1, 2, 28), PackedInt32Array(28, 2, 29), PackedInt32Array(32, 31, 30), PackedInt32Array(34, 33, 28), PackedInt32Array(34, 28, 29), PackedInt32Array(14, 15, 35), PackedInt32Array(35, 15, 32), PackedInt32Array(35, 32, 29), PackedInt32Array(29, 32, 30), PackedInt32Array(29, 30, 34), PackedInt32Array(39, 38, 36), PackedInt32Array(36, 38, 37), PackedInt32Array(20, 21, 40), PackedInt32Array(40, 21, 41), PackedInt32Array(30, 31, 42), PackedInt32Array(42, 31, 43), PackedInt32Array(43, 40, 41), PackedInt32Array(41, 45, 44), PackedInt32Array(44, 42, 41), PackedInt32Array(41, 42, 43), PackedInt32Array(34, 46, 33), PackedInt32Array(33, 46, 47), PackedInt32Array(7, 9, 47), PackedInt32Array(46, 48, 47), PackedInt32Array(47, 48, 49), PackedInt32Array(47, 49, 7), PackedInt32Array(51, 50, 52), PackedInt32Array(52, 50, 53), PackedInt32Array(52, 53, 48), PackedInt32Array(48, 53, 49), PackedInt32Array(49, 53, 54), PackedInt32Array(53, 55, 54), PackedInt32Array(57, 56, 58), PackedInt32Array(58, 56, 59), PackedInt32Array(58, 59, 50), PackedInt32Array(58, 50, 51), PackedInt32Array(59, 56, 60), PackedInt32Array(60, 56, 61), PackedInt32Array(63, 62, 61), PackedInt32Array(61, 62, 60), PackedInt32Array(60, 62, 64), PackedInt32Array(64, 62, 65), PackedInt32Array(57, 58, 66), PackedInt32Array(66, 58, 45), PackedInt32Array(66, 45, 67), PackedInt32Array(67, 45, 41), PackedInt32Array(67, 41, 68), PackedInt32Array(68, 69, 67), PackedInt32Array(73, 72, 70), PackedInt32Array(70, 72, 71), PackedInt32Array(77, 76, 74), PackedInt32Array(74, 76, 75), PackedInt32Array(54, 55, 78), PackedInt32Array(78, 64, 65), PackedInt32Array(54, 78, 79), PackedInt32Array(79, 78, 65), PackedInt32Array(62, 63, 69), PackedInt32Array(68, 80, 69), PackedInt32Array(69, 80, 62)]
+agent_height = 2.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.55, 0.55, 0.57, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_wall"]
+albedo_color = Color(0.42, 0.4, 0.38, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_crate"]
+albedo_color = Color(0.55, 0.38, 0.2, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ns"]
+size = Vector3(32, 40, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ew"]
+size = Vector3(1, 40, 30)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fall"]
+size = Vector3(120, 4, 120)
+
+[node name="NavigationYard" type="Node3D" unique_id=1321501319]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1488970205]
+environment = SubResource("Environment_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=172789599]
+transform = Transform3D(0.81729025, -0.4414149, 0.3703911, 0, 0.64278764, 0.76604444, -0.57622623, -0.62608063, 0.5253441, 0, 10.818325, 12.643993)
+shadow_enabled = true
+
+[node name="NavRegion" type="NavigationRegion3D" parent="." unique_id=328531787]
+navigation_mesh = SubResource("NavigationMesh_yard")
+
+[node name="Floor" type="CSGBox3D" parent="NavRegion" unique_id=1971324723]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(30, 1, 30)
+material = SubResource("Mat_floor")
+
+[node name="CenterWall" type="CSGBox3D" parent="NavRegion" unique_id=1064470222]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+use_collision = true
+size = Vector3(18, 3, 1)
+material = SubResource("Mat_wall")
+
+[node name="PenBack" type="CSGBox3D" parent="NavRegion" unique_id=474103162]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.5, -5.5)
+use_collision = true
+size = Vector3(7, 3, 1)
+material = SubResource("Mat_wall")
+
+[node name="PenWestArm" type="CSGBox3D" parent="NavRegion" unique_id=98739948]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.5, -8.5)
+use_collision = true
+size = Vector3(1, 3, 7)
+material = SubResource("Mat_wall")
+
+[node name="PenEastArm" type="CSGBox3D" parent="NavRegion" unique_id=609006524]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.5, -8.5)
+use_collision = true
+size = Vector3(1, 3, 7)
+material = SubResource("Mat_wall")
+
+[node name="CrateNW" type="CSGBox3D" parent="NavRegion" unique_id=2047120961]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.5, -6)
+use_collision = true
+size = Vector3(2, 1, 2)
+material = SubResource("Mat_crate")
+
+[node name="CrateN" type="CSGBox3D" parent="NavRegion" unique_id=2096396396]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, -9)
+use_collision = true
+size = Vector3(2, 1, 2)
+material = SubResource("Mat_crate")
+
+[node name="StallSW" type="CSGBox3D" parent="NavRegion" unique_id=394304409]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.4, 6)
+use_collision = true
+size = Vector3(4, 0.8, 1.2)
+material = SubResource("Mat_crate")
+
+[node name="CrateSE" type="CSGBox3D" parent="NavRegion" unique_id=2072323658]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0.5, 6)
+use_collision = true
+size = Vector3(2, 1, 2)
+material = SubResource("Mat_crate")
+
+[node name="InvisibleWalls" type="Node3D" parent="." unique_id=1337368181]
+
+[node name="WallNorth" type="StaticBody3D" parent="InvisibleWalls" unique_id=1008666608]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, -15.5)
+collision_layer = 32
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallNorth" unique_id=1710969899]
+shape = SubResource("BoxShape3D_wall_ns")
+
+[node name="WallSouth" type="StaticBody3D" parent="InvisibleWalls" unique_id=1269261231]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, 15.5)
+collision_layer = 32
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallSouth" unique_id=352699707]
+shape = SubResource("BoxShape3D_wall_ns")
+
+[node name="WallEast" type="StaticBody3D" parent="InvisibleWalls" unique_id=213217263]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 20, 0)
+collision_layer = 32
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallEast" unique_id=1694651632]
+shape = SubResource("BoxShape3D_wall_ew")
+
+[node name="WallWest" type="StaticBody3D" parent="InvisibleWalls" unique_id=1328332952]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.5, 20, 0)
+collision_layer = 32
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InvisibleWalls/WallWest" unique_id=1313505241]
+shape = SubResource("BoxShape3D_wall_ew")
+
+[node name="FallZone" type="Area3D" parent="." unique_id=2072342884]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12, 0)
+script = ExtResource("2_fall")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FallZone" unique_id=1324119932]
+shape = SubResource("BoxShape3D_fall")
+
+[node name="StartSign" type="Label3D" parent="." unique_id=1155109627]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 13.5)
+pixel_size = 0.01
+billboard = 1
+text = "NAVIGATION YARD
+Guards walk around walls (item 12a).
+Throw a rock (F) behind the wall to lure one."
+font_size = 72
+outline_size = 14
+
+[node name="Patrols" type="Node3D" parent="." unique_id=2001076248]
+
+[node name="PathA" type="Node3D" parent="Patrols" unique_id=457290902]
+
+[node name="P1" type="Marker3D" parent="Patrols/PathA" unique_id=1296439187]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -3)
+
+[node name="P2" type="Marker3D" parent="Patrols/PathA" unique_id=369004432]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 4)
+
+[node name="P3" type="Marker3D" parent="Patrols/PathA" unique_id=1469584553]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, 4)
+
+[node name="GuardPatrol" parent="." unique_id=555044017 instance=ExtResource("3_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -3)
+ai = ExtResource("4_soldier")
+respawn_delay = 4.0
+use_awareness = true
+patrol_path = NodePath("../Patrols/PathA")
+use_navigation = true
+
+[node name="GuardPen" parent="." unique_id=1808637631 instance=ExtResource("3_enemy")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 9, 0, -9)
+ai = ExtResource("4_soldier")
+respawn_delay = 4.0
+use_awareness = true
+use_navigation = true
+
+[node name="GuardEast" parent="." unique_id=431548719 instance=ExtResource("3_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0, 8)
+ai = ExtResource("4_soldier")
+respawn_delay = 4.0
+use_awareness = true
+use_navigation = true
+
+[node name="Player" parent="." unique_id=10044294 instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 12)

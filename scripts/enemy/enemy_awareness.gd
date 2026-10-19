@@ -930,11 +930,15 @@ func _walk_to(point: Vector3, speed: float, delta: float) -> bool:
 		_stuck = 0.0
 		return true
 	var direction := flat / distance
+	if _enemy.use_navigation:
+		# Item 12a: the next step of the navmesh path (zero: no path, it stands until the stuck timer gives up).
+		direction = _enemy.nav_direction(point)
 	var wanted := direction * speed
 	if not edge_safe(direction):
 		wanted = Vector3.ZERO
 	_steer(wanted, delta)
-	_turn_to_yaw(atan2(-direction.x, -direction.z), delta, _ai.turn_speed * 0.5)
+	if direction != Vector3.ZERO:
+		_turn_to_yaw(atan2(-direction.x, -direction.z), delta, _ai.turn_speed * 0.5)
 	var moving := Vector2(_enemy.velocity.x, _enemy.velocity.z).length()
 	if moving < speed * 0.25:
 		_stuck += delta

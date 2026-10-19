@@ -100,3 +100,6 @@ Files moved with their `.uid` and `.import` sidecars and every `res://` path rew
 | `scripts/ui/` menu scripts (`arena_chooser`, `arena_library`, `controls_bindings`, `death_screen`, `loading_screen`, `loading_tips`, `main_menu`, `options_menu`, `pause_menu`, `victory_screen`) | `scripts/ui/menus/` |
 
 Older entries above still show the old paths; read them with this table.
+
+Navigation (12a): `Enemy.use_navigation` (off by default) makes `EnemyNavigation` in `_ready()`; it needs a `NavigationAgent3D` child named `NavigationAgent` and a baked `NavigationRegion3D` in the arena (`navigation_yard` is the demo). `direction_to(point)` returns the flat unit direction of the next path point; patrol, noise and spot checks, searches, body walks and the chase all use it.
+A missing agent, an unsynced map or no path gives a zero direction and one warning, never a hidden straight-line walk. Tuning in the `ai` preset (`nav_*`); `debug_navigation` draws the path, `debug_navigation_log` prints a `[Nav]` line per second (debug builds, off in all scenes). Walking only: no jump, drop or climb (12b).

@@ -31,7 +31,8 @@
 | 11 | Item system and throwables: 11a the item belt, `use_item` / `cycle_item`, the tap throw and the item HUD; 11b hold to aim (section 3, item 11) | feature | [x] done and tested 2026-10-19 (11a the tap throw, 11b hold to aim, 11c sticky aim and click to throw, 11d guards check the spot) |
 | 11.5 | Taunt (addendum to item 11, section 3, item 11.5) | feature | [x] done and tested 2026-10-19 |
 | 11.6 | Folder reorganization (addendum, section 3, item 11.6) | refactor | [x] done and tested 2026-10-19 |
-| 12 | Navigation: a navmesh for enemies (section 3, item 12) | feature | [ ] planned (discussed 2026-10-16), not started |
+| 12a | Navigation: a navmesh for enemies (section 3, item 12a) | feature | [x] done and tested 2026-10-19 |
+| 12b | Navigation links: enemies jump, drop or climb between levels (section 3, item 12b) | feature | [ ] planned (split off 2026-10-19), after 12a is tested |
 | 13 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
@@ -99,11 +100,18 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Layout:** `data/` holds every `.tres` and the csv (`actions/player`, `actions/enemy`, `ai`, `arenas`, `weapons`, `items`, `hurtbox`, `audio`, `ui`), `assets/` holds audio and shaders, and the scripts are grouped by job (`core`, `items`, `resources`, `ui/hud`, `ui/menus` are new). `scenes/` did not change.
 - **Not included:** any code or scene change, moving `scenes/`, renaming class names. Docs outside this item keep old paths only in history files (`docs/phase-1-5-plan.md`, the build log).
 
-### 12. Navigation
-- **Status:** planned, discussed 2026-10-16. The hub of Phase 3 and the street encounters are its users (`docs/phase-3-4-notes.md`, section 5).
+### 12a. Navigation (the navmesh)
+- **Status:** done and tested 2026-10-19 (discussed 2026-10-16); **split into 12a and 12b on 2026-10-19** (the user: the navmesh first, the links as a follow-up). 12a is walking on flat levels only. The hub of Phase 3 and the street encounters are its users (`docs/phase-3-4-notes.md`, section 5).
 - **What (user):** a navmesh system for enemies. **Rule (proposed):** a per-enemy `use_navigation` flag, **off by default**, so every existing arena and preset behaves exactly as before (the same rule as `use_awareness`).
 - **Shape (proposed):** `NavigationRegion3D` for the baked walkable area, `NavigationAgent3D` on the enemy, the change mostly in the enemy's "walk toward a spot" code, plus baking the arenas that use it.
-- **Limits to know:** a navmesh handles walking around walls and stalls but **not climbing**. A ground enemy cannot follow onto a roof unless jump or climb links are added; the existing "from another level it stands and watches, still alert" rule covers it. Roofs get their own walkable area so rooftop guards can patrol. In Phase 3 and 4 the streamed world needs one region per cell with matching edges.
+- **Limits to know:** a navmesh handles walking around walls and stalls but **not climbing**. A ground enemy cannot follow onto a roof unless jump or climb links are added; the existing "from another level it stands and watches, still alert" rule covers it. Roofs get their own walkable area so rooftop guards can patrol. In Phase 3 and 4 the streamed world needs one region per cell with matching edges. Jump, drop and climb links are item 12b.
+
+### 12b. Navigation links (follow-up to 12a)
+- **Status:** planned, split off 2026-10-19; starts only after 12a is built and tested. Not designed yet: it gets its own full check.
+- **What (user, proposed order):** enemies that cross between levels with `NavigationLink3D` links: first a **drop** (roof to ground), then a **jump** over a gap, then a **climb** last. The navmesh side is only the links; the real work is an enemy state per link kind (timing, movement, later animation).
+- **Rule (proposed):** a per-enemy switch (off by default, like `use_navigation`), so only chosen enemies follow across levels.
+- **Open (the user's design choice):** if enemies can follow onto roofs, the roofs stop being a guaranteed escape (`docs/phase-3-4-notes.md`, section 5). Decide at the 12b full check which enemies get links.
+- **Needed by:** the Phase 3 hub (rooftop guards, hunters that follow, the roof escape).
 
 ## 4. Backlog carried over (13 and later)
 

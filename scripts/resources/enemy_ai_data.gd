@@ -321,6 +321,16 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var symbol_font_size: int = 150
 @export var symbol_pixel_size: float = 0.005
 
+@export_group("Navigation (Phase 2 item 12a)")
+## Used only when the enemy has `use_navigation` on. How close (m) to a path point counts as reached, and how
+## close to the end of the path counts as arrived. Placeholders to tune by playing.
+@export var nav_path_desired_distance: float = 0.5
+@export var nav_target_desired_distance: float = 0.5
+## A target that moved less than `nav_repath_distance` (m) keeps its path; a moved target is re-pathed at most
+## every `nav_repath_interval` seconds (a target that jumped more than 2 m is re-pathed at once).
+@export var nav_repath_distance: float = 0.5
+@export var nav_repath_interval: float = 0.4
+
 @export_group("Provoked (taunt, Phase 2 item 11.5)")
 ## The player's taunt provokes an enemy that is in combat and within the taunt range: each taunt adds a stack
 ## (up to `provoke_max_stacks`), and every stack is cleared `provoke_duration` seconds after the last taunt.
