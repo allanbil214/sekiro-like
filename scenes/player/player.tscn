@@ -2,14 +2,19 @@
 
 [ext_resource type="Script" uid="uid://dihu6p5qetbd5" path="res://scripts/player/player.gd" id="1_dovo2"]
 [ext_resource type="Resource" uid="uid://cndijq62ntfbn" path="res://weapons/katana.tres" id="2_3j4b4"]
+[ext_resource type="Script" uid="uid://dlklxomyrqfq2" path="res://resources/item_data.gd" id="2_ahqnk"]
 [ext_resource type="Script" uid="uid://cvw8ckubyb8mt" path="res://scripts/player/reach_arms.gd" id="2_fcs02"]
 [ext_resource type="Script" uid="uid://cihgadc8vxu18" path="res://scripts/player/camera_rig.gd" id="2_gmlin"]
 [ext_resource type="Script" uid="uid://bmsjl77m5j8qw" path="res://scripts/player/states/state_machine.gd" id="3_5gtgg"]
 [ext_resource type="Script" uid="uid://dgdgib1jc4f4g" path="res://scripts/player/sword_visual.gd" id="3_8ydkj"]
+[ext_resource type="Resource" path="res://throwables/shuriken.tres" id="3_vb1ce"]
+[ext_resource type="Resource" path="res://throwables/rock.tres" id="4_0ncpa"]
 [ext_resource type="Script" uid="uid://bk7e1ftndsj83" path="res://scripts/player/states/locomotion_state.gd" id="4_h17s1"]
 [ext_resource type="Script" uid="uid://ccpsk46sfaf3q" path="res://scripts/combat/hitbox.gd" id="5_6cv16"]
 [ext_resource type="Script" uid="uid://n7b80fl5racg" path="res://scripts/player/states/air_state.gd" id="5_je7p5"]
+[ext_resource type="Resource" path="res://throwables/kunai.tres" id="5_upxxc"]
 [ext_resource type="Script" uid="uid://dbyobsb5bm262" path="res://scripts/player/states/dodge_state.gd" id="6_fm80t"]
+[ext_resource type="Resource" path="res://throwables/ceramic.tres" id="6_ln3h3"]
 [ext_resource type="Resource" uid="uid://cqfr8qmc44s6a" path="res://actions/dodge.tres" id="7_gx1jg"]
 [ext_resource type="Script" uid="uid://cc8d2yi3m60l5" path="res://scripts/player/states/dash_state.gd" id="8_ugbui"]
 [ext_resource type="Script" uid="uid://cnqtx575vtp13" path="res://scripts/ui/debug_overlay.gd" id="9_fcs02"]
@@ -32,14 +37,17 @@
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="27_28m0y"]
 [ext_resource type="Script" uid="uid://cu132jjjynak8" path="res://scripts/player/states/wall_hug_state.gd" id="27_rw8a5"]
 [ext_resource type="Script" uid="uid://c3t1jclb0bed4" path="res://scripts/player/states/stagger_state.gd" id="27_tffgl"]
+[ext_resource type="Script" uid="uid://ctgk22uqh18si" path="res://scripts/player/states/throw_state.gd" id="28_hyqqp"]
 [ext_resource type="Script" uid="uid://2gky22glbhj6" path="res://scripts/player/states/deathblow_state.gd" id="28_pk8ii"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="28_uniwh"]
 [ext_resource type="Script" uid="uid://jus833ce0e24" path="res://scripts/player/heal_arm.gd" id="29_wva7c"]
 [ext_resource type="Script" uid="uid://c6tupl6mk6o4b" path="res://scripts/ui/danger_symbol.gd" id="32_pk8ii"]
 [ext_resource type="Script" uid="uid://bva5xai5g2xge" path="res://scripts/player/lock_on.gd" id="33_5mf0n"]
+[ext_resource type="Resource" path="res://actions/throw.tres" id="34_vb1ce"]
 [ext_resource type="Script" uid="uid://b16888o6dv8yx" path="res://scripts/ui/player_hud.gd" id="36_wva7c"]
 [ext_resource type="Script" uid="uid://d2j5n5aect3oh" path="res://scripts/ui/interact_prompt.gd" id="39_ttakn"]
 [ext_resource type="Script" uid="uid://c6i12djbtmd6b" path="res://scripts/ui/crouch_vignette.gd" id="40_7obkq"]
+[ext_resource type="Script" uid="uid://1urjcpf1tuvo" path="res://scripts/ui/item_hud.gd" id="40_ds1xl"]
 [ext_resource type="PackedScene" path="res://scenes/ui/death_screen.tscn" id="40_niom3"]
 [ext_resource type="PackedScene" path="res://scenes/ui/victory_screen.tscn" id="41_ttakn"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="41_vo27k"]
@@ -68,6 +76,7 @@ radius = 0.2
 collision_layer = 33
 collision_mask = 33
 script = ExtResource("1_dovo2")
+starting_items = Array[ExtResource("2_ahqnk")]([ExtResource("3_vb1ce"), ExtResource("4_0ncpa"), ExtResource("5_upxxc"), ExtResource("6_ln3h3")])
 weapon = ExtResource("2_3j4b4")
 hurtbox = NodePath("Hurtbox")
 combatant = NodePath("Combatant")
@@ -145,6 +154,10 @@ script = ExtResource("26_5q8fn")
 script = ExtResource("27_rw8a5")
 metadata/_custom_type_script = "uid://cu132jjjynak8"
 
+[node name="Throw" type="Node" parent="StateMachine" unique_id=1057949675]
+script = ExtResource("28_hyqqp")
+action = ExtResource("34_vb1ce")
+
 [node name="Combatant" type="Node" parent="." unique_id=1176548210]
 script = ExtResource("28_uniwh")
 metadata/_custom_type_script = "uid://bh8lwmou5enq6"
@@ -205,6 +218,9 @@ script = ExtResource("9_fcs02")
 
 [node name="PlayerHud" type="CanvasLayer" parent="." unique_id=1145584402]
 script = ExtResource("36_wva7c")
+
+[node name="ItemHud" type="CanvasLayer" parent="." unique_id=1177284469]
+script = ExtResource("40_ds1xl")
 
 [node name="BossHud" type="CanvasLayer" parent="." unique_id=1668375195]
 script = ExtResource("43_niom3")

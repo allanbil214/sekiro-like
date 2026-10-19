@@ -206,6 +206,22 @@ func hear_shout(player_position: Vector3, close: bool) -> void:
 	_pause_left = 0.0
 
 
+## Phase 2 item 11a: something thrown landed at `point` and made `radius` m of noise (`Throwable`). Within hearing
+## (less through a wall) the enemy turns suspicious and goes to look, like a far shout; it does not spot anyone.
+func hear_noise_at(point: Vector3, radius: float) -> void:
+	var heard := radius
+	if not _line_to_point_is_clear(point + Vector3.UP * 0.3):
+		heard *= _ai.hearing_wall_factor
+	if _enemy.global_position.distance_to(point) > heard:
+		return
+	_last_known = point
+	_has_last_known = true
+	_investigate = point
+	meter = maxf(meter, _ai.suspicious_at)
+	_since_sensed = 0.0
+	_pause_left = 0.0
+
+
 ## Back to the start (respawn, the player died): unaware, nothing remembered, the symbol hidden.
 func reset() -> void:
 	_set_tend(Tend.NONE, "reset")

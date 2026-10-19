@@ -145,6 +145,13 @@ const HEADROOM_RADIUS: float = 0.38
 @export var reverse_damage_multiplier: float = 0.5
 @export var reverse_posture_multiplier: float = 1.0
 
+@export_group("Items (Phase 2 item 11)")
+## The items carried at the start, in the order `cycle_item` steps through them (the four `throwables/*.tres`).
+## The counts are each item's `start_count`.
+@export var starting_items: Array[ItemData] = []
+## How far (m) the player can be heard while throwing (the landing makes its own noise).
+@export var noise_throw: float = 2.0
+
 @export_group("Interact (Phase 2 item 8)")
 ## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
 ## in front it must be (1 = dead ahead, 0.5 = within 60 degrees).
@@ -297,6 +304,8 @@ var _revive_invulnerable_left: float = 0.0
 var invulnerable: bool = false
 var coyote_timer: float = 0.0
 var input_buffer: InputBuffer
+## The carried items and their counts (item 11), made in `_ready()` from `starting_items`.
+var item_belt: ItemBelt
 ## Finds walls, ledges, and hang spots (Step 12C). Created in _ready().
 var ledge_sensor: LedgeSensor
 ## The interactable the press of `interact` would use right now (ground, Locomotion or Crouch only).
@@ -376,6 +385,7 @@ var sword_visual: SwordVisual
 
 func _ready() -> void:
 	input_buffer = InputBuffer.new(input_buffer_time)
+	item_belt = ItemBelt.new(starting_items)
 	_spawn_position = global_position
 	_spawn_yaw = visual.rotation.y
 	ledge_sensor = LedgeSensor.new(self)
@@ -436,6 +446,8 @@ func _physics_process(delta: float) -> void:
 	_update_repulse()
 	_try_deathblow()
 	_try_heal()
+	_try_cycle_item()
+	_try_use_item()
 	_update_interact_target()
 	state_machine.physics_update(delta)
 	# DeadState can reload the scene during the update; this node is out of the tree then.
@@ -471,6 +483,8 @@ func get_noise_radius() -> float:
 	var current := state_machine.current
 	if current is DeathblowState and deathblow_stealth:
 		radius = noise_stealth_kill
+	elif current is ThrowState:
+		radius = noise_throw
 	elif current is ActionState:
 		radius = noise_action
 	elif current is WallHugState:
@@ -1252,6 +1266,39 @@ func _try_heal() -> void:
 	if is_crouched and not can_stand():
 		return
 	state_machine.transition_to(StateName.HEAL)
+
+
+## Steps to the next item (`cycle_item`). Works in any state except death.
+func _try_cycle_item() -> void:
+	if not Input.is_action_just_pressed(Actions.CYCLE_ITEM) or combatant.dead:
+		return
+	if item_belt.cycle():
+		Sfx.play_ui(get_tree(), Sfx.Id.MENU_MOVE)
+
+
+## Uses the selected item if `use_item` was just pressed (item 11). What happens depends on the item's kind;
+## a throwable starts the throw (`_try_throw`).
+func _try_use_item() -> void:
+	if not Input.is_action_just_pressed(Actions.USE_ITEM):
+		return
+	if combatant.dead or combatant.vulnerable:
+		return
+	var item := item_belt.selected()
+	if item == null or item_belt.selected_count() <= 0:
+		return
+	match item.get_kind():
+		ItemData.Kind.THROWABLE:
+			_try_throw()
+
+
+## Starts the throw from Locomotion, Crouch or Dash (a crouch is stood up first; under a low ceiling it cannot).
+func _try_throw() -> void:
+	var current := state_machine.current
+	if not (current is LocomotionState or current is CrouchState or current is DashState):
+		return
+	if is_crouched and not can_stand():
+		return
+	state_machine.transition_to(StateName.THROW)
 
 
 ## One of the player's attacks connected: restart the auto-sheathe timer and request the hitstop.

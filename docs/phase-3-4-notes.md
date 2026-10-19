@@ -93,6 +93,7 @@
 - **Enemies:** **archers stay (user)**, plus revolvers and rifles for the era (the "ranged enemies" backlog item, now Phase 4). They use the projectile system built in Phase 2 item 11.
 - **No yumi for the player (user's lean, proposed, accepted).** It pulls the game toward shooting from a distance and away from sneaking and close kills; it needs an aim mode, projectiles, ammo, a HUD and animations; and enemy archers need the projectile system anyway, so the user can fight archers in Phase 4 and decide whether a bow is missed.
 - **Throwables (user), Phase 2 item 11:** a **Sekiro-style prosthetic idea** done as a normal throw with **selectable ammo**: a rock, a shuriken, a kunai, a piece of broken ceramic, as lethal or non-lethal options. Details are in the Phase 2 plan, item 11 (a `ThrowableData` resource with damage, posture, a lethal flag, noise, count, `speed` and `gravity`). The noise at the landing point is the best part: a thrown rock can lure a guard away from his post.
+- **Item system (user, 2026-10-19):** items work like Tenchu and Nightreign: the gourd keeps its own quick button, every other item sits in one selectable list (`use_item`, `cycle_item`), and the HUD slot is bottom right like Sekiro's prosthetic slot. Throwables are the first items; onigiri, marking rice and similar come later on the same `ItemData` base (Phase 2 plan, item 11). Phase 3 saves the item counts.
 - **Parking lot:** extra prosthetic-style tools (smoke pellet and similar) only after the basic throw exists.
 
 ## 9. Systems for Phase 3 and 4
@@ -139,6 +140,6 @@
 3. **Wall hug entry:** a single `interact` press (default). The user quoted a Sekiro forum thread saying the PC players pressed E twice; confirm at item 9.
 4. **Weapon variety:** katana variants and stats only (default), or other weapon types later.
 5. **A day and night cycle:** wanted or not.
-6. **Throwables:** the exact damage and stun numbers (placeholders to tune by playing); whether more ammo types are wanted.
+6. **Throwables and items:** the exact damage and stun numbers (placeholders to tune by playing); whether more ammo types are wanted; a single item list (default) or categories on separate buttons later.
 7. **Fallback fights** (a fighting arena loaded from the hub) or only fights in the street.
 8. How mission scenes are named and listed (an `ArenaData`-like resource per mission?) when the mission framework is designed.

@@ -1126,6 +1126,13 @@ func hear_shout(player_position: Vector3, close: bool) -> void:
 		_awareness.hear_shout(player_position, close)
 
 
+## Phase 2 item 11a: a thrown item landed at `point` and made `radius` m of noise. An enemy with awareness that is
+## not in combat (and not unconscious) may turn suspicious and go to look.
+func hear_noise_at(point: Vector3, radius: float) -> void:
+	if _awareness != null and phase == Phase.IDLE and not combatant.dead and not _unconscious:
+		_awareness.hear_noise_at(point, radius)
+
+
 ## What the awareness HUD draws: the meter (0 to 1), the level, whether it is in combat, and a stamp that changes
 ## every time it spots the player. Empty when it has no awareness or is dead.
 func get_awareness_info() -> Dictionary:

@@ -28,7 +28,7 @@
 | 8 | Generic interact system (section 3, item 8) | feature | [x] done and tested 2026-10-16 |
 | 9 | Wall hug (section 3, item 9) | feature | [x] done and tested 2026-10-16 |
 | 10 | Non-lethal combat (section 3, item 10) | feature | [x] done and tested 2026-10-16 |
-| 11 | Throwables: 11a tap throw and ammo, 11b hold to aim (section 3, item 11) | feature | [ ] planned (discussed 2026-10-16), not started |
+| 11 | Item system and throwables: 11a the item belt, `use_item` / `cycle_item`, the tap throw and the item HUD; 11b hold to aim (section 3, item 11) | feature | [ ] planned (discussed 2026-10-16, redesigned as an item system 2026-10-19), not started |
 | 12 | Navigation: a navmesh for enemies (section 3, item 12) | feature | [ ] planned (discussed 2026-10-16), not started |
 | 13 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
@@ -70,15 +70,22 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Technical shape (proposed):** a lethal flag on `HitData`, a knocked-out state on `Combatant` and `Enemy` (a knockout replaces death at zero health), and unconscious bodies that reuse the 7d and 7e body code with a milder reaction ("wake him up", not an alarm).
 - **Needed by:** item 11 (the lethal flag of the ammo) and the Phase 3 reputation system.
 
-### 11. Throwables
-- **Status:** planned, discussed 2026-10-16. The user wanted it in Phase 2 because it is a main combat feature. Split in two builds, each tested in turn.
-- **What (user):** a Sekiro-style prosthetic idea done as a **normal throw with selectable ammo**: a rock, a shuriken, a kunai, broken ceramic; each lethal or non-lethal. No player bow (yumi).
-- **`ThrowableData` (proposed):** damage, posture, a lethal flag, noise, count, `speed` and `gravity` per ammo. Rocks and ceramic arc a little; shuriken and kunai fly straight and fast. Default: **small damage and a short stun, not a killing tool**, so close-range stealth stays the focus.
-- **Noise at a position (proposed):** `Player.get_noise_radius()` is centered on the player, so a landing rock needs a world noise event. `EnemyAwareness.hear_shout()` already takes a position, so the thrown noise reuses that path (a small addition). A rock can lure a guard from his post.
-- **Throwing is an attack:** a short throw action (an `ActionData`) with a recovery, following the usual action rules.
-- **11a:** the tap throw (straight ahead of the character, or toward the locked target's chest when locked on), the ammo data, the noise at a position, the ammo cycle and a small code-drawn HUD readout. Two new Input Map actions, `throw` and `cycle_ammo`, as editor steps. The ammo count is in memory for now; saving and pickups come with the Phase 3 items.
-- **11b (user, proposed shape accepted):** hold the throw button to aim. The camera moves to head height with the head hidden (not a real first person), a crosshair shows for shuriken and kunai, and a **dotted arc preview with a landing marker** (grenade style) for rocks and ceramic. Releasing throws. While aiming: slow walk (like the guard's forced walk), the lock-on suspended, the spring arm shortened in tight spaces. The preview simulates the projectile's own gravity.
-- **Reuse:** the projectile system is reused by enemy archers, revolvers and rifles in Phase 4.
+### 11. Item system and throwables
+- **Status:** planned, discussed 2026-10-16; **redesigned 2026-10-19** (the user: items work like Tenchu and Nightreign, so the throw is the first item of a general item system). Split in two builds, each tested in turn. The defaults marked *(proposed)* are confirmed at the full check.
+- **What (user):** a Sekiro-style prosthetic idea done as a **normal throw with selectable ammo**: a rock, a shuriken, a kunai, broken ceramic; each lethal or non-lethal. No player bow (yumi). Later items (Tenchu style: onigiri, rice to mark a spot, and so on) use the same system.
+- **The item system (user, 2026-10-19):**
+  - The **gourd keeps its own quick button** (`heal`, Q) and is not part of the item list (Nightreign style: the flask is quick, other items use other buttons).
+  - **One selected item** at a time. `cycle_item` steps through everything carried; `use_item` does what the selected item's kind says (a throwable starts the throw action; later kinds start their own state, for example eating or placing). *(proposed)* A single list now; categories on separate buttons can be split out later without breaking anything.
+  - `ItemData` (base resource: name, icon shape and color, count, kind). `ThrowableData` extends it. `ItemBelt` holds the list, the selected index and the counts (in memory for now). In 11a it only contains throwables.
+  - **Input Map:** `use_item` (F, controller D-pad Right) and `cycle_item` (G, controller D-pad Left) *(proposed keys)*. They replace the earlier names `throw` and `cycle_ammo`. Both appear in the Options controls pages.
+- **`ThrowableData` (proposed):** damage, posture, a lethal flag, noise, `speed` and `gravity` per ammo (count lives in the belt). Rocks and ceramic arc a little and are non-lethal; shuriken and kunai fly straight and fast and are lethal. Default: **small damage and a short stun, not a killing tool**, so close-range stealth stays the focus. Starting counts 10 each (placeholder).
+- **Noise at a position (proposed):** `Player.get_noise_radius()` is centered on the player, so a landing rock needs a world noise event. A new `EnemyAwareness.hear_noise_at(position, radius)` reuses the `hear_shout` fields (the enemy turns suspicious and investigates the spot; no line of sight needed). A rock can lure a guard from his post.
+- **Throwing is an attack:** a short throw action (`actions/throw.tres`, an `ActionData`) with a recovery, following the usual action rules. `ThrowState` is the state for throwable items; allowed from Locomotion, Crouch and Dash, walk-only during the action, dodge, jump and guard cancel it after the locked window, no throwing in the air, and throwing does not draw the sword *(proposed)*.
+- **11a:** the tap throw (the camera's forward direction, or toward the locked target's chest when locked on), `ItemData`, `ThrowableData`, `ItemBelt`, the noise at a position, `cycle_item`, and the **item HUD**. Two new Input Map actions as editor steps.
+- **Item HUD (user, 2026-10-19):** like Sekiro, **bottom right**, in the prosthetic slot. A code-drawn square icon per item (grey rock, silver star, dark kunai, white shard), the name, and the count; dimmed at 0; a short flash on cycling. Margin, size and colors are `@export` values. The gourd stays bottom left under the health bar for now. No button prompts yet (backlog).
+- **11b (user, proposed shape accepted):** hold `use_item` to aim, for throwables only. The camera moves to head height with the head hidden (not a real first person), a crosshair shows for shuriken and kunai, and a **dotted arc preview with a landing marker** (grenade style) for rocks and ceramic. Releasing throws. While aiming: slow walk (like the guard's forced walk), the lock-on suspended, the spring arm shortened in tight spaces. The preview simulates the projectile's own gravity.
+- **Not included:** any non-throwable item (onigiri, marking rice and so on), pickups, saving (ammo counts are saved in Phase 3), enemy throwers, a real throw animation, moving the gourd to a bottom-right quick slot.
+- **Reuse:** the projectile system is reused by enemy archers, revolvers and rifles in Phase 4; the item system is reused by the Phase 3 and 4 items.
 - **Needs:** item 10's lethal flag, so this comes after it.
 
 ### 12. Navigation

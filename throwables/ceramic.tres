@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ThrowableData" format=3]
+
+[ext_resource type="Script" path="res://resources/throwable_data.gd" id="1_throwable"]
+
+[resource]
+script = ExtResource("1_throwable")
+display_name = "Ceramic"
+shape = 3
+icon_color = Color(0.95, 0.93, 0.85, 1)
+start_count = 10
+damage = 3.0
+posture_damage = 15.0
+lethal = false
+speed = 15.0
+gravity = 14.0
+launch_angle_degrees = 10.0
+noise = 18.0

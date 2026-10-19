@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ThrowableData" format=3]
+
+[ext_resource type="Script" path="res://resources/throwable_data.gd" id="1_throwable"]
+
+[resource]
+script = ExtResource("1_throwable")
+display_name = "Shuriken"
+shape = 1
+icon_color = Color(0.82, 0.86, 0.92, 1)
+start_count = 10
+damage = 8.0
+posture_damage = 6.0
+lethal = true
+speed = 32.0
+gravity = 0.0
+launch_angle_degrees = 0.0
+noise = 6.0
