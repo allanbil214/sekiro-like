@@ -330,6 +330,13 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 ## every `nav_repath_interval` seconds (a target that jumped more than 2 m is re-pathed at once).
 @export var nav_repath_distance: float = 0.5
 @export var nav_repath_interval: float = 0.4
+## Drop links (item 12b-1a), used only by an enemy with `use_nav_links` on. The longest fall (m) it will take
+## (a longer link is not used), the beat (s) it stands at the edge before it steps off, the walking speed (m/s) of
+## the step off, and the recovery (s) after it lands. Placeholders until real animations exist.
+@export var nav_drop_max_height: float = 6.0
+@export var nav_link_pause: float = 0.3
+@export var nav_drop_step_speed: float = 2.0
+@export var nav_link_recovery: float = 0.4
 
 @export_group("Provoked (taunt, Phase 2 item 11.5)")
 ## The player's taunt provokes an enemy that is in combat and within the taunt range: each taunt adds a stack

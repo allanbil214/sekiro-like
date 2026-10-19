@@ -140,7 +140,7 @@ func update(delta: float, has_target: bool) -> bool:
 		_can_see = false
 		_has_los = false
 		_since_sensed += delta
-	var reachable := absf(to_target.y) <= _ai.max_vertical_reach
+	var reachable := _enemy.can_reach_height(to_target.y)
 	if _spot_stage != Spot.NONE:
 		meter = maxf(meter, _ai.suspicious_at)
 	# The player (or a shout) made it properly suspicious while it investigated a body: it will respect the body later.
@@ -925,7 +925,7 @@ func _walk_to(point: Vector3, speed: float, delta: float) -> bool:
 	var to := point - _enemy.global_position
 	var flat := Vector3(to.x, 0.0, to.z)
 	var distance := flat.length()
-	if distance <= ARRIVE_DISTANCE or absf(to.y) > _ai.max_vertical_reach:
+	if distance <= ARRIVE_DISTANCE or not _enemy.can_reach_height(to.y):
 		_stop(delta)
 		_stuck = 0.0
 		return true
@@ -957,7 +957,7 @@ func _walk_facing(point: Vector3, speed: float, face_point: Vector3, delta: floa
 	var to := point - _enemy.global_position
 	var flat := Vector3(to.x, 0.0, to.z)
 	var distance := flat.length()
-	if distance <= 0.15 or absf(to.y) > _ai.max_vertical_reach:
+	if distance <= 0.15 or not _enemy.can_reach_height(to.y):
 		_stop(delta)
 		_face_point(face_point, delta)
 		_stuck = 0.0

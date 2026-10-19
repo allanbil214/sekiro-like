@@ -7,8 +7,13 @@ extends RefCounted
 ## with it exactly as it did with the straight line. Everything else stays with the callers: the edge guard, the
 ## stuck timer, the arrival distance and the vertical reach. The path index is kept here, not read from the
 ## agent. It only walks: a navmesh has no climbing, so a
-## target on another level ends at the closest point of the mesh (the enemy stands there; jump, drop and climb
-## links are item 12b).
+## target on another level ends at the closest point of the mesh (the enemy stands there).
+##
+## Item 12b-1a, drop links: an enemy with `use_nav_links` also takes the one-way `NavigationLink3D` nodes on
+## navigation layer 2 (its agent gets layers 1 and 2; an enemy without the switch never sees them). When the path
+## runs over a link and the enemy reaches the entry, `_begin_crossing()` takes over: a pause at the edge, the step
+## off toward the exit (the edge guard does not apply), the fall, and a short recovery. The Enemy calls
+## `tick_crossing()` instead of its AI while `is_crossing()`. Jump and climb links are later items.
 ##
 ## A missing agent node, an arena without a baked navmesh, or a path that cannot be found is reported once and
 ## answered with a zero direction (the enemy stands and its stuck timer gives up), never with a hidden
@@ -24,6 +29,20 @@ var _warned_no_path: bool = false
 var _next_log_msec: int = 0
 var _last_path: PackedVector3Array = PackedVector3Array()
 var _index: int = 0
+
+enum Cross { NONE, PAUSE, STEP, RECOVER }
+const LINK_LAYER_BIT: int = 2 # NavigationLink3D.navigation_layers value (layer 2) for links this enemy may take
+const CROSS_STEP_TIMEOUT: float = 2.5 # s from the first step to leaving the floor
+const CROSS_TOTAL_TIMEOUT: float = 8.0 # s for the whole crossing
+const LINK_TYPE: int = 1 # NavigationPathQueryResult3D.PATH_SEGMENT_TYPE_LINK
+var _cross: Cross = Cross.NONE
+var _cross_timer: float = 0.0
+var _cross_elapsed: float = 0.0
+var _cross_step_elapsed: float = 0.0
+var _cross_entry_y: float = 0.0
+var _cross_exit: Vector3 = Vector3.ZERO
+var _left_floor: bool = false
+var _warned_cross: bool = false
 
 
 func _init(enemy: Enemy) -> void:
@@ -41,12 +60,14 @@ func setup() -> bool:
 	_agent.target_desired_distance = _ai.nav_target_desired_distance
 	_agent.avoidance_enabled = false
 	_agent.debug_enabled = _enemy.debug_navigation
+	if _enemy.use_nav_links:
+		_agent.navigation_layers = _agent.navigation_layers | LINK_LAYER_BIT
 	return true
 
 
 ## The flat unit direction toward the next path point, or zero when there is nothing to follow.
 func direction_to(point: Vector3) -> Vector3:
-	if _agent == null:
+	if _agent == null or _cross != Cross.NONE:
 		return Vector3.ZERO
 	var map: RID = _agent.get_navigation_map()
 	if NavigationServer3D.map_get_iteration_id(map) == 0:
@@ -68,14 +89,126 @@ func direction_to(point: Vector3) -> Vector3:
 		_index = 0
 	var here: Vector3 = _enemy.global_position
 	var reach: float = _ai.nav_path_desired_distance
-	while _index < path.size() and _flat_distance(here, path[_index]) <= reach:
+	var link_at: int = _find_drop(path) if _enemy.use_nav_links else -1
+	var last: int = path.size() if link_at < 0 else link_at + 1 # with a link the walk ends at its entry
+	while _index < last and _flat_distance(here, path[_index]) <= reach:
 		_index += 1
+	if link_at >= 0:
+		# The edge guard stops the walk a little before the edge, so the entry counts from a bit further out.
+		var trigger: float = maxf(reach, _ai.edge_probe_distance + 0.2)
+		if _enemy.is_on_floor() and _flat_distance(here, path[link_at]) <= trigger:
+			if _begin_crossing(path[link_at], path[link_at + 1]):
+				_log("LINK", point, map)
+				return Vector3.ZERO
+			_log("LINK UNUSABLE", point, map)
+			return Vector3.ZERO
 	if _index >= path.size():
 		_log("PATH DONE", point, map)
 		return Vector3.ZERO # the end of the path (the target, or the closest point of the mesh to it)
 	var flat := Vector3(path[_index].x - here.x, 0.0, path[_index].z - here.z)
 	_log("WALKING", point, map)
 	return flat.normalized()
+
+
+## The index of the entry point of the first drop link on the path (its exit is the next point), or -1. A link
+## shows in the agent's path types as two link points in a row; a steep fall between two close points (steeper
+## than any walkable slope) counts too, in case the types do not mark it.
+func _find_drop(path: PackedVector3Array) -> int:
+	var types: PackedInt32Array = _agent.get_current_navigation_result().path_types
+	var typed: bool = types.size() == path.size()
+	for i in range(path.size() - 1):
+		var drop: float = path[i].y - path[i + 1].y
+		if drop <= 0.5:
+			continue
+		var marked: bool = typed and types[i] == LINK_TYPE and types[i + 1] == LINK_TYPE
+		var steep: bool = drop >= 1.0 and drop > 1.2 * _flat_distance(path[i], path[i + 1])
+		if marked or steep:
+			return i
+	return -1
+
+
+func is_crossing() -> bool:
+	return _cross != Cross.NONE
+
+
+## Starts the crossing of a drop link: false (and one warning) when the fall is longer than `nav_drop_max_height`.
+func _begin_crossing(entry: Vector3, exit: Vector3) -> bool:
+	if entry.y - exit.y > _ai.nav_drop_max_height:
+		if not _warned_cross:
+			_warned_cross = true
+			push_warning("EnemyNavigation: %s found a drop of %.1f m, more than nav_drop_max_height." % [_enemy.name, entry.y - exit.y])
+		return false
+	_cross = Cross.PAUSE
+	_cross_timer = _ai.nav_link_pause
+	_cross_elapsed = 0.0
+	_cross_step_elapsed = 0.0
+	_cross_entry_y = entry.y
+	_cross_exit = exit
+	_left_floor = false
+	return true
+
+
+## Called by the Enemy every physics frame while `is_crossing()` (gravity is already applied, the Enemy calls
+## `move_and_slide()` after it).
+func tick_crossing(delta: float) -> void:
+	_cross_elapsed += delta
+	var pos: Vector3 = _enemy.global_position
+	var flat := Vector3(_cross_exit.x - pos.x, 0.0, _cross_exit.z - pos.z)
+	var flat_length: float = flat.length()
+	var dir: Vector3 = flat / flat_length if flat_length > 0.01 else Vector3.ZERO
+	if dir != Vector3.ZERO:
+		var yaw: float = atan2(-dir.x, -dir.z)
+		_enemy.rotation.y = lerp_angle(_enemy.rotation.y, yaw, 1.0 - exp(-8.0 * delta))
+	if _cross_elapsed > CROSS_TOTAL_TIMEOUT:
+		_abort_crossing("took too long")
+		return
+	match _cross:
+		Cross.PAUSE:
+			_steer_flat(Vector3.ZERO, delta)
+			_cross_timer -= delta
+			if _cross_timer <= 0.0:
+				_cross = Cross.STEP
+		Cross.STEP:
+			var wanted: Vector3 = dir * _ai.nav_drop_step_speed if flat_length > 0.3 else Vector3.ZERO
+			_steer_flat(wanted, delta)
+			_cross_step_elapsed += delta
+			if not _enemy.is_on_floor():
+				_left_floor = true
+			elif _left_floor and pos.y < _cross_entry_y - 0.5:
+				_cross = Cross.RECOVER
+				_cross_timer = _ai.nav_link_recovery
+			elif not _left_floor and _cross_step_elapsed > CROSS_STEP_TIMEOUT:
+				_abort_crossing("never left the floor (is the link start at the edge?)")
+		Cross.RECOVER:
+			_steer_flat(Vector3.ZERO, delta)
+			_cross_timer -= delta
+			if _cross_timer <= 0.0:
+				_end_crossing()
+
+
+func _steer_flat(wanted: Vector3, delta: float) -> void:
+	_enemy.velocity.x = move_toward(_enemy.velocity.x, wanted.x, _ai.acceleration * delta)
+	_enemy.velocity.z = move_toward(_enemy.velocity.z, wanted.z, _ai.acceleration * delta)
+
+
+func _abort_crossing(why: String) -> void:
+	if not _warned_cross:
+		_warned_cross = true
+		push_warning("EnemyNavigation: %s gave up a drop link: %s." % [_enemy.name, why])
+	_end_crossing()
+
+
+## The enemy died or was knocked out mid-crossing.
+func cancel_crossing() -> void:
+	if _cross != Cross.NONE:
+		_end_crossing()
+
+
+func _end_crossing() -> void:
+	_cross = Cross.NONE
+	_has_target = false # a fresh path from where it stands now
+	_last_path = PackedVector3Array()
+	_index = 0
 
 
 func _flat_distance(a: Vector3, b: Vector3) -> float:
@@ -91,6 +224,7 @@ func _log(reason: String, point: Vector3, map: RID) -> void:
 		return
 	_next_log_msec = now + 1000
 	var path: PackedVector3Array = _agent.get_current_navigation_path()
+	print("[Nav] %s | types %s | link at %d" % [_enemy.name, _agent.get_current_navigation_result().path_types, _find_drop(path)])
 	print("[Nav] %s %s | at %s | target %s | map iteration %d, regions %d | path points %d (my index %d) | agent index %d" % [
 			_enemy.name, reason, _enemy.global_position.snapped(Vector3(0.1, 0.1, 0.1)),
 			point.snapped(Vector3(0.1, 0.1, 0.1)), NavigationServer3D.map_get_iteration_id(map),

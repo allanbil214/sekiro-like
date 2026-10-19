@@ -108,6 +108,11 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## Prints one line per second to the Output panel while it walks by navigation: the target, whether the map is
 ## ready, the path length and why it has no direction (for finding why an enemy does not move). Debug builds only.
 @export var debug_navigation_log: bool = false
+## Item 12b-1a: on (needs `use_navigation`): this enemy also takes drop links, the one-way `NavigationLink3D`
+## nodes whose `navigation_layers` is 2 (it walks to the edge, pauses, steps off and falls to the level below),
+## and it counts a target up to `nav_drop_max_height` below it as reachable. Off (the default): it ignores the
+## links, as before. The numbers are in the `ai` preset.
+@export var use_nav_links: bool = false
 
 @export_group("Debug")
 ## Print phase changes, attacks, and defense decisions to the Output panel.
@@ -310,6 +315,11 @@ func _physics_process(delta: float) -> void:
 	if combatant.deathblow_open:
 		# Stunned: no swings, no turning, until the window closes.
 		_decelerate(delta)
+		move_and_slide()
+		return
+	if _navigation != null and _navigation.is_crossing():
+		# Item 12b-1a: a drop link is being crossed; it overrides the AI until the enemy has landed and recovered.
+		_navigation.tick_crossing(delta)
 		move_and_slide()
 		return
 	_find_player()
@@ -1251,7 +1261,18 @@ func nav_direction(point: Vector3) -> Vector3:
 
 func _is_out_of_reach() -> bool:
 	return _awareness != null and _player != null \
-			and absf(_player.global_position.y - global_position.y) > ai.max_vertical_reach + 1.0
+			and not can_reach_height(_player.global_position.y - global_position.y, 1.0)
+
+
+## Item 12b-1a: whether a point `dy` m above (positive) or below (negative) this enemy is on a level it can deal
+## with: within `max_vertical_reach`, and for an enemy with drop links also anything that far below plus
+## `nav_drop_max_height`. `slack` widens the limit (the chase gives up a meter later). Without `use_nav_links`
+## this is the old `absf(dy) <= max_vertical_reach`.
+func can_reach_height(dy: float, slack: float = 0.0) -> bool:
+	var limit: float = ai.max_vertical_reach + slack
+	if dy < 0.0 and use_nav_links and _navigation != null:
+		limit += ai.nav_drop_max_height
+	return absf(dy) <= limit
 
 
 ## The boss HUD (BossHud) asks these: a boss is engaged once it has noticed the player (it left IDLE),
@@ -1421,6 +1442,8 @@ func _on_deathblow_closed(executed: bool, killed: bool) -> void:
 ## awareness resets) but it stays here, tipped over, and wakes later (see `_tick_wake`). No victory banner.
 func _on_knocked_out() -> void:
 	_clear_provoke()
+	if _navigation != null:
+		_navigation.cancel_crossing()
 	bar.set_stealth_marker(false)
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_FLINCH, global_position + Vector3.UP * 1.0)
 	set_held(false)
@@ -1504,6 +1527,8 @@ func wake_up(from_position: Vector3, at_post: bool) -> void:
 
 func _on_died() -> void:
 	_clear_provoke()
+	if _navigation != null:
+		_navigation.cancel_crossing()
 	bar.set_stealth_marker(false)
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_DEATH, global_position + Vector3.UP * 1.0)
 	if boss and ai != null:
