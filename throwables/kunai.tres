@@ -1,17 +1,16 @@
-[gd_resource type="Resource" script_class="ThrowableData" format=3]
+[gd_resource type="Resource" script_class="ThrowableData" format=3 uid="uid://tcwav0mena12"]
 
-[ext_resource type="Script" path="res://resources/throwable_data.gd" id="1_throwable"]
+[ext_resource type="Script" uid="uid://dpkewx0dhbgud" path="res://resources/throwable_data.gd" id="1_throwable"]
 
 [resource]
 script = ExtResource("1_throwable")
-display_name = "Kunai"
-shape = 2
-icon_color = Color(0.25, 0.27, 0.32, 1)
-start_count = 10
 damage = 10.0
 posture_damage = 8.0
 lethal = true
 speed = 28.0
 gravity = 0.0
 launch_angle_degrees = 0.0
-noise = 6.0
+noise = 16.0
+display_name = "Kunai"
+shape = 2
+icon_color = Color(0.25, 0.27, 0.32, 1)
