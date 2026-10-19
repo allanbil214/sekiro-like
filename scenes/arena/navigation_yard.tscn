@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cckm17n0luvoa" path="res://scripts/combat/fall_zone.gd" id="2_fall"]
 [ext_resource type="PackedScene" uid="uid://bwl4ivdc22duh" path="res://scenes/enemy/enemy.tscn" id="3_enemy"]
 [ext_resource type="Resource" uid="uid://dkn2mp6tq5nlj" path="res://data/ai/enemy_soldier.tres" id="4_soldier"]
+[ext_resource type="Script" uid="uid://dpsfk4220jp7g" path="res://scripts/tools/drop_link_generator.gd" id="5_1fgra"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -214,3 +215,20 @@ respawn_delay = 4.0
 use_awareness = true
 use_navigation = true
 use_nav_links = true
+
+[node name="DropLinkGenerator" type="Node3D" parent="." unique_id=443943704 node_paths=PackedStringArray("region")]
+script = ExtResource("5_1fgra")
+region = NodePath("../NavRegion")
+metadata/_custom_type_script = "uid://dpsfk4220jp7g"
+
+[node name="NavigationLink3D" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=2049480495]
+bidirectional = false
+navigation_layers = 2
+start_position = Vector3(-9.5, 3.5, -13.25)
+end_position = Vector3(-8, 0.5, -13.25)
+
+[node name="NavigationLink3D2" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1706576704]
+bidirectional = false
+navigation_layers = 2
+start_position = Vector3(-11.25, 3.5, -9.5)
+end_position = Vector3(-11.25, 0.5, -8)
