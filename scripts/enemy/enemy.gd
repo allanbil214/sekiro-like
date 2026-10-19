@@ -158,6 +158,9 @@ var _recoil: float = 0.0
 var _recoil_scale: float = 1.0
 var _recoil_direction: Vector3 = Vector3.ZERO
 var _base_material: StandardMaterial3D
+## Phase 2 item 11.5: the taunt stacks (0 = calm) and the seconds left before they all clear.
+var _provoke_stacks: int = 0
+var _provoke_left: float = 0.0
 var _unconscious_material: StandardMaterial3D
 var _stun_material: StandardMaterial3D
 var _spawn_position: Vector3 = Vector3.ZERO
@@ -283,6 +286,7 @@ func _physics_process(delta: float) -> void:
 	_pose_cooldown = maxf(_pose_cooldown - delta, 0.0)
 	_peril_cooldown = maxf(_peril_cooldown - delta, 0.0)
 	_head_bounce_time = maxf(_head_bounce_time - delta, 0.0)
+	_tick_provoke(delta)
 	var acting := phase == Phase.ATTACK or phase == Phase.PERILOUS
 	combatant.tick_posture(delta, acting)
 	combatant.tick_guard(delta, _guarding, acting)
@@ -497,7 +501,7 @@ func _update_yield(delta: float, to_player: Vector3, distance: float, has_target
 
 
 func _start_yield() -> void:
-	var yield_scale := lerpf(1.5, 0.5, ai.aggression)
+	var yield_scale := lerpf(1.5, 0.5, ai.aggression) * pow(ai.provoke_yield_scale, _provoke_level())
 	_phase_timer = randf_range(ai.yield_time.x, ai.yield_time.y) * yield_scale
 	_strafe_sign = 1.0 if randf() < 0.5 else -1.0
 	_strafe_timer = randf_range(ai.strafe_switch_time.x, ai.strafe_switch_time.y)
@@ -630,7 +634,7 @@ func _start_burst(counts: Vector2i, armored: bool = false) -> void:
 	_defense.riposte_pending = false
 	_burst_armored = armored
 	_defense.reset_guard_streak()
-	_burst_total = clampi(randi_range(counts.x, counts.y), 1, weapon.combo.size())
+	_burst_total = clampi(randi_range(counts.x, counts.y) + _provoke_burst_bonus(), 1, weapon.combo.size())
 	_set_phase(Phase.ATTACK)
 	_begin_attack(0)
 
@@ -682,7 +686,7 @@ func _update_attack(delta: float, to_player: Vector3, distance: float) -> void:
 ## Clock speed of the current combo attack: slower in the wind-up and in the hit window (EnemyAIData).
 func _attack_speed() -> float:
 	if _action_time < _action.active_hit.x:
-		return ai.windup_speed
+		return minf(ai.windup_speed + ai.provoke_windup_bonus * _provoke_level(), 1.5)
 	if _action_time < _action.active_hit.y:
 		return ai.active_speed
 	return 1.0
@@ -769,7 +773,8 @@ func _abort_attack() -> void:
 func _pick_perilous(distance: float, chance: float) -> int:
 	if debug_force_perilous != Peril.NONE:
 		return debug_force_perilous if _peril_available(debug_force_perilous, true) else Peril.NONE
-	if _peril_cooldown > 0.0 or distance > ai.perilous_range or randf() >= chance:
+	var provoked_chance := chance + (ai.provoke_perilous_bonus * _provoke_level() if chance > 0.0 else 0.0)
+	if _peril_cooldown > 0.0 or distance > ai.perilous_range or randf() >= provoked_chance:
 		return Peril.NONE
 	var options: Array[int] = []
 	for kind: int in [Peril.THRUST, Peril.SWEEP, Peril.GRAB]:
@@ -1133,6 +1138,66 @@ func hear_noise_at(point: Vector3, radius: float) -> void:
 		_awareness.hear_noise_at(point, radius)
 
 
+## Phase 2 item 11.5: the player taunted at `point`. An enemy in combat within `provoke_range` (m) is provoked; one
+## that is not in combat hears it as a noise of `noise_radius` (m) and may turn suspicious.
+func hear_taunt(point: Vector3, provoke_range: float, noise_radius: float) -> void:
+	if combatant.dead or _unconscious or _held:
+		return
+	if phase == Phase.IDLE:
+		hear_noise_at(point, noise_radius)
+	elif global_position.distance_to(point) <= provoke_range:
+		provoke()
+
+
+## One more taunt stack (up to `EnemyAIData.provoke_max_stacks`) and the clear timer restarts. The stacks make it
+## rest less, wind up faster, go perilous more often and (at 2 stacks) attack longer; see `EnemyAIData`.
+func provoke() -> void:
+	if ai.provoke_max_stacks <= 0 or combatant.dead or _unconscious or _held:
+		return
+	_provoke_stacks = mini(_provoke_stacks + 1, ai.provoke_max_stacks)
+	_provoke_left = ai.provoke_duration
+	_apply_provoke_tint()
+	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_PROVOKED, global_position + Vector3.UP * 1.4)
+
+
+## The strength of the taunt on this enemy: the stacks, times the boss share for a boss.
+func _provoke_level() -> float:
+	if _provoke_stacks <= 0:
+		return 0.0
+	return float(_provoke_stacks) * (ai.provoke_boss_factor if boss else 1.0)
+
+
+## 1 once the level reaches `provoke_burst_bonus_at` (its bursts get one more attack), else 0.
+func _provoke_burst_bonus() -> int:
+	if ai.provoke_burst_bonus_at <= 0 or _provoke_level() < float(ai.provoke_burst_bonus_at):
+		return 0
+	return 1
+
+
+func _tick_provoke(delta: float) -> void:
+	if _provoke_stacks <= 0:
+		return
+	_provoke_left -= delta
+	if _provoke_left <= 0.0:
+		_clear_provoke()
+
+
+func _clear_provoke() -> void:
+	if _provoke_stacks <= 0:
+		return
+	_provoke_stacks = 0
+	_provoke_left = 0.0
+	_apply_provoke_tint()
+
+
+## The body color moves toward `provoke_tint` with the stacks (the base material is the one every state returns to).
+func _apply_provoke_tint() -> void:
+	if _base_material == null:
+		return
+	var share := clampf(_provoke_level() / float(maxi(ai.provoke_max_stacks, 1)), 0.0, 1.0)
+	_base_material.albedo_color = body_color.lerp(ai.provoke_tint, share * ai.provoke_tint_strength)
+
+
 ## What the awareness HUD draws: the meter (0 to 1), the level, whether it is in combat, and a stamp that changes
 ## every time it spots the player. Empty when it has no awareness or is dead.
 func get_awareness_info() -> Dictionary:
@@ -1327,6 +1392,7 @@ func _on_deathblow_closed(executed: bool, killed: bool) -> void:
 ## Item 10: a non-lethal blow finished it. Like dying (nothing keeps fighting, a carried body is dropped, the
 ## awareness resets) but it stays here, tipped over, and wakes later (see `_tick_wake`). No victory banner.
 func _on_knocked_out() -> void:
+	_clear_provoke()
 	bar.set_stealth_marker(false)
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_FLINCH, global_position + Vector3.UP * 1.0)
 	set_held(false)
@@ -1409,6 +1475,7 @@ func wake_up(from_position: Vector3, at_post: bool) -> void:
 
 
 func _on_died() -> void:
+	_clear_provoke()
 	bar.set_stealth_marker(false)
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_DEATH, global_position + Vector3.UP * 1.0)
 	if boss and ai != null:

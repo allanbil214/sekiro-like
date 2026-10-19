@@ -320,3 +320,26 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var symbol_height: float = 2.4
 @export var symbol_font_size: int = 150
 @export var symbol_pixel_size: float = 0.005
+
+@export_group("Provoked (taunt, Phase 2 item 11.5)")
+## The player's taunt provokes an enemy that is in combat and within the taunt range: each taunt adds a stack
+## (up to `provoke_max_stacks`), and every stack is cleared `provoke_duration` seconds after the last taunt.
+## Per stack it rests less between bursts, winds up faster and goes perilous more often; from
+## `provoke_burst_bonus_at` stacks its bursts are one attack longer. Damage and guard behavior do not change.
+## 0 stacks = this enemy ignores taunts. All placeholders to tune by playing.
+@export var provoke_max_stacks: int = 3
+@export var provoke_duration: float = 10.0
+## Multiplies the yield (rest) time, once per stack (0.75 = 25 percent shorter per stack).
+@export_range(0.1, 1.0, 0.05) var provoke_yield_scale: float = 0.75
+## Added to `windup_speed` per stack (the wind-up of a combo attack runs a little faster).
+@export var provoke_windup_bonus: float = 0.08
+## Added to the chance of starting a perilous attack per stack (only where the enemy has perilous attacks
+## and the chance is not 0).
+@export var provoke_perilous_bonus: float = 0.08
+## From this many stacks its bursts get one more attack (capped by the weapon's combo length). 0 = never.
+@export var provoke_burst_bonus_at: int = 2
+## A boss feels this share of each stack (0.5 = half as strong, so it stays readable).
+@export_range(0.0, 1.0, 0.05) var provoke_boss_factor: float = 0.5
+## The body color moves toward this at full stacks, by `provoke_tint_strength` (0 to 1).
+@export var provoke_tint: Color = Color(0.9, 0.15, 0.1)
+@export_range(0.0, 1.0, 0.05) var provoke_tint_strength: float = 0.6

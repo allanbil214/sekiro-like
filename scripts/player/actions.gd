@@ -17,6 +17,7 @@ const REVERSE_BLADE: StringName = &"reverse_blade"
 ## The item slot (Phase 2 item 11): use the selected item, and step to the next one. The gourd stays on HEAL.
 const USE_ITEM: StringName = &"use_item"
 const CYCLE_ITEM: StringName = &"cycle_item"
+const TAUNT: StringName = &"taunt"
 const LOCK_ON: StringName = &"lock_on"
 const MOVE_LEFT: StringName = &"move_left"
 const MOVE_RIGHT: StringName = &"move_right"

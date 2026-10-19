@@ -73,3 +73,6 @@
 
 ### Sticky aim and click to throw, 11c (2026-10-19)
 - In `AimState`, attack throws (`ThrowState.fire()`) and the aim goes on, with `throw_recovery` (0.3 s) between throws; releasing `use_item` never throws. Options > Gameplay "AIM MODE" (`Settings.sticky_aim`, `Player.sticky_aim`): STICKY (default) keeps the aim after release and ends it on a fresh `use_item` press, dodge or jump; HOLD ends it on release and ignores dodge and jump. Guard and heal end the aim in both; attack never starts a deathblow from the aim.
+
+### Checking a spot, 11d (2026-10-19)
+- A suspicious guard (`EnemyAwareness._run_suspicious()`) walks to the spot, stands there and sweeps its view for `EnemyAIData.spot_check_time` (30 s), then resumes its patrol or post; new sounds more than 1.5 m away move the spot, anything sensed restarts the timer, and the meter stays pinned at `suspicious_at` meanwhile. `spot_alert_count` (3) thrown-item noises in one check make it alert and search the spot (`begin_search()`), still without knowing about the player and without a shout.

@@ -22,12 +22,12 @@ const KEYBOARD_ACTIONS: Array[StringName] = [
 	Actions.MOVE_FORWARD, Actions.MOVE_BACK, Actions.MOVE_LEFT, Actions.MOVE_RIGHT,
 	Actions.JUMP, Actions.DODGE, Actions.ATTACK, Actions.GUARD, Actions.HEAL,
 	Actions.LOCK_ON, Actions.CROUCH, Actions.INTERACT, Actions.SHEATHE, Actions.REVERSE_BLADE,
-	Actions.USE_ITEM, Actions.CYCLE_ITEM,
+	Actions.USE_ITEM, Actions.CYCLE_ITEM, Actions.TAUNT,
 ]
 const PAD_ACTIONS: Array[StringName] = [
 	Actions.JUMP, Actions.DODGE, Actions.ATTACK, Actions.GUARD, Actions.HEAL,
 	Actions.LOCK_ON, Actions.CROUCH, Actions.INTERACT, Actions.SHEATHE, Actions.REVERSE_BLADE,
-	Actions.USE_ITEM, Actions.CYCLE_ITEM,
+	Actions.USE_ITEM, Actions.CYCLE_ITEM, Actions.TAUNT,
 ]
 
 const SECTION: String = "controls"

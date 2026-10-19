@@ -157,6 +157,14 @@ const HEADROOM_RADIUS: float = 0.38
 ## ends it. Replaced by `Settings.sticky_aim` (the Options menu) in `_ready()`.
 @export var sticky_aim: bool = true
 
+@export_group("Taunt (Phase 2 item 11.5)")
+## A taunt provokes the enemies in combat within this distance (m); see `EnemyAIData` (the Provoked group).
+@export var taunt_range: float = 12.0
+## Enemies that are not in combat hear the taunt like a noise of this radius (m): they may turn suspicious.
+@export var taunt_noise_radius: float = 8.0
+## Seconds from the start of a taunt until the next one can start.
+@export var taunt_cooldown: float = 1.5
+
 @export_group("Interact (Phase 2 item 8)")
 ## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
 ## in front it must be (1 = dead ahead, 0.5 = within 60 degrees).
@@ -293,6 +301,8 @@ var sheathe_idle: float = 0.0
 var walk_only: bool = false
 ## Item 11b: a throwable's `use_item` press is waiting to become a tap (throws on release) or a hold (aims).
 var _use_pending: bool = false
+## Item 11.5: seconds until the next taunt may start.
+var _taunt_cooldown_left: float = 0.0
 var _use_held: float = 0.0
 ## Step 10: gourd charges and resurrections left (set in _ready from the exports).
 var heal_charges: int = 0
@@ -458,6 +468,7 @@ func _physics_process(delta: float) -> void:
 	_try_heal()
 	_try_cycle_item()
 	_try_use_item(delta)
+	_try_taunt(delta)
 	_update_interact_target()
 	state_machine.physics_update(delta)
 	# DeadState can reload the scene during the update; this node is out of the tree then.
@@ -1327,6 +1338,23 @@ func can_start_throw() -> bool:
 func _try_throw() -> void:
 	if can_start_throw():
 		state_machine.transition_to(StateName.THROW)
+
+
+## The taunt (Phase 2 item 11.5): `taunt` on the ground from Locomotion or Crouch (a crouch needs headroom to stand),
+## once the cooldown is over. `TauntState` does the rest.
+func _try_taunt(delta: float) -> void:
+	_taunt_cooldown_left = maxf(_taunt_cooldown_left - delta, 0.0)
+	if not Input.is_action_just_pressed(Actions.TAUNT):
+		return
+	if combatant.dead or combatant.vulnerable or _taunt_cooldown_left > 0.0 or not is_on_floor():
+		return
+	var current := state_machine.current
+	if not (current is LocomotionState or current is CrouchState):
+		return
+	if is_crouched and not can_stand():
+		return
+	_taunt_cooldown_left = taunt_cooldown
+	state_machine.transition_to(StateName.TAUNT)
 
 
 ## Starts the aim (a hold), if the item is still a throwable with some left.
