@@ -1,6 +1,6 @@
 # Animation pipeline: Blender to Godot, and the future timeline tool
 
-Read this only when the user asks for animation, Blender, rig, or timeline-tool work. Written 2026-10-13 from a discussion chat. Things marked **[verify]** were not checked and must be confirmed before relying on them. Godot is 4.7.2, Blender is 5.2.2 LTS.
+Read this only when the user asks for animation, Blender, rig, or timeline-tool work. Written 2026-10-13 from a discussion chat. Things marked **[verify]** were not checked and must be confirmed before relying on them. Godot is 4.7.2, Blender is 5.2.2 LTS. The Action ID naming scheme (section 4) was agreed on 2026-10-18.
 
 ---
 
@@ -37,15 +37,46 @@ Select only the armature (no meshes). glTF export with: **deform bones only** on
 
 ## 4. Naming and authoring rules
 
-- One Blender action per game action, named exactly like `ActionData.animation` (`attack_1`, `dodge`, `idle`...). Mark each action as fake-user (shield icon) so Blender keeps it.
+- One Blender action per game action. Mark each action as fake-user (shield icon) so Blender keeps it. The name is an **Action ID** (section 4.1): a 6-digit prefix, then a readable name. The readable part is what `ActionData.animation` holds (`sheathed_walk_forward`, `attack_1`...); the prefix only orders the clips in Blender, so it is stripped on the Godot side (section 5, step 2).
 - 30 fps for every clip. In place: no root travel, because `ActionData` owns movement (`move_speed`, `move_window`). Looping clips (idle, walk) must have the last frame match the first.
 - Pose to pose: big poses first (wind-up, contact, follow-through), in-betweens later, polish last.
 - Fingers: a sword grip never changes, so key a grip pose once and reuse it across clips.
 
+### 4.1 Action IDs (FromSoft TAE-style)
+
+Blender lists actions alphabetically and cannot reorder them, so the order comes from a fixed-width numeric prefix, the way FromSoft's TAE animation IDs group animations by number. The scheme is inspired by that idea only; it does not copy their exact digit meanings.
+
+Format: `GSMMVV_<name>`, all digits zero-padded to 6.
+
+| Digits | Meaning | Values |
+|---|---|---|
+| `G` (1st) | Group | `0` locomotion (agreed). Proposed, to fix when each group starts: `1` combat, `2` air and traversal, `3` reactions (stagger, dead, heal), `4` finishers and stealth. |
+| `S` (2nd) | State | In locomotion: `0` system, `1` standing sheathed, `2` standing drawn, `3` crouch sheathed, `4` crouch drawn. Other groups define their own when they start. |
+| `MM` (3rd-4th) | Move | `00` idle, `01` walk, `02` run, `03` dash. Leave gaps so related moves can slot in. |
+| `VV` (5th-6th) | Variant | `00` forward, `01` backward, `02` left, `03` right. `04` and up are free (for example diagonals). |
+
+Name part: `<stance>_<sword>_<move>_<direction>`, from broad to specific, so the number and the name agree. Standing has no stance word; idle has no direction. Examples: `010100_sheathed_walk_forward`, `030000_crouch_sheathed_idle`.
+
+Rules: always 6 digits. Never reuse or renumber an ID that exists (gaps are fine). A new clip takes the next free number in its slot. The ID prefix never goes into `ActionData`.
+
+The 24 clips named on 2026-10-18 (file `Untitled_fromsoft_names.blend`):
+```
+000000_tpose
+010000_sheathed_idle
+010100_sheathed_walk_forward  010101_..._backward  010102_..._left  010103_..._right
+010200_sheathed_run_forward   010201_..._backward  010202_..._left  010203_..._right
+020000_drawn_idle
+020100_drawn_walk_forward     020101_..._backward  020102_..._left  020103_..._right
+020200_drawn_run_forward      020201_..._backward  020202_..._left  020203_..._right
+030000_crouch_sheathed_idle
+030100_crouch_sheathed_walk_forward  030101_..._backward  030102_..._left  030103_..._right
+```
+Reserved and not built yet: `04xxxx` crouch drawn (idle and walk in 4 directions), `0x03xx` dash.
+
 ## 5. Godot side
 
 1. Import Export A as the character. Delete nothing from the rig; put the model under a node that turns it 180 degrees about Y.
-2. Import Export B and save its animations as an `AnimationLibrary` resource **[verify the menu path in 4.7.2's Advanced Import Settings]**. Load the library into the model's `AnimationPlayer`. Tracks target bones by name and path, so the same skeleton plays them directly.
+2. Import Export B and save its animations as an `AnimationLibrary` resource **[verify the menu path in 4.7.2's Advanced Import Settings]**. Load the library into the model's `AnimationPlayer`. The clip names in Godot are the readable part without the 6-digit prefix (`sheathed_walk_forward`); how to strip the prefix on import (a small import script, or renaming inside the library) is **[verify, not built]**. Tracks target bones by name and path, so the same skeleton plays them directly.
 3. Seek the `AnimationPlayer` to `action_time` each frame, scaled by the action's speed. The slow-downs (`Player.slash_active_speed`, the enemy `windup_speed` and `active_speed`) then slow the animation too.
 4. Different skeletons (another character, Mixamo clips on a different rig) need a `BoneMap` retarget in the import settings. The `mixamorig:` names are the easy case.
 5. Replacing the placeholders is its own migration: `SwordVisual` (swings, guard, deflect poses, sheathe and draw), `ReachArms`, `HealArm`, and the body reactions in `PlayerBodyReaction`. Pick one action (`attack_1`) to prove the pipeline first.
@@ -89,7 +120,7 @@ bvenv/bin/python my_script.py
   - Stills: the workbench engine renders headless. Orthographic cameras, full body at ortho scale 2.3 looking at height 0.95: front (0, -6, 0.95) rotation (90, 0, 0) degrees; left side (6, 0, 0.95) rotation (90, 0, 90); back (0, 6, 0.95) rotation (90, 0, 180); top (0.1, 0, 6) rotation (0, 0, 0).
 
 ### 6.5 What Claude can and cannot do
-Claude can open the user's latest `.blend`, key rough poses and the grip with a script, render stills to check them, and save a new `.blend` for the user to open and smooth. Claude can judge still frames, not motion. Rough blocking is the goal; timing, weight and smoothing are the user's job and the part they enjoy. First planned clip: **`idle`**, a 60 frame loop at 30 fps, in place, with a slow breath, a small weight shift, a slight head drift, loose arms and a relaxed grip, keyed on the `Ctrl_*` bones (Euler), named `idle`, fake-user on. Do not start it without the full check and a go.
+Claude can open the user's latest `.blend`, key rough poses and the grip with a script, render stills to check them, and save a new `.blend` for the user to open and smooth. Claude can judge still frames, not motion. Rough blocking is the goal; timing, weight and smoothing are the user's job and the part they enjoy. First planned clip: **`idle`**, a 60 frame loop at 30 fps, in place, with a slow breath, a small weight shift, a slight head drift, loose arms and a relaxed grip, keyed on the `Ctrl_*` bones (Euler), named by the Action ID scheme (section 4), fake-user on. Do not start it without the full check and a go.
 
 ## 7. Licensing and sources
 
