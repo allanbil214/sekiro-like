@@ -1,5 +1,7 @@
 # Phase 1.5: Hardening and cleanup (between Phase 1 and Phase 2)
 
+> **Note (2026-10-19):** the folders were reorganized in Phase 2 item 11.6. Paths in this file are the old ones (kept as history); the old-to-new table is at the end of `docs/built-reference.md`.
+
 > Companion to `docs/handoff.md`. Agreed 2026-10-12 as a short phase after Step 12 and before the Phase 2 backlog (handoff, section 13). The 9 items are the ones the user picked from the 2026-10-12 code review (4 "small things" and 5 "best-practice refactors"); the numbers below follow that list.
 
 ## 1. Rules for this phase

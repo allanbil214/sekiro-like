@@ -65,7 +65,7 @@ Attack 1 has a deliberately long wind-up (0.35s) like the opener in Souls-likes;
 
 ---
 
-Timings, lunge speeds, and clock poses live in `actions/attack_1..5.tres` (the truth, tuned by the user). The original first-guess tables and the old tuned snapshot are in `docs/archive/build-log.md`, Part 5.
+Timings, lunge speeds, and clock poses live in `data/actions/player/attack_1..5.tres` (the truth, tuned by the user). The original first-guess tables and the old tuned snapshot are in `docs/archive/build-log.md`, Part 5.
 
 ---
 
@@ -81,7 +81,7 @@ Timings, lunge speeds, and clock poses live in `actions/attack_1..5.tres` (the t
 
 ---
 
-The thrust's values are in `actions/thrust.tres`.
+The thrust's values are in `data/actions/player/thrust.tres`.
 
 ---
 
@@ -124,7 +124,7 @@ The thrust's values are in `actions/thrust.tres`.
 - The cleanup refactor of the traversal code (moving wall/ledge sensing out of `player.gd`, state name constants, a shared base so the enemy can reuse `ActionState`) is **deferred until all of Phase 1 is done and tested by the user**.
 
 ### 7.2 Code map
-`WeaponData` (`resources/weapon_data.gd`), `ActionData` (`resources/action_data.gd`), `SwordVisual` (`scripts/player/sword_visual.gd`), `AttackState`, `AirAttackState`, `HelmSplitterState`, and `DodgeState` (`scripts/player/states/`). Each script's header comment is the as-built description; the step-by-step history (3a-1 to 3c-1) is in `docs/archive/build-log.md`, Part 5.
+`WeaponData` (`scripts/resources/weapon_data.gd`), `ActionData` (`scripts/resources/action_data.gd`), `SwordVisual` (`scripts/player/sword_visual.gd`), `AttackState`, `AirAttackState`, `HelmSplitterState`, and `DodgeState` (`scripts/player/states/`). Each script's header comment is the as-built description; the step-by-step history (3a-1 to 3c-1) is in `docs/archive/build-log.md`, Part 5.
 
 ---
 
@@ -133,7 +133,7 @@ The thrust's values are in `actions/thrust.tres`.
 ### As built (3c-1), summary (full detail in the build log, Part 5)
 
 - **Two visual states:** sheathed (box scabbard at the left hip, edge up, arm hanging relaxed) or drawn (the rest pose). It **spawns sheathed**. `Player.sheathed` changes no movement or rules.
-- **Draw slash (iai, `actions/draw_attack.tres`, 8:00 to 2:00):** an attack while sheathed plays it in **every context** (ground, dash, dodge, crouch and slide staying crouched, air without a lunge), **replacing** the dash, crouch, slide, and air attacks; the dodge itself never draws. It counts as **no combo step**: the next tap is attack 1 (crouched: the crouch loop A; in the air: the first air attack, or attack 1 if you landed mid-swing). No hold yet.
+- **Draw slash (iai, `data/actions/player/draw_attack.tres`, 8:00 to 2:00):** an attack while sheathed plays it in **every context** (ground, dash, dodge, crouch and slide staying crouched, air without a lunge), **replacing** the dash, crouch, slide, and air attacks; the dodge itself never draws. It counts as **no combo step**: the next tap is attack 1 (crouched: the crouch loop A; in the air: the first air attack, or attack 1 if you landed mid-swing). No hold yet.
 - **R / D-pad Down (`sheathe`):** draws without attacking, or sheathes; Locomotion and Crouch only, ignored while the animation moves. **Auto-sheathe** after 5 s with no attack or dodge (counted only in Locomotion or Crouch); a hit restarts it in Step 4 (`Player.notify_combat()`).
 - **Animated arm (visual only):** the hand reaches the grip first, then the blade slides out and swings to the rest pose; sheathing reverses it (approach, slide in, let go). The draw slash's wind-up does the same reach and pull. The arm stretches to reach the hip. Attacking mid-animation interrupts and blends from the current pose.
 - **Dodge attack:** an attack after a dodge's locked window starts the dash attack (the draw slash while sheathed).

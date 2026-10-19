@@ -113,7 +113,7 @@ Gameplay is driven by **timings in `ActionData` resources**, not by animation ev
 ### 3.9 Crouch (built; full original text in the build log, Part 2)
 - **Toggle by default** (a setting switches to hold); Left Ctrl / left-stick click. Slower, with a shorter body capsule (set on the shape resource, changes instantly; the mesh eases over `crouch_transition_time`). No crouching in the air. A low ceiling keeps you crouched.
 - **Dodge and jump cancel crouch** (they need headroom; under a low ceiling the presses are ignored and discarded).
-- **Crouch slide:** `crouch` pressed **while dashing** starts a slide (`ActionState` driven by `actions/slide.tres`, i-frames like the dodge, ends in Crouch; jump and dodge cancel it after its locked window, with headroom).
+- **Crouch slide:** `crouch` pressed **while dashing** starts a slide (`ActionState` driven by `data/actions/player/slide.tres`, i-frames like the dodge, ends in Crouch; jump and dodge cancel it after its locked window, with headroom).
 - **Crouch and slide attacks:** a tap loop that keeps you crouched, hold = the upward slash (spec, section 6).
 - **Ducking works because the hurtbox shrinks** (Step 4; 3.11 in `docs/design-later-steps.md`); there is no `attack_height` variable. Stealth use is Phase 2.
 
@@ -151,7 +151,7 @@ Each action (attack 1, dodge, guard, heal, etc.) is a `.tres` file edited in the
 
 ## 5. Data designs
 
-### 5.1 `ActionData` (`resources/action_data.gd`)
+### 5.1 `ActionData` (`scripts/resources/action_data.gd`)
 
 Every field has a doc comment in the script; that file is the reference. All times are seconds from the start of the action, windows are `Vector2(start, end)`. Groups: identity (`kind`, `animation`, `duration`, `speed_scale`), windows (`locked_until`, `cancel_window`, `buffer_window`, `active_hit`, `iframes`), movement, swing visual (clock poses), charge, hold action, combat (`damage`, `posture_damage`, ...), and `combo_next` (variant loops). Helpers: `in_window()`, `is_locked()`, `can_cancel()`, `has_iframes()`, `is_hit_active()`.
 
@@ -220,7 +220,7 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - [x] 4a, 4b. Hitbox, hurtbox, `Combatant`, hitstop, hurtbox profiles, taking damage
 - [x] 5. Guard, deflect, the shrinking window, jump versions, knockback
 - [x] 6. Posture, posture break, deathblow, player stagger, the deathblow marker
-- [x] 7a to 7d. Enemy core, defense (four `ai/` presets), perilous attacks (thrust, sweep, grab), deflect poses
+- [x] 7a to 7d. Enemy core, defense (four `data/ai/` presets), perilous attacks (thrust, sweep, grab), deflect poses
 - [x] ~~8. Clash~~ dropped 2026-10-08
 - [x] 9. Lock-on
 - [x] 10. Heal (3 charges), death with 2 resurrections, the player HUD, the death screen
@@ -243,24 +243,27 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
   - [x] 11c. Sticky aim and click to throw (attack throws from the aim, the Options "AIM MODE" STICKY / HOLD, heal and guard end the aim; done and tested 2026-10-19)
   - [x] 11d. Guards check the spot (a noise or a fading glimpse: walk there, look around for `spot_check_time`, then back to the route; 3 noises make it search; done and tested 2026-10-19)
   - [x] 11.5. Taunt (addendum to item 11: `taunt` V / Back, `TauntState` with wind-up, shout and wind-down, provoked stacks on enemies in combat, a noise for unaware ones, sound slots `taunt` and `enemy_provoked`; done and tested 2026-10-19)
+  - [x] 11.6. Folder reorganization (refactor: `reorganize.py` moved the files with their sidecars and rewrote every `res://` path; new layout `data/`, `assets/`, `scripts/core|items|resources|ui/hud|ui/menus`; done and tested 2026-10-19)
   - [ ] 12. Navigation (navmesh, `use_navigation`)
 
-**Current state (2026-10-19):** Steps 1 to 13 are done and tested. Phase 2 items 1 to 11 and the 11.5 taunt addendum are done and tested (item 7, enemy awareness and the stealth deathblow, ended with 7e and the bars-in-combat addendum; item 8 is the interact system; item 9 is the wall hug; item 10 is non-lethal combat; item 11 is the item system: 11a the tap throw, 11b hold to aim, 11c sticky aim and click to throw, 11d guards check the spot). Item 12 (navigation) is planned and not started and is the next one (or another backlog entry, the user picks). Phases 3 to 5 exist only as discussion notes in `docs/phase-3-4-notes.md`. Every arena and enemy preset behaves exactly as before unless a per-instance switch (`use_awareness`, later `use_navigation`) is on.
+**Current state (2026-10-19):** Steps 1 to 13 are done and tested. Phase 2 items 1 to 11, the 11.5 taunt addendum and the 11.6 folder reorganization are done and tested (item 7, enemy awareness and the stealth deathblow, ended with 7e and the bars-in-combat addendum; item 8 is the interact system; item 9 is the wall hug; item 10 is non-lethal combat; item 11 is the item system: 11a the tap throw, 11b hold to aim, 11c sticky aim and click to throw, 11d guards check the spot). The project now uses the new folder layout (see "Folder layout" in the map below). Item 12 (navigation) is planned and not started and is the next one (or another backlog entry, the user picks). Phases 3 to 5 exist only as discussion notes in `docs/phase-3-4-notes.md`. Every arena and enemy preset behaves exactly as before unless a per-instance switch (`use_awareness`, later `use_navigation`) is on.
 
 ### Where things live (a map; behavior details: `docs/built-reference.md`, each script's header comment, the build log)
 
-- **Player:** `scripts/player/player.gd` (the `CharacterBody3D` root: shared data and helpers, drives the states), `states/` (one script per state: locomotion, crouch, wall_hug, slide, dash, dodge, air, wall_jump, ledge_hang, ledge_climb, attack, air_attack, helm_splitter, guard, deathblow, stagger, heal, dead; `state_machine.gd`, `state_name.gd`, `state.gd`, and `action_state.gd`, which runs an `ActionData` clock), `input_buffer.gd`, `actions.gd` (Input Map names), `ledge_sensor.gd` (walls and ledges), `player_forced_movement.gd` and `player_body_reaction.gd` (helpers made in `Player._ready()`), `camera_rig.gd`, `lock_on.gd`. Scene: `scenes/player/player.tscn`.
+- **Player:** `scripts/player/player.gd` (the `CharacterBody3D` root: shared data and helpers, drives the states), `states/` (one script per state: locomotion, crouch, wall_hug, slide, dash, dodge, air, wall_jump, ledge_hang, ledge_climb, attack, air_attack, helm_splitter, guard, deathblow, stagger, heal, dead; `state_machine.gd`, `state_name.gd`, `state.gd`, and `action_state.gd`, which runs an `ActionData` clock), `input_buffer.gd`, `ledge_sensor.gd` (walls and ledges), `player_forced_movement.gd` and `player_body_reaction.gd` (helpers made in `Player._ready()`), `camera_rig.gd`, `lock_on.gd`. Scene: `scenes/player/player.tscn`.
 - **Sword and body visuals (placeholders):** `sword_visual.gd`, `sword_guard_poses.gd`, `heal_arm.gd`, `reach_arms.gd` (debug); the `Hitbox` sits under `SwordVisual`.
-- **Combat core:** `scripts/combat/`: `combatant.gd` (health, posture, guard and deathblow rules), `hitbox.gd`, `hurtbox.gd`, `hurtbox_profile.gd`, `hit_data.gd`, `hitstop.gd`, `action_runner.gd` (the shared action clock), `layers.gd`, `groups.gd`, `enemies.gd` (the list of enemies), `fall_zone.gd`, `fx.gd` and `shockwave.gd` (effects and shake).
-- **Enemy:** `scripts/enemy/enemy.gd` (scene `scenes/enemy/enemy.tscn`), `enemy_defense.gd`, `enemy_awareness.gd`, `dummy.gd` (`scenes/enemy/dummy.tscn`). AI presets in `ai/*.tres`. The spot check (11d) lives in `EnemyAwareness._run_suspicious()`.
-- **Data (tuned values live in the `.tres`):** `resources/` (`action_data.gd`, `weapon_data.gd`, `enemy_ai_data.gd`, `arena_data.gd`, `sfx_data.gd`, `sfx_slot.gd`, `ui_theme.tres`, `hurtbox/`), `actions/*.tres`, `weapons/katana.tres`, `ai/`, `arenas/*.tres`, `audio/sfx_data.tres`, `data/loading_tips.csv`.
-- **Non-lethal combat (item 10):** the toggle is `Player.toggle_reverse_blade()` (`GameFlags.BLADE_REVERSED`), the knockout is `Combatant._finish()` and `knocked_out`, the sleeper is `Enemy._on_knocked_out()` and `wake_up()`, the guards wake it in `EnemyAwareness._run_wake()`, and the choke is `DeathblowState` with `actions/choke.tres`.
-- **Interact system (item 8):** `scripts/interact/` (`interactable.gd` and its behaviors `door`, `chest`, `switch`, `npc_line`; `interact_picker.gd`, made in `Player._ready()`; `game_flags.gd`), `scripts/ui/interact_prompt.gd`; small scenes in `scenes/interact/`.
-- **Item system and throwables (item 11a):** `resources/item_data.gd` and `throwable_data.gd` (the data; `throwables/*.tres` hold the tuned numbers), `scripts/player/item_belt.gd` (the list and counts, made in `Player._ready()`), `states/throw_state.gd` (`actions/throw.tres`), `scripts/combat/throwable.gd` (the projectile and its noise), `scripts/ui/item_hud.gd`, `Player._try_use_item()` and `_try_cycle_item()`, and `EnemyAwareness.hear_noise_at()`. Taunt (11.5): `states/taunt_state.gd` (`actions/taunt.tres`), `Player._try_taunt()`, `Enemy.hear_taunt()` and `provoke()`, the "Provoked" group of `EnemyAIData`. Hold to aim (11b, 11c): `states/aim_state.gd`, `scripts/combat/aim_preview.gd`, `scripts/ui/aim_hud.gd`, the aim mode in `camera_rig.gd`, `ThrowState.fire()`, the `Settings.sticky_aim` option.
-- **Sound:** `scripts/audio/sfx.gd` (static `Sfx`), wavs under `audio/`.
-- **HUDs and overlays drawn in code:** `scripts/ui/player_hud.gd`, `boss_hud.gd`, `awareness_hud.gd`, `enemy_bar.gd`, `danger_symbol.gd`, `crouch_vignette.gd`, `debug_overlay.gd`, `screen_fade.gd`.
-- **Menus and screens (scenes under `scenes/ui/`, scripts under `scripts/ui/`):** `main_menu`, `pause_menu`, `options_menu` (with `settings.gd` and `controls_bindings.gd`), `arena_chooser` (with `arena_library.gd`), `loading_screen` (with `scene_loader.gd` and `loading_tips.gd`), `death_screen`, `victory_screen`; `ui_text_scaler.gd`.
+- **Shared constants:** `scripts/core/`: `actions.gd` (Input Map names), `groups.gd`, `layers.gd`, `enemies.gd` (the list of enemies).
+- **Combat core:** `scripts/combat/`: `combatant.gd` (health, posture, guard and deathblow rules), `hitbox.gd`, `hurtbox.gd`, `hurtbox_profile.gd`, `hit_data.gd`, `hitstop.gd`, `action_runner.gd` (the shared action clock), `fall_zone.gd`, `fx.gd` and `shockwave.gd` (effects and shake).
+- **Enemy:** `scripts/enemy/enemy.gd` (scene `scenes/enemy/enemy.tscn`), `enemy_defense.gd`, `enemy_awareness.gd`, `dummy.gd` (`scenes/enemy/dummy.tscn`). AI presets in `data/ai/*.tres`. The spot check (11d) lives in `EnemyAwareness._run_suspicious()`.
+- **Data (tuned values live in the `.tres`):** the Resource class scripts are in `scripts/resources/` (`action_data.gd`, `weapon_data.gd`, `enemy_ai_data.gd`, `arena_data.gd`, `item_data.gd`, `throwable_data.gd`, `sfx_data.gd`, `sfx_slot.gd`); the `.tres` files are under `data/`: `actions/player/` and `actions/enemy/` (`enemy_grab`, `enemy_sweep`), `weapons/katana.tres`, `ai/`, `arenas/`, `items/` (the throwables), `hurtbox/`, `audio/sfx_data.tres`, `ui/ui_theme.tres`, `data/loading_tips.csv`. Binary assets (wavs, music, shaders) are under `assets/`.
+- **Non-lethal combat (item 10):** the toggle is `Player.toggle_reverse_blade()` (`GameFlags.BLADE_REVERSED`), the knockout is `Combatant._finish()` and `knocked_out`, the sleeper is `Enemy._on_knocked_out()` and `wake_up()`, the guards wake it in `EnemyAwareness._run_wake()`, and the choke is `DeathblowState` with `data/actions/player/choke.tres`.
+- **Interact system (item 8):** `scripts/interact/` (`interactable.gd` and its behaviors `door`, `chest`, `switch`, `npc_line`; `interact_picker.gd`, made in `Player._ready()`; `game_flags.gd`), `scripts/ui/hud/interact_prompt.gd`; small scenes in `scenes/interact/`.
+- **Item system and throwables (item 11a):** `scripts/resources/item_data.gd` and `throwable_data.gd` (the data; `data/items/*.tres` hold the tuned numbers), `scripts/items/item_belt.gd` (the list and counts, made in `Player._ready()`), `states/throw_state.gd` (`data/actions/player/throw.tres`), `scripts/items/throwable.gd` (the projectile and its noise), `scripts/ui/hud/item_hud.gd`, `Player._try_use_item()` and `_try_cycle_item()`, and `EnemyAwareness.hear_noise_at()`. Taunt (11.5): `states/taunt_state.gd` (`data/actions/player/taunt.tres`), `Player._try_taunt()`, `Enemy.hear_taunt()` and `provoke()`, the "Provoked" group of `EnemyAIData`. Hold to aim (11b, 11c): `states/aim_state.gd`, `scripts/items/aim_preview.gd`, `scripts/ui/hud/aim_hud.gd`, the aim mode in `camera_rig.gd`, `ThrowState.fire()`, the `Settings.sticky_aim` option.
+- **Sound:** `scripts/audio/sfx.gd` (static `Sfx`), wavs under `assets/audio/`, the slot table `data/audio/sfx_data.tres`.
+- **HUDs and overlays drawn in code (`scripts/ui/hud/`):** `player_hud.gd`, `boss_hud.gd`, `awareness_hud.gd`, `enemy_bar.gd`, `danger_symbol.gd`, `crouch_vignette.gd`, `debug_overlay.gd`, `aim_hud.gd`, `item_hud.gd`, `interact_prompt.gd`; `screen_fade.gd` stays in `scripts/ui/`.
+- **Menus and screens (scenes under `scenes/ui/`, scripts under `scripts/ui/menus/`):** `main_menu`, `pause_menu`, `options_menu` (with `settings.gd` and `controls_bindings.gd`), `arena_chooser` (with `arena_library.gd`), `loading_screen` (with `scene_loader.gd` and `loading_tips.gd`), `death_screen`, `victory_screen`. `settings.gd`, `scene_loader.gd`, `ui_text_scaler.gd` stay in `scripts/ui/`.
 - **Arenas (`scenes/arena/`):** `test_arena`, `fighting_arena` and its eight variants (`fighting_dummy`, `_soldier`, `_duelist`, `_aura`, `_repulser`, `_monk`, `_grappler`, `_squad`) plus `fighting_duo`, `movement_yard`, `movement_gauntlet`, `stealth_compound`.
+- **Folder layout (since 11.6, 2026-10-19):** `scenes/` (scenes, as before), `scripts/` by job (`core`, `combat`, `player`, `enemy`, `items`, `interact`, `audio`, `resources`, `ui/hud`, `ui/menus`), `data/` (every `.tres` and the csv), `assets/` (audio, shaders). The old-to-new table is at the end of `docs/built-reference.md`.
 - **Docs:** `docs/CLAUDE.md` (the start order), `work-agreements.md`, `phase-2-plan.md`, `phase-3-4-notes.md`, `design-later-steps.md`, `step3-combat-spec.md`, `animation-pipeline.md`, `built-reference.md`, `archive/`.
 
 ---
@@ -284,18 +287,25 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - The player scene root is the `CharacterBody3D` itself (no wrapper node).
 - **No "create it in code if the scene lacks it" fallbacks for nodes.** New code expects its nodes to exist (list them as editor steps; a missing node is an error to see, not to hide).
 - States never call `move_and_slide()`; the Player does it once per frame. After `machine.transition_to(...)`, `return` immediately.
-- Suggested folder structure:
+- Folder structure (since 11.6; new files go where their job says):
   ```
   res://
-    actions/        # ActionData .tres files
-    ai/             # EnemyAIData .tres files
-    scenes/         # player, enemy, arena
+    scenes/         # player, enemy, arena, ui, interact (.tscn)
     scripts/
-      combat/       # Combatant, hitbox, hurtbox
-      player/
-      enemy/
-      ui/
-    resources/      # Resource class scripts
+      core/         # shared constants: Actions, Groups, Layers, Enemies
+      combat/       # Combatant, hitbox, hurtbox, ActionRunner, Fx
+      player/       # Player, states/, camera, lock-on, sword visuals
+      enemy/        # Enemy, awareness, defense, dummy
+      items/        # ItemBelt, Throwable, AimPreview
+      interact/     # Interactable and its behaviors, GameFlags
+      audio/        # Sfx
+      resources/    # Resource class scripts (ActionData, WeaponData, ...)
+      ui/           # Settings, SceneLoader, ScreenFade, UiTextScaler
+        hud/        # HUDs and overlays drawn in code
+        menus/      # menu and screen scripts
+    data/           # every .tres (and the csv); actions/player, actions/enemy,
+                    #   ai, arenas, weapons, items, hurtbox, audio, ui
+    assets/         # audio (wavs, music), shaders
   ```
 
 ### Terminology (shared shorthand)
