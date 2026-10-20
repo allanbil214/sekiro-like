@@ -11,6 +11,10 @@ extends State
 ## outside corner (the wall ends and its side face continues) is turned by pressing `interact` while
 ## peeking past it and holding that direction. Both are a short scripted turn, 90 degrees only.
 ##
+## The low-wall vault (item 14b): holding toward a low wall and pressing `jump` hops over it (a short
+## scripted arc, quiet like the hug) and lands hugging the wall's far side. A crouched hug starts on
+## low walls too.
+##
 ## Leaving: `interact` again, moving away from the wall, a jump, dodge, attack or guard press (the press
 ## is left in the buffer, so Locomotion or Crouch runs it next frame with all its usual rules, a
 ## stealth kill included), being hit, or the wall going away. All the numbers are on the Player.
@@ -43,6 +47,15 @@ var _turning: bool = false
 ## Set when a turn ends: the direction held through the turn can point away from the new wall, so
 ## pushing away does not leave the hug until it has been let go once.
 var _push_lock: bool = false
+## The vault (a hop over a low wall, landing hugging its far side).
+var _vaulting: bool = false
+var _vault_time: float = 0.0
+var _vault_from: Vector3 = Vector3.ZERO
+var _vault_to: Vector3 = Vector3.ZERO
+var _vault_peak: float = 0.0
+## After a vault the body collision was off: gravity settles it on the floor instead of counting as falling.
+const LANDING_GRACE: float = 0.2
+var _landing_grace: float = 0.0
 var _turn_time: float = 0.0
 var _turn_from: Vector3 = Vector3.ZERO
 var _turn_control: Vector3 = Vector3.ZERO
@@ -55,7 +68,7 @@ var _turn_normal: Vector3 = Vector3.ZERO
 func try_begin() -> bool:
 	if not player.is_on_floor():
 		return false
-	var wall := player.ledge_sensor.find_wall()
+	var wall := player.ledge_sensor.find_wall(player.crouch_height * 0.5 if player.is_crouched else -1.0)
 	if wall.is_empty():
 		return false
 	var normal: Vector3 = wall["normal"]
@@ -78,6 +91,8 @@ func enter(_previous: StringName) -> void:
 	_age = 0.0
 	_peek_side = 0.0
 	_turning = false
+	_vaulting = false
+	_landing_grace = 0.0
 	_push_lock = false
 	player.velocity = Vector3.ZERO
 	player.snap_facing(_normal)
@@ -86,6 +101,9 @@ func enter(_previous: StringName) -> void:
 
 
 func exit(next: StringName) -> void:
+	if _vaulting:
+		_vaulting = false
+		player.set_body_collision_enabled(true)
 	_set_peek(Vector3.ZERO)
 	# Step away from the wall by the radius that comes back, so the full body does not start inside it.
 	var grow := player.get_default_body_radius() - player.get_body_radius()
@@ -99,9 +117,15 @@ func exit(next: StringName) -> void:
 
 func physics_update(delta: float) -> void:
 	_age += delta
-	if not player.is_on_floor():
-		machine.transition_to(StateName.AIR)
+	if _vaulting:
+		_update_vault(delta)
 		return
+	if not player.is_on_floor():
+		if _landing_grace <= 0.0:
+			machine.transition_to(StateName.AIR)
+			return
+		_landing_grace -= delta
+		player.apply_gravity(delta)
 	player.velocity.x = 0.0
 	player.velocity.z = 0.0
 	if _snap_time < player.wall_hug_snap_time:
@@ -114,6 +138,10 @@ func physics_update(delta: float) -> void:
 		return
 	var want := player.get_move_input()
 	want.y = 0.0
+	# Holding toward a low wall and pressing jump: vault over it (a tall wall: jump leaves the hug as before).
+	if player.input_buffer.has_pressed(Actions.JUMP) and want.dot(-_normal) >= player.wall_hug_facing_dot \
+			and _try_vault():
+		return
 	if Input.is_action_just_pressed(Actions.INTERACT):
 		# Peeking past an outside corner and holding that way: turn around it. Otherwise leave.
 		if not _try_outside_turn(want):
@@ -136,6 +164,8 @@ func physics_update(delta: float) -> void:
 
 ## Called when the player is hit while hugging.
 func knock_off() -> void:
+	if _vaulting:
+		return
 	_leave()
 
 
@@ -175,6 +205,75 @@ func _sidle(want: Vector3) -> void:
 	_set_peek(Vector3.ZERO)
 	player.velocity.x = tangent.x * lateral * player.wall_hug_speed
 	player.velocity.z = tangent.z * lateral * player.wall_hug_speed
+
+
+## Looks for a low wall in front (a flat top no higher than wall_hug_vault_max_height, no thicker than
+## wall_hug_vault_max_thickness) and a spot on its far side that has the wall, floor and room; starts the hop.
+func _try_vault() -> bool:
+	var pos := player.global_position
+	var origin := _chest(pos)
+	var front := _ray(origin, origin - _normal * (player.get_body_radius() + player.wall_hug_edge_reach))
+	if front.is_empty():
+		return false
+	var front_pos: Vector3 = front["position"]
+	var max_thickness := player.wall_hug_vault_max_thickness
+	# The far face: a ray back toward the wall from behind it.
+	var far_from := Vector3(front_pos.x, origin.y, front_pos.z) - _normal * (max_thickness + 0.3)
+	var back := _ray(far_from, Vector3(front_pos.x, origin.y, front_pos.z))
+	if back.is_empty() or _flat(back["normal"]).dot(-_normal) < 0.9:
+		return false
+	var back_pos: Vector3 = back["position"]
+	var thickness := (front_pos - back_pos).dot(_normal)
+	if thickness > max_thickness:
+		return false
+	# The top: a ray down through the middle of the wall; it must be flat and low enough.
+	var mid := front_pos - _normal * (thickness * 0.5)
+	var mask := player.collision_mask & ~Layers.INVISIBLE_WALL
+	var down := PhysicsRayQueryParameters3D.create(
+			Vector3(mid.x, pos.y + player.wall_hug_vault_max_height + 0.5, mid.z),
+			Vector3(mid.x, pos.y + 0.2, mid.z), mask, [player.get_rid()])
+	var top := player.get_world_3d().direct_space_state.intersect_ray(down)
+	if top.is_empty() or (top["normal"] as Vector3).y < 0.9:
+		return false
+	var top_y: float = (top["position"] as Vector3).y
+	if top_y - pos.y > player.wall_hug_vault_max_height:
+		return false
+	var goal := back_pos - _normal * (player.wall_hug_radius + player.wall_hug_gap)
+	goal.y = pos.y
+	if not _spot_ok(goal, -_normal):
+		return false
+	player.input_buffer.consume(Actions.JUMP)
+	_set_peek(Vector3.ZERO)
+	_peek_side = 0.0
+	_vaulting = true
+	_vault_time = 0.0
+	_vault_from = pos
+	_vault_to = goal
+	_vault_peak = maxf(top_y - pos.y, 0.0) + 0.1
+	player.set_body_collision_enabled(false)
+	return true
+
+
+## The hop: along a straight line with a rise over the top, turning the body to face the way it goes.
+## It ends hugging the far side of the wall.
+func _update_vault(delta: float) -> void:
+	player.velocity = Vector3.ZERO
+	_vault_time += delta
+	var t := clampf(_vault_time / maxf(player.wall_hug_vault_time, 0.001), 0.0, 1.0)
+	player.global_position = _vault_from.lerp(_vault_to, smoothstep(0.0, 1.0, t)) \
+			+ Vector3.UP * (sin(PI * t) * _vault_peak)
+	player.snap_facing(_normal.rotated(Vector3.UP, PI * clampf(t / 0.4, 0.0, 1.0)))
+	if t < 1.0:
+		return
+	_vaulting = false
+	player.set_body_collision_enabled(true)
+	player.global_position = _vault_to
+	_normal = -_normal
+	_goal = _vault_to
+	_age = 0.0
+	_push_lock = true
+	_landing_grace = LANDING_GRACE
+	player.snap_facing(_normal)
 
 
 ## Pushing into an inside corner (a wall right ahead along the sidle, facing back at us): turn onto it.

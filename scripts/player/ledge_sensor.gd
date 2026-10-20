@@ -19,10 +19,11 @@ func _world_mask() -> int:
 
 
 ## Nearest wall within wall_range of the capsule edge, from 8 horizontal rays at chest
-## height. Returns {"normal": Vector3, "distance": float}, or {} if there is none.
-func find_wall() -> Dictionary:
+## height (or at `chest_height` above the feet when it is above 0: a crouched hug looks for low walls).
+## Returns {"normal": Vector3, "distance": float}, or {} if there is none.
+func find_wall(chest_height: float = -1.0) -> Dictionary:
 	var space := player.get_world_3d().direct_space_state
-	var origin := player.global_position + Vector3.UP * (player.stand_height * 0.5)
+	var origin := player.global_position + Vector3.UP * (chest_height if chest_height > 0.0 else player.stand_height * 0.5)
 	var reach := player.get_body_radius() + player.wall_range
 	var best: Dictionary = {}
 	var best_distance := INF

@@ -82,6 +82,7 @@ radius = 0.2
 collision_layer = 33
 collision_mask = 33
 script = ExtResource("1_dovo2")
+wall_hug_vault_max_height = 1.8
 starting_items = Array[ExtResource("2_ahqnk")]([ExtResource("3_vb1ce"), ExtResource("4_0ncpa"), ExtResource("5_upxxc"), ExtResource("6_ln3h3")])
 weapon = ExtResource("2_3j4b4")
 hurtbox = NodePath("Hurtbox")

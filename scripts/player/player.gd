@@ -151,6 +151,11 @@ const HEADROOM_RADIUS: float = 0.38
 ## end of a wall the side face of an outside corner is looked for.
 @export var wall_hug_corner_time: float = 0.35
 @export var wall_hug_corner_reach: float = 0.5
+## The low-wall vault (item 14b): the highest wall top (m above the feet) and the thickest wall (m)
+## that can be vaulted, and how long (s) the hop takes.
+@export var wall_hug_vault_max_height: float = 1.8
+@export var wall_hug_vault_max_thickness: float = 0.8
+@export var wall_hug_vault_time: float = 0.5
 
 @export_group("Reverse blade (Phase 2 item 10)")
 ## While the blade is reversed (the `reverse_blade` toggle): the multipliers on the health damage and the
