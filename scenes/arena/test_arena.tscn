@@ -93,6 +93,18 @@ use_collision = true
 size = Vector3(3, 0.324927, 3)
 material = SubResource("StandardMaterial3D_lh4ft")
 
+[node name="Gap3" type="CSGBox3D" parent="." unique_id=1425858200]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.915708, 1.8874394, 11.777237)
+use_collision = true
+size = Vector3(3, 3.2410767, 3)
+material = SubResource("StandardMaterial3D_lh4ft")
+
+[node name="Gap4" type="CSGBox3D" parent="." unique_id=387920671]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.859129, 4.8983655, 11.782739)
+use_collision = true
+size = Vector3(4.936493, 0.324927, 3)
+material = SubResource("StandardMaterial3D_lh4ft")
+
 [node name="Player" parent="." unique_id=1991767212 instance=ExtResource("1_btlyn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25140253, 0)
 

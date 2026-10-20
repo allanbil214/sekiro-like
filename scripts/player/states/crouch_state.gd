@@ -6,7 +6,15 @@ extends State
 ## starts the weapon's crouch attack loop (you stay crouched).
 
 
+## After the low ledge climb the body was moved by the script and is not touching the floor yet.
+## For up to this long (s) gravity pulls it down onto the floor instead of counting as falling, or
+## Air would stand the body up under the low ceiling.
+const CLIMB_LANDING_GRACE: float = 0.2
+var _landing_grace: float = 0.0
+
+
 func enter(previous: StringName) -> void:
+	_landing_grace = CLIMB_LANDING_GRACE if previous == StateName.LEDGE_CLIMB else 0.0
 	player.set_crouched(true)
 	if previous == StateName.LOCOMOTION:
 		Sfx.play(player.get_tree(), Sfx.Id.CROUCH)
@@ -19,7 +27,10 @@ func exit(next: StringName) -> void:
 
 
 func physics_update(delta: float) -> void:
-	if not player.is_on_floor():
+	if not player.is_on_floor() and _landing_grace > 0.0:
+		_landing_grace -= delta
+		player.apply_gravity(delta)
+	elif not player.is_on_floor():
 		player.coyote_timer = player.coyote_time
 		machine.transition_to(StateName.AIR)
 		return

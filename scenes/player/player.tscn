@@ -27,6 +27,7 @@
 [ext_resource type="Resource" path="res://data/actions/player/ledge_climb.tres" id="16_uf5tr"]
 [ext_resource type="Script" uid="uid://d12d2s8f0emov" path="res://scripts/player/states/ledge_hang_state.gd" id="17_uf5tr"]
 [ext_resource type="Script" uid="uid://lildwbaa2uws" path="res://scripts/player/states/attack_state.gd" id="19_3j4b4"]
+[ext_resource type="Resource" path="res://data/actions/player/ledge_climb_low.tres" id="20_w8qe1"]
 [ext_resource type="Script" uid="uid://dqdrrj1rqs24h" path="res://scripts/player/states/air_attack_state.gd" id="21_yj68g"]
 [ext_resource type="Script" uid="uid://socceebhysll" path="res://scripts/player/states/helm_splitter_state.gd" id="22_007i1"]
 [ext_resource type="Resource" uid="uid://deq0ib4qx1eyd" path="res://data/actions/player/helm_splitter_land.tres" id="23_6cv16"]
@@ -122,6 +123,7 @@ action = ExtResource("13_fcs02")
 [node name="LedgeClimb" type="Node" parent="StateMachine" unique_id=479839874]
 script = ExtResource("15_kvlxm")
 rise_fraction = 0.30000000000000004
+low_action = ExtResource("20_w8qe1")
 action = ExtResource("16_uf5tr")
 
 [node name="LedgeHang" type="Node" parent="StateMachine" unique_id=427504736]

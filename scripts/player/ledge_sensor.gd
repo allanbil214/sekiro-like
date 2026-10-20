@@ -108,9 +108,13 @@ func find_ledge() -> Dictionary:
 		else:
 			stand_pos = Vector3(stand_xz.x, ground_pos.y, stand_xz.z)
 
-	# 3. There must be room for the standing capsule up there.
+	# 3. There must be room for the standing capsule up there; with room only to crouch the
+	# climb is the low variant (item 13b). Not even that: the grab is refused.
+	var low := false
 	if can_climb and not player.fits_standing_at(stand_pos + Vector3.UP * 0.02):
-		return {}
+		if not player.fits_crouching_at(stand_pos + Vector3.UP * 0.02):
+			return {}
+		low = true
 	var hang_xz := base - normal * (face_distance - (radius + player.hang_gap))
 	var hang_pos := Vector3(hang_xz.x, top_pos.y - player.hang_center_depth - player.stand_height * 0.5, hang_xz.z)
 	var hang_spot := _find_hang_spot(hang_pos, normal, top_pos.y)
@@ -120,6 +124,7 @@ func find_ledge() -> Dictionary:
 		return {}
 	return {
 		"can_climb": can_climb,
+		"low": low,
 		"stand_position": stand_pos,
 		"normal": normal,
 		"edge": top_pos,
@@ -142,6 +147,7 @@ func try_ledge_grab() -> bool:
 	player.ledge_hang_pos = ledge["hang_position"]
 	player.ledge_hang_fits = ledge["hang_fits"]
 	player.ledge_can_climb = ledge["can_climb"]
+	player.ledge_climb_low = ledge["low"]
 	player.last_ledge_ms = Time.get_ticks_msec()
 	return true
 
@@ -158,8 +164,9 @@ func ledge_grab_state() -> StringName:
 
 
 ## While hanging: finds the ledge top along the wall at the given feet position (near the
-## last known ledge height). Returns {"top_y", "stand_position", "fits"} or {} if there is
-## no ledge top there. "fits" says whether a standing body fits on top (needed to climb).
+## last known ledge height). Returns {"top_y", "stand_position", "fits", "low"} or {} if there is
+## no ledge top there. "fits" says whether a body fits on top (needed to climb); "low" is true
+## when only a crouching body fits (the low climb, item 13b).
 func probe_hang_ledge(pos: Vector3, normal: Vector3) -> Dictionary:
 	var space := player.get_world_3d().direct_space_state
 	var radius := player.get_body_radius()
@@ -192,10 +199,13 @@ func probe_hang_ledge(pos: Vector3, normal: Vector3) -> Dictionary:
 	if ground_normal.y < 0.9 or absf(ground_pos.y - top_pos.y) > 0.1:
 		return {"top_y": top_pos.y, "fits": false}
 	var stand_pos := Vector3(stand_xz.x, ground_pos.y, stand_xz.z)
+	var feet := stand_pos + Vector3.UP * 0.02
+	var fits_standing := player.fits_standing_at(feet)
 	return {
 		"top_y": top_pos.y,
 		"stand_position": stand_pos,
-		"fits": player.fits_standing_at(stand_pos + Vector3.UP * 0.02),
+		"fits": fits_standing or player.fits_crouching_at(feet),
+		"low": not fits_standing,
 	}
 
 

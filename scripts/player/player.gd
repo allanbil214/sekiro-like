@@ -362,6 +362,9 @@ var ledge_hang_pos: Vector3 = Vector3.ZERO
 var ledge_hang_fits: bool = false
 ## False for a thin ledge top with no room to stand: the grab always hangs, and climbing is refused.
 var ledge_can_climb: bool = true
+## True when the ledge top has room to crouch but not to stand: the climb is the low variant and
+## ends in Crouch (item 13b).
+var ledge_climb_low: bool = false
 ## How far apart (m) the hands are on the current ledge (full spacing, or less on a narrow one);
 ## the arm IK of the real animations can read it.
 var ledge_hand_spacing: float = 0.3
@@ -374,6 +377,7 @@ var ledge_block_until_ms: int = 0
 var wall_jump_forced_away: bool = false
 
 var _headroom_shape: CapsuleShape3D
+var _crouch_headroom_shape: CapsuleShape3D
 ## The body capsule's radius from the scene (restored after a wall hug, item 9).
 var _default_body_radius: float = 0.38
 var _hurt_shape: CollisionShape3D
@@ -441,6 +445,9 @@ func _ready() -> void:
 	_headroom_shape = CapsuleShape3D.new()
 	_headroom_shape.radius = HEADROOM_RADIUS
 	_headroom_shape.height = stand_height - 0.07
+	_crouch_headroom_shape = CapsuleShape3D.new()
+	_crouch_headroom_shape.radius = HEADROOM_RADIUS
+	_crouch_headroom_shape.height = crouch_height - 0.07
 	add_to_group(Groups.PLAYER)
 	# The awareness HUD (item 7a): the triangles that show enemies noticing the player.
 	var awareness_hud := AwarenessHud.new()
@@ -758,6 +765,17 @@ func fits_standing_at(feet: Vector3) -> bool:
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = _headroom_shape
 	params.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (0.07 + _headroom_shape.height * 0.5))
+	params.collision_mask = collision_mask
+	params.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(params, 1).is_empty()
+
+
+## True if a crouched capsule fits with its feet at the given point (the low ledge climb).
+func fits_crouching_at(feet: Vector3) -> bool:
+	_crouch_headroom_shape.radius = minf(HEADROOM_RADIUS, get_body_radius())
+	var params := PhysicsShapeQueryParameters3D.new()
+	params.shape = _crouch_headroom_shape
+	params.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (0.07 + _crouch_headroom_shape.height * 0.5))
 	params.collision_mask = collision_mask
 	params.exclude = [get_rid()]
 	return get_world_3d().direct_space_state.intersect_shape(params, 1).is_empty()

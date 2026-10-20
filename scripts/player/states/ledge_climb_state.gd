@@ -7,6 +7,12 @@ extends ActionState
 ## Share of the duration spent rising before moving forward onto the top.
 @export_range(0.1, 0.9) var rise_fraction: float = 0.6
 
+## The climb used when the top only has room to crouch (item 13b); it ends in Crouch. Assign
+## data/actions/player/ledge_climb_low.tres in the editor.
+@export var low_action: ActionData
+
+var _normal_action: ActionData
+var _low: bool = false
 var _start: Vector3
 var _rise_end: Vector3
 var _target: Vector3
@@ -16,7 +22,17 @@ func _allows_guard_cancel() -> bool:
 	return false
 
 
+func enter(previous: StringName) -> void:
+	if _normal_action == null:
+		_normal_action = action
+	_low = player.ledge_climb_low and low_action != null
+	action = low_action if _low else _normal_action
+	super.enter(previous)
+
+
 func _on_action_enter(_previous: StringName) -> void:
+	if _low:
+		player.set_crouched(true)
 	_start = player.global_position
 	_target = player.ledge_stand_pos + Vector3.UP * 0.01
 	_rise_end = Vector3(_start.x, _target.y, _start.z)
@@ -38,6 +54,13 @@ func _on_action_update(_delta: float) -> void:
 	player.velocity = Vector3.ZERO
 
 
+func exit(next: StringName) -> void:
+	super.exit(next)
+	# Cut short (not finished into Crouch): stand the body capsule up again.
+	if _low and next != StateName.CROUCH:
+		player.set_crouched(false)
+
+
 func _on_action_exit() -> void:
 	player.set_body_collision_enabled(true)
 	player.release_arms()
@@ -47,4 +70,4 @@ func _on_action_finished() -> void:
 	player.global_position = _target
 	player.velocity = Vector3.ZERO
 	player.reset_air_actions()
-	machine.transition_to(StateName.LOCOMOTION)
+	machine.transition_to(StateName.CROUCH if _low else StateName.LOCOMOTION)

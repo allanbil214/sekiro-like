@@ -65,6 +65,7 @@ func physics_update(delta: float) -> void:
 		if not probe.is_empty() and probe["fits"]:
 			player.ledge_stand_pos = probe["stand_position"]
 			player.ledge_top_y = probe["top_y"]
+			player.ledge_climb_low = probe["low"]
 			player.ledge_wall_normal = _normal
 			machine.transition_to(StateName.LEDGE_CLIMB)
 		return
