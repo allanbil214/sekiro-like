@@ -105,6 +105,11 @@ const HEADROOM_RADIUS: float = 0.38
 @export var hang_gap: float = 0.05
 ## Both hands must be on the ledge: two hand points this far (m) either side of the center.
 @export var hang_hand_spacing: float = 0.3
+## Thin ledges: the ledge top must be at least this deep (m) to be grabbed (also the inset of the
+## hand probes), and the hands move closer together on a narrow pillar, down to a ledge this
+## wide (m). A thin top with no room to stand on is hung from, never climbed.
+@export var hang_min_depth: float = 0.1
+@export var hang_min_width: float = 0.3
 ## At a grab near a ledge end, the hang spot may shift up to this far (m) along the wall
 ## so both hands are on the ledge. If that is not enough, it auto-climbs instead.
 @export var hang_adjust_max: float = 0.6
@@ -355,6 +360,11 @@ var ledge_wall_normal: Vector3 = Vector3.ZERO
 ## Debug: where the last ledge was found, and when (msec).
 var ledge_hang_pos: Vector3 = Vector3.ZERO
 var ledge_hang_fits: bool = false
+## False for a thin ledge top with no room to stand: the grab always hangs, and climbing is refused.
+var ledge_can_climb: bool = true
+## How far apart (m) the hands are on the current ledge (full spacing, or less on a narrow one);
+## the arm IK of the real animations can read it.
+var ledge_hand_spacing: float = 0.3
 var ledge_top_y: float = 0.0
 var last_ledge_point: Vector3 = Vector3.ZERO
 var last_ledge_ms: int = -100000

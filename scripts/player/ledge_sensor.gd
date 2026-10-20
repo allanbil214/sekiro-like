@@ -77,7 +77,7 @@ func find_ledge() -> Dictionary:
 	var base := Vector3(player.global_position.x, 0.0, player.global_position.z)
 
 	# 1. Ray down just inside the wall face to find the ledge top.
-	var probe := base - normal * (face_distance + 0.15)
+	var probe := base - normal * (face_distance + player.hang_min_depth)
 	var top_query := PhysicsRayQueryParameters3D.create(
 			Vector3(probe.x, feet_y + player.ledge_zone_max + 0.2, probe.z),
 			Vector3(probe.x, feet_y + player.ledge_zone_min - 0.05, probe.z),
@@ -97,23 +97,29 @@ func find_ledge() -> Dictionary:
 			Vector3(stand_xz.x, top_pos.y - 0.3, stand_xz.z),
 			_world_mask(), [player.get_rid()])
 	var ground := space.intersect_ray(stand_query)
-	if ground.is_empty():
-		return {}
-	var ground_normal: Vector3 = ground["normal"]
-	var ground_pos: Vector3 = ground["position"]
-	if ground_normal.y < 0.9 or absf(ground_pos.y - top_pos.y) > 0.1:
-		return {}
-	var stand_pos := Vector3(stand_xz.x, ground_pos.y, stand_xz.z)
+	# No standing spot on top (a thin wall or pillar): the ledge can only be hung from.
+	var can_climb := not ground.is_empty()
+	var stand_pos := Vector3.ZERO
+	if can_climb:
+		var ground_normal: Vector3 = ground["normal"]
+		var ground_pos: Vector3 = ground["position"]
+		if ground_normal.y < 0.9 or absf(ground_pos.y - top_pos.y) > 0.1:
+			can_climb = false
+		else:
+			stand_pos = Vector3(stand_xz.x, ground_pos.y, stand_xz.z)
 
 	# 3. There must be room for the standing capsule up there.
-	if not player.fits_standing_at(stand_pos + Vector3.UP * 0.02):
+	if can_climb and not player.fits_standing_at(stand_pos + Vector3.UP * 0.02):
 		return {}
 	var hang_xz := base - normal * (face_distance - (radius + player.hang_gap))
 	var hang_pos := Vector3(hang_xz.x, top_pos.y - player.hang_center_depth - player.stand_height * 0.5, hang_xz.z)
 	var hang_spot := _find_hang_spot(hang_pos, normal, top_pos.y)
 	if not hang_spot.is_empty():
 		hang_pos = hang_spot["position"]
+	if not can_climb and hang_spot.is_empty():
+		return {}
 	return {
+		"can_climb": can_climb,
 		"stand_position": stand_pos,
 		"normal": normal,
 		"edge": top_pos,
@@ -135,15 +141,17 @@ func try_ledge_grab() -> bool:
 	player.ledge_top_y = ledge["top_y"]
 	player.ledge_hang_pos = ledge["hang_position"]
 	player.ledge_hang_fits = ledge["hang_fits"]
+	player.ledge_can_climb = ledge["can_climb"]
 	player.last_ledge_ms = Time.get_ticks_msec()
 	return true
 
 
 ## Which state a found ledge leads to: hang if interact is held (or was just pressed) and
-## the hanging body fits there, otherwise the auto-climb.
+## the hanging body fits there, or always for a thin ledge that cannot be climbed; otherwise
+## the auto-climb.
 func ledge_grab_state() -> StringName:
 	var wants_hang := Input.is_action_pressed(Actions.INTERACT) or player.input_buffer.has_pressed(Actions.INTERACT)
-	if wants_hang and player.ledge_hang_fits:
+	if player.ledge_hang_fits and (wants_hang or not player.ledge_can_climb):
 		player.input_buffer.consume(Actions.INTERACT)
 		return StateName.LEDGE_HANG
 	return StateName.LEDGE_CLIMB
@@ -157,7 +165,7 @@ func probe_hang_ledge(pos: Vector3, normal: Vector3) -> Dictionary:
 	var radius := player.get_body_radius()
 	var face_distance := radius + player.hang_gap
 	var base := Vector3(pos.x, 0.0, pos.z)
-	var probe := base - normal * (face_distance + 0.15)
+	var probe := base - normal * (face_distance + player.hang_min_depth)
 	var top_query := PhysicsRayQueryParameters3D.create(
 			Vector3(probe.x, player.ledge_top_y + 0.3, probe.z),
 			Vector3(probe.x, player.ledge_top_y - 0.3, probe.z),
@@ -240,7 +248,7 @@ func _find_outside_corner(pos: Vector3, normal: Vector3, dir: Vector3) -> Dictio
 	# A ray back toward the hang spot from beyond the corner, just inside the first wall face,
 	# finds the side face of the block (its normal must point along dir).
 	var start_along := player.hang_hand_spacing + player.corner_reach
-	var origin := Vector3(pos.x, player.ledge_top_y - 0.4, pos.z) + dir * start_along - normal * (face_distance + 0.1)
+	var origin := Vector3(pos.x, player.ledge_top_y - 0.4, pos.z) + dir * start_along - normal * (face_distance + player.hang_min_depth)
 	var query := PhysicsRayQueryParameters3D.create(origin, origin - dir * (start_along + 0.2),
 			_world_mask(), [player.get_rid()])
 	var hit := player.get_world_3d().direct_space_state.intersect_ray(query)
@@ -257,8 +265,16 @@ func _find_outside_corner(pos: Vector3, normal: Vector3, dir: Vector3) -> Dictio
 	var out_point := pos + dir * (along + face_distance)
 	var control := pos + dir * (along + face_distance * 1.3) + normal * (face_distance * 0.3)
 	# Step onto the new face far enough that both hands are on the ledge.
+	# Full hand spacing first, then deeper onto the face, then closer to the corner for a thin face.
+	var offsets: Array[float] = []
 	for i in 7:
-		var candidate := out_point - normal * (face_distance + player.hang_hand_spacing + 0.05 * float(i))
+		offsets.append(player.hang_hand_spacing + 0.05 * float(i))
+	var narrow := player.hang_hand_spacing - 0.05
+	while narrow >= player.hang_min_width * 0.5 - 0.001:
+		offsets.append(narrow)
+		narrow -= 0.05
+	for offset: float in offsets:
+		var candidate := out_point - normal * (face_distance + offset)
 		var probe := _probe_corner_spot(candidate, dir)
 		if not probe.is_empty():
 			return {
@@ -285,27 +301,41 @@ func can_hang_at(feet: Vector3) -> bool:
 	return player.fits_standing_at(feet + Vector3.UP * 0.02)
 
 
-## True if both hand points (either side of pos along the wall) find a flat ledge top
-## near top_y just inside the wall face.
+## True if both hands find a flat ledge top near top_y just inside the wall face. The hands sit
+## hang_hand_spacing either side of pos, or closer on a narrow ledge (never closer than half of
+## hang_min_width). The spacing in use is stored in player.ledge_hand_spacing.
 func _hands_on_ledge(pos: Vector3, normal: Vector3, top_y: float) -> bool:
+	var spacing := minf(_ledge_extent(pos, normal, top_y, -1.0), _ledge_extent(pos, normal, top_y, 1.0))
+	var min_spacing := minf(player.hang_min_width * 0.5, player.hang_hand_spacing)
+	if spacing < min_spacing - 0.001:
+		return false
+	player.ledge_hand_spacing = spacing
+	return true
+
+
+## How far (m, up to hang_hand_spacing) the ledge top continues from pos along the wall on one
+## side (-1 or 1), sampled every 0.05 m; 0 if there is no ledge top at pos itself.
+func _ledge_extent(pos: Vector3, normal: Vector3, top_y: float, side: float) -> float:
 	var space := player.get_world_3d().direct_space_state
-	var radius := player.get_body_radius()
-	var face_distance := radius + player.hang_gap
+	var face_distance := player.get_body_radius() + player.hang_gap
 	var tangent := normal.cross(Vector3.UP).normalized()
-	for side: float in [-1.0, 1.0]:
-		var hand := Vector3(pos.x, 0.0, pos.z) + tangent * side * player.hang_hand_spacing
-		var probe := hand - normal * (face_distance + 0.15)
+	var extent := 0.0
+	var steps := int(round(player.hang_hand_spacing / 0.05))
+	for i in range(steps + 1):
+		var hand := Vector3(pos.x, 0.0, pos.z) + tangent * side * 0.05 * float(i)
+		var probe := hand - normal * (face_distance + player.hang_min_depth)
 		var query := PhysicsRayQueryParameters3D.create(
 				Vector3(probe.x, top_y + 0.3, probe.z),
 				Vector3(probe.x, top_y - 0.3, probe.z),
 				_world_mask(), [player.get_rid()])
 		var hit := space.intersect_ray(query)
 		if hit.is_empty():
-			return false
+			break
 		var hit_normal: Vector3 = hit["normal"]
 		if hit_normal.y < 0.9:
-			return false
-	return true
+			break
+		extent = 0.05 * float(i)
+	return extent
 
 
 ## Finds the hang position closest to the wanted one (shifting sideways along the wall, up
