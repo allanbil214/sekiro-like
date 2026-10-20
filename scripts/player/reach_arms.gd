@@ -102,6 +102,17 @@ func _hold(angle_deg: float, shoulder_y: float) -> void:
 	_tween.tween_method(_set_pose, _amount, 1.0, raise_time)
 
 
+## Item 13c: a quick jolt of the held arms (a hit while hanging): they dip and come back.
+func jolt() -> void:
+	if not visible:
+		return
+	if _tween != null:
+		_tween.kill()
+	_tween = create_tween()
+	_tween.tween_method(_set_pose, _amount, 0.75, 0.05)
+	_tween.tween_method(_set_pose, 0.75, 1.0, 0.15)
+
+
 ## Lower the arms and hide them.
 func release() -> void:
 	if _choking:

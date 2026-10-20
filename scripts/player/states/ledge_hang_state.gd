@@ -9,6 +9,19 @@ extends State
 ## Below this much sideways input the player does not shimmy.
 const SHIMMY_DEADZONE: float = 0.2
 
+## Hit reactions (item 13c): hits 1 and 2 flinch (a swing to one side, then the other), hit 3 drops.
+## Seconds the flinch locks shimmy and climb (drop and leap still work).
+@export var flinch_time: float = 0.4
+## Seconds without a hit after which the hit count starts again.
+@export var hit_count_reset_time: float = 3.0
+## Size of the swing (the hit wobble's scale).
+@export var swing_recoil_scale: float = 1.0
+
+var _hit_count: int = 0
+var _hit_clock: float = 0.0
+var _flinch_left: float = 0.0
+var _last_swing_side: float = 0.0
+
 var _normal: Vector3 = Vector3.ZERO
 var _start: Vector3 = Vector3.ZERO
 var _snap_time: float = 0.0
@@ -28,6 +41,9 @@ func enter(_previous: StringName) -> void:
 	_start = player.global_position
 	_snap_time = 0.0
 	_turning = false
+	_hit_count = 0
+	_hit_clock = 0.0
+	_flinch_left = 0.0
 	player.velocity = Vector3.ZERO
 	player.coyote_timer = 0.0
 	player.input_buffer.clear(Actions.JUMP)
@@ -44,6 +60,10 @@ func exit(next: StringName) -> void:
 
 func physics_update(delta: float) -> void:
 	player.velocity = Vector3.ZERO
+	_hit_clock += delta
+	_flinch_left = maxf(0.0, _flinch_left - delta)
+	if _hit_clock >= hit_count_reset_time:
+		_hit_count = 0
 	if _snap_time < player.hang_snap_time:
 		_snap_time += delta
 		var u := smoothstep(0.0, 1.0, clampf(_snap_time / maxf(player.hang_snap_time, 0.001), 0.0, 1.0))
@@ -57,6 +77,8 @@ func physics_update(delta: float) -> void:
 		return
 	if player.input_buffer.consume(Actions.JUMP):
 		_leap()
+		return
+	if _flinch_left > 0.0:
 		return
 	var want := player.get_move_input()
 	want.y = 0.0
@@ -72,9 +94,31 @@ func physics_update(delta: float) -> void:
 	_shimmy(want, delta)
 
 
-## Called by the damage system later (Step 4) when the player is hit while hanging.
+## Called when something knocks the player off the ledge at once.
 func knock_off() -> void:
 	_drop()
+
+
+## A hit while hanging (item 13c). Returns true if it dropped the player: a perilous hit or a grab
+## always does, and so does the third hit. Otherwise a flinch: a swing to a random side on hit 1,
+## the opposite side on hit 2.
+func take_hit(hit: HitData) -> bool:
+	if hit.perilous or hit.grab:
+		_drop()
+		return true
+	_hit_count += 1
+	_hit_clock = 0.0
+	if _hit_count >= 3:
+		_drop()
+		return true
+	var side := _last_swing_side * -1.0
+	if _hit_count == 1 or is_zero_approx(side):
+		side = 1.0 if randf() < 0.5 else -1.0
+	_last_swing_side = side
+	_flinch_left = flinch_time
+	var tangent := _normal.cross(Vector3.UP).normalized()
+	player.play_hang_swing(tangent * side, swing_recoil_scale)
+	return false
 
 
 func _shimmy(want: Vector3, delta: float) -> void:

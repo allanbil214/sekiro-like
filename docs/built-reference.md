@@ -114,3 +114,6 @@ Climb links (12b-3): a `NavigationLink3D` with `navigation_layers = 8` (fourth c
 
 - **Ledge corner shimmy (Phase 2 item 13a, 2026-10-20):** at the end of the ledge, holding left or right turns a square corner, inside or outside (`LedgeSensor.find_corner()`, `LedgeHangState._try_corner()` and `_update_turn()`: a curved path and a facing slerp over `corner_turn_time` 0.35 s, input ignored meanwhile). Other ends still stop the shimmy.
 - **Thin ledges (item 13d, 2026-10-20):** a top with no standing room is hung from, never climbed (`Player.ledge_can_climb`; the grab hangs even without `interact`). The hands close up on a narrow pillar (`hang_min_width` 0.3, `hang_min_depth` 0.1, `Player.ledge_hand_spacing` for the arm IK); wide ledges keep 0.3 m. A ceiling over the top still refuses the grab (13b).
+
+- **Low-ceiling climb (item 13b, 2026-10-20):** a ledge top with room to crouch but not to stand is climbed with `LedgeClimbState.low_action` (`ledge_climb_low.tres`, longer placeholder duration) and ends in Crouch (`Player.ledge_climb_low`, `fits_crouching_at()`); no room even to crouch refuses the grab. The hang's `interact` climb does the same.
+- After a low climb `CrouchState` gives a 0.2 s landing grace (`CLIMB_LANDING_GRACE`): gravity pulls the body to the floor instead of Crouch handing it to Air, which would stand it up under the ceiling.

@@ -799,6 +799,13 @@ func play_choke_arms() -> void:
 		_reach_arms.hold_choke(crouch_height - _nose_drop if is_crouched else stand_height - _nose_drop)
 
 
+## Item 13c: the hit swing while hanging (the hit wobble along the ledge) and the arm jolt.
+func play_hang_swing(direction: Vector3, recoil_scale: float) -> void:
+	_reaction.start_recoil(direction, recoil_scale)
+	if _reach_arms != null:
+		_reach_arms.jolt()
+
+
 func play_climb_arms() -> void:
 	if _reach_arms != null:
 		_reach_arms.hold_up()
@@ -929,7 +936,10 @@ func _update_footsteps(delta: float) -> void:
 ## and a hanging player is knocked off the ledge. A full posture staggers (_on_posture_broken).
 func _on_damaged(hit: HitData, _amount: float) -> void:
 	_reaction.start_recoil(hit.direction, 1.0)
-	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
+	var hang := state_machine.current as LedgeHangState
+	# Hanging: no knockback (it would push the body off the wall); a hit that drops you adds it below.
+	if hang == null:
+		apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
 	notify_combat()
 	Hitstop.request(get_tree(), hit.hitstop)
 	var fx_kind := Fx.Kind.HURT
@@ -938,9 +948,8 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	elif hit.perilous:
 		fx_kind = Fx.Kind.PERILOUS_HIT
 	Fx.play(get_tree(), fx_kind, hit.point, hit.direction)
-	var hang := state_machine.current as LedgeHangState
-	if hang != null:
-		hang.knock_off()
+	if hang != null and hang.take_hit(hit):
+		apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
 	var hug := state_machine.current as WallHugState
 	if hug != null:
 		hug.knock_off()
