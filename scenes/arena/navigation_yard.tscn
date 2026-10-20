@@ -235,17 +235,29 @@ script = ExtResource("5_1fgra")
 region = NodePath("../NavRegion")
 metadata/_custom_type_script = "uid://dpsfk4220jp7g"
 
-[node name="NavigationLink3D" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=2049480495]
+[node name="NavigationLink3D" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=429397825]
 bidirectional = false
 navigation_layers = 2
 start_position = Vector3(-9.5, 3.5, -13.25)
 end_position = Vector3(-8, 0.5, -13.25)
 
-[node name="NavigationLink3D2" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1706576704]
+[node name="NavigationLink3D2" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1408355689]
 bidirectional = false
 navigation_layers = 2
 start_position = Vector3(-11.25, 3.5, -9.5)
 end_position = Vector3(-11.25, 0.5, -8)
+
+[node name="NavigationLink3D3" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=53046355]
+bidirectional = false
+navigation_layers = 2
+start_position = Vector3(-1.5, 3.5, -13.25)
+end_position = Vector3(0, 0.5, -13.25)
+
+[node name="NavigationLink3D4" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1434040276]
+bidirectional = false
+navigation_layers = 2
+start_position = Vector3(-5.5, 3.5, -11.75)
+end_position = Vector3(-7, 0.5, -11.75)
 
 [node name="JumpLinkNE" type="NavigationLink3D" parent="." unique_id=1740112062]
 navigation_layers = 4
