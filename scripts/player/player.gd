@@ -147,6 +147,10 @@ const HEADROOM_RADIUS: float = 0.38
 ## crouching).
 @export var wall_hug_noise: float = 0.5
 @export_range(0.0, 1.0, 0.05) var wall_hug_sight_multiplier: float = 0.5
+## Corners (item 14a): seconds the scripted turn around a square corner takes, and how far (m) past the
+## end of a wall the side face of an outside corner is looked for.
+@export var wall_hug_corner_time: float = 0.35
+@export var wall_hug_corner_reach: float = 0.5
 
 @export_group("Reverse blade (Phase 2 item 10)")
 ## While the blade is reversed (the `reverse_blade` toggle): the multipliers on the health damage and the
