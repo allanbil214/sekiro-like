@@ -337,6 +337,12 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var nav_link_pause: float = 0.3
 @export var nav_drop_step_speed: float = 2.0
 @export var nav_link_recovery: float = 0.4
+## Jump links (item 12b-2): the widest gap (m) it will jump (0 = this enemy type never jumps and ignores jump
+## links), the highest rise (m) of a jump, and the horizontal speed (m/s) of the arc (flight time = distance /
+## speed). Placeholders to tune by playing.
+@export var nav_jump_max_distance: float = 5.0
+@export var nav_jump_max_rise: float = 1.5
+@export var nav_jump_speed: float = 5.0
 
 @export_group("Provoked (taunt, Phase 2 item 11.5)")
 ## The player's taunt provokes an enemy that is in combat and within the taunt range: each taunt adds a stack

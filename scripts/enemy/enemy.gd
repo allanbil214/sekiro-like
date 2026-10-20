@@ -108,10 +108,11 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## Prints one line per second to the Output panel while it walks by navigation: the target, whether the map is
 ## ready, the path length and why it has no direction (for finding why an enemy does not move). Debug builds only.
 @export var debug_navigation_log: bool = false
-## Item 12b-1a: on (needs `use_navigation`): this enemy also takes drop links, the one-way `NavigationLink3D`
-## nodes whose `navigation_layers` is 2 (it walks to the edge, pauses, steps off and falls to the level below),
-## and it counts a target up to `nav_drop_max_height` below it as reachable. Off (the default): it ignores the
-## links, as before. The numbers are in the `ai` preset.
+## Items 12b-1a and 12b-2: on (needs `use_navigation`): this enemy also takes navigation links. Drop links are
+## one-way `NavigationLink3D` nodes on navigation layer 2 (it walks to the edge, pauses, steps off and falls to
+## the level below); jump links are nodes on layer 4 across a gap (it pauses at the edge and jumps; the preset's
+## `nav_jump_max_distance` 0 turns jumping off). It also counts a target up to `nav_drop_max_height` below it as
+## reachable. Off (the default): it ignores the links, as before. The numbers are in the `ai` preset.
 @export var use_nav_links: bool = false
 
 @export_group("Debug")
@@ -1313,6 +1314,11 @@ func _face(to_player: Vector3, delta: float, speed: float) -> void:
 		return
 	var yaw := atan2(-to_player.x, -to_player.z)
 	rotation.y = lerp_angle(rotation.y, yaw, 1.0 - exp(-speed * delta))
+
+
+## The gravity (m/s^2) this enemy falls with; a jump link's arc is computed from it.
+func gravity_strength() -> float:
+	return _gravity
 
 
 func _apply_gravity(delta: float) -> void:

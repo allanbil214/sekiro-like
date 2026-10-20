@@ -25,7 +25,9 @@ extends Node3D
 ## How far (m) outward from the mesh edge the landing is looked for. The mesh edge sits about one agent radius
 ## inside the real edge, so the default lands roughly 1 m past it.
 @export var landing_offset: float = 1.5
+@warning_ignore("unused_private_class_variable")
 @export_tool_button("Generate drop links", "NavigationLink3D") var _generate_button: Callable = generate
+@warning_ignore("unused_private_class_variable")
 @export_tool_button("Clear generated links", "Remove") var _clear_button: Callable = clear
 
 const LINK_LAYERS: int = 2 # the navigation layer an enemy with `use_nav_links` takes (EnemyNavigation.LINK_LAYER_BIT)
