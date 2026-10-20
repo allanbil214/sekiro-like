@@ -191,7 +191,7 @@ def main():
     out_dir = root / OUTPUT_DIR
     out_dir.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    zip_path = out_dir / f"claude_snapshot_{stamp}.zip"
+    zip_path = out_dir / f"claude_sekiro-like_snapshot_{stamp}.zip"
 
     info = build_info(root, included, binaries, args.only)
 

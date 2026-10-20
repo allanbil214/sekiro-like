@@ -20,7 +20,13 @@ extends RefCounted
 ## The kind of a link on the path is read from the layer of the link node that owns its path points. A jump is
 ## the same crossing with an arc: the pause at the edge, then a launch whose speed is computed so that the arc
 ## lands on the exit (flight time = distance / `nav_jump_speed`), no steering in the air, a landing and the
-## recovery. Climb links are a later item.
+## recovery.
+##
+## Item 12b-3, climb links: a `NavigationLink3D` on navigation layer value 8 (the fourth checkbox), usually
+## bidirectional, from the ground at the foot of a wall to the top of the platform. The agent gets layer 8 only
+## when the preset's `nav_climb_max_height` is above 0 (0 = this enemy type never climbs). A climb has two legs
+## so it never cuts through the wall's corner: straight up (or down) at the foot of the wall, then a horizontal
+## move at the top; the enemy moves along them at `nav_climb_speed` with gravity not acting, and then recovers.
 ##
 ## A missing agent node, an arena without a baked navmesh, or a path that cannot be found is reported once and
 ## answered with a zero direction (the enemy stands and its stuck timer gives up), never with a hidden
@@ -37,16 +43,22 @@ var _next_log_msec: int = 0
 var _last_path: PackedVector3Array = PackedVector3Array()
 var _index: int = 0
 
-enum Cross { NONE, PAUSE, STEP, AIR, RECOVER }
-enum Link { NONE, DROP, JUMP }
+enum Cross { NONE, PAUSE, STEP, AIR, CLIMB, RECOVER }
+enum Link { NONE, DROP, JUMP, CLIMB }
 const LINK_LAYER_BIT: int = 2 # NavigationLink3D.navigation_layers value (layer 2): drop links
 const JUMP_LAYER_BIT: int = 4 # value 4 (the third layer checkbox): jump links
+const CLIMB_LAYER_BIT: int = 8 # value 8 (the fourth layer checkbox): climb links
+const CLIMB_ARRIVE: float = 0.12 # m from a climb waypoint that counts as reached
+const CLIMB_MARGIN: float = 3.0 # s added to the expected climb time before it is given up
 const CROSS_STEP_TIMEOUT: float = 2.5 # s from the first step to leaving the floor
 const CROSS_TOTAL_TIMEOUT: float = 8.0 # s for the whole crossing
 const MISS_DEPTH: float = 3.5 # m below the exit that means a jump fell short
 const LINK_TYPE: int = 1 # NavigationPathQueryResult3D.PATH_SEGMENT_TYPE_LINK
 var _cross: Cross = Cross.NONE
 var _cross_kind: Link = Link.NONE
+var _climb_corner: Vector3 = Vector3.ZERO
+var _climb_leg: int = 0
+var _climb_time_left: float = 0.0
 var _link_kind: Link = Link.NONE # the kind of the link `_find_link()` found last
 var _cross_timer: float = 0.0
 var _cross_elapsed: float = 0.0
@@ -76,6 +88,8 @@ func setup() -> bool:
 		var bits: int = LINK_LAYER_BIT
 		if _ai.nav_jump_max_distance > 0.0:
 			bits |= JUMP_LAYER_BIT
+		if _ai.nav_climb_max_height > 0.0:
+			bits |= CLIMB_LAYER_BIT
 		_agent.navigation_layers = _agent.navigation_layers | bits
 	return true
 
@@ -127,7 +141,8 @@ func direction_to(point: Vector3) -> Vector3:
 
 ## The index of the entry point of the first link on the path (its exit is the next point), or -1, and sets
 ## `_link_kind`. Godot marks only the entry point of a link as a link point in the path types (the exit is typed
-## as the region after it); the layer of the link node that owns the point tells a jump (value 4) from a drop.
+## as the region after it); the layer of the link node that owns the point tells a jump (value 4) or a climb
+## (value 8) from a drop.
 ## A steep fall between two close points (steeper than any walkable slope) also counts as a drop, in case the
 ## types do not mark it.
 func _find_link(path: PackedVector3Array) -> int:
@@ -145,6 +160,9 @@ func _find_link(path: PackedVector3Array) -> int:
 			if link != null and (link.navigation_layers & JUMP_LAYER_BIT) != 0:
 				_link_kind = Link.JUMP
 				return i
+			if link != null and (link.navigation_layers & CLIMB_LAYER_BIT) != 0:
+				_link_kind = Link.CLIMB
+				return i
 		var drop: float = path[i].y - path[i + 1].y
 		if drop <= 0.5:
 			continue
@@ -160,13 +178,16 @@ func is_crossing() -> bool:
 	return _cross != Cross.NONE
 
 
-## Starts the crossing of a link: false (and one warning) when the fall is longer than `nav_drop_max_height`, or
-## a jump is wider than `nav_jump_max_distance` or rises more than `nav_jump_max_rise`.
+## Starts the crossing of a link: false (and one warning) when the fall is longer than `nav_drop_max_height`, a
+## jump is wider than `nav_jump_max_distance` or rises more than `nav_jump_max_rise`, or a climb is taller than
+## `nav_climb_max_height`.
 func _begin_crossing(entry: Vector3, exit: Vector3, kind: Link) -> bool:
 	var drop: float = entry.y - exit.y
 	var reason: String = ""
-	if drop > _ai.nav_drop_max_height:
+	if kind != Link.CLIMB and drop > _ai.nav_drop_max_height:
 		reason = "a drop of %.1f m, more than nav_drop_max_height" % drop
+	elif kind == Link.CLIMB and absf(drop) > _ai.nav_climb_max_height:
+		reason = "a climb of %.1f m, more than nav_climb_max_height" % absf(drop)
 	elif kind == Link.JUMP and _flat_distance(entry, exit) > _ai.nav_jump_max_distance:
 		reason = "a jump of %.1f m, more than nav_jump_max_distance" % _flat_distance(entry, exit)
 	elif kind == Link.JUMP and -drop > _ai.nav_jump_max_rise:
@@ -184,6 +205,13 @@ func _begin_crossing(entry: Vector3, exit: Vector3, kind: Link) -> bool:
 	_cross_entry_y = entry.y
 	_cross_exit = exit
 	_left_floor = false
+	if kind == Link.CLIMB:
+		# Vertical at the XZ of the lower end, up to the height of the upper end, then horizontal to the exit.
+		var lower: Vector3 = entry if exit.y > entry.y else exit
+		_climb_corner = Vector3(lower.x, maxf(entry.y, exit.y), lower.z)
+		_climb_leg = 0
+		_climb_time_left = (entry.distance_to(_climb_corner) + _climb_corner.distance_to(exit)) \
+				/ maxf(_ai.nav_climb_speed, 0.1) + CLIMB_MARGIN
 	return true
 
 
@@ -209,6 +237,8 @@ func tick_crossing(delta: float) -> void:
 				if _cross_kind == Link.JUMP:
 					_launch(flat)
 					_cross = Cross.AIR
+				elif _cross_kind == Link.CLIMB:
+					_cross = Cross.CLIMB
 				else:
 					_cross = Cross.STEP
 		Cross.STEP:
@@ -234,6 +264,23 @@ func tick_crossing(delta: float) -> void:
 				_cross_timer = _ai.nav_link_recovery
 			elif _cross_step_elapsed > CROSS_STEP_TIMEOUT:
 				_abort_crossing("the jump never left the floor")
+		Cross.CLIMB:
+			# Two legs, set by position: gravity does not act, the velocity is replaced every frame.
+			_climb_time_left -= delta
+			var target: Vector3 = _climb_corner if _climb_leg == 0 else _cross_exit
+			var to_target: Vector3 = target - pos
+			if to_target.length() <= CLIMB_ARRIVE:
+				if _climb_leg == 0:
+					_climb_leg = 1
+				else:
+					_cross = Cross.RECOVER
+					_cross_timer = _ai.nav_link_recovery
+					_enemy.velocity = Vector3.ZERO
+			else:
+				var speed: float = minf(_ai.nav_climb_speed, to_target.length() / maxf(delta, 0.001))
+				_enemy.velocity = to_target.normalized() * speed
+				if _climb_time_left <= 0.0:
+					_abort_crossing("the climb took too long")
 		Cross.RECOVER:
 			_steer_flat(Vector3.ZERO, delta)
 			_cross_timer -= delta

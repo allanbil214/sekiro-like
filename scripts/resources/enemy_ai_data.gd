@@ -343,6 +343,10 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var nav_jump_max_distance: float = 5.0
 @export var nav_jump_max_rise: float = 1.5
 @export var nav_jump_speed: float = 5.0
+## Climb links (item 12b-3): the tallest climb (m) it will take, up or down (0 = this enemy type never climbs and
+## ignores climb links), and the climbing speed (m/s). Placeholders to tune by playing.
+@export var nav_climb_max_height: float = 6.0
+@export var nav_climb_speed: float = 2.0
 
 @export_group("Provoked (taunt, Phase 2 item 11.5)")
 ## The player's taunt provokes an enemy that is in combat and within the taunt range: each taunt adds a stack

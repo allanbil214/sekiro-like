@@ -108,11 +108,13 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 ## Prints one line per second to the Output panel while it walks by navigation: the target, whether the map is
 ## ready, the path length and why it has no direction (for finding why an enemy does not move). Debug builds only.
 @export var debug_navigation_log: bool = false
-## Items 12b-1a and 12b-2: on (needs `use_navigation`): this enemy also takes navigation links. Drop links are
-## one-way `NavigationLink3D` nodes on navigation layer 2 (it walks to the edge, pauses, steps off and falls to
+## Items 12b-1a, 12b-2 and 12b-3: on (needs `use_navigation`): this enemy also takes navigation links. Drop links
+## are one-way `NavigationLink3D` nodes on navigation layer 2 (it walks to the edge, pauses, steps off and falls to
 ## the level below); jump links are nodes on layer 4 across a gap (it pauses at the edge and jumps; the preset's
-## `nav_jump_max_distance` 0 turns jumping off). It also counts a target up to `nav_drop_max_height` below it as
-## reachable. Off (the default): it ignores the links, as before. The numbers are in the `ai` preset.
+## `nav_jump_max_distance` 0 turns jumping off); climb links are nodes on layer 8 from the foot of a wall to the top
+## (it climbs up or down; `nav_climb_max_height` 0 turns climbing off). It also counts a target up to
+## `nav_drop_max_height` below it, and up to `nav_climb_max_height` above it, as reachable. Off (the default): it
+## ignores the links, as before. The numbers are in the `ai` preset.
 @export var use_nav_links: bool = false
 
 @export_group("Debug")
@@ -1266,13 +1268,16 @@ func _is_out_of_reach() -> bool:
 
 
 ## Item 12b-1a: whether a point `dy` m above (positive) or below (negative) this enemy is on a level it can deal
-## with: within `max_vertical_reach`, and for an enemy with drop links also anything that far below plus
-## `nav_drop_max_height`. `slack` widens the limit (the chase gives up a meter later). Without `use_nav_links`
-## this is the old `absf(dy) <= max_vertical_reach`.
+## with: within `max_vertical_reach`, and for an enemy with links also `nav_drop_max_height` further below and
+## `nav_climb_max_height` further above (0 = not at all). `slack` widens the limit (the chase gives up a meter
+## later). Without `use_nav_links` this is the old `absf(dy) <= max_vertical_reach`.
 func can_reach_height(dy: float, slack: float = 0.0) -> bool:
 	var limit: float = ai.max_vertical_reach + slack
-	if dy < 0.0 and use_nav_links and _navigation != null:
-		limit += ai.nav_drop_max_height
+	if use_nav_links and _navigation != null:
+		if dy < 0.0:
+			limit += ai.nav_drop_max_height
+		else:
+			limit += ai.nav_climb_max_height
 	return absf(dy) <= limit
 
 
