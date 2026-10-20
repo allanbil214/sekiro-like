@@ -8,7 +8,8 @@ Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **
 
 - **Goal:** make combat and movement feel weightier and more committed, with tools that let the user tune it by eye. Gameplay stays data-driven: `ActionData` and the action clock stay the truth, and real animation (Phase 6) only follows them.
 - **Reference:** the open-source ELDEN RING combat sandbox written in Rust on Bevy (the user uploaded `ELDEN-RING-Combat-Rewrite-main.zip` on 2026-10-20). It was read for structure and ideas only: how actions define their windows, hit-stop, locomotion rates, hit reaction tiers, sound events per frame.
-- **Rule (agreed):** nothing from FromSoftware goes into this project: no extracted data tables, animations, sounds or models, and no tools that convert them. The user may look at the game privately to see how it plays and tells Claude feel targets in words ("a roll lasts about this long", "the dodge cancels about here"); every number in the project is our own and tuned by playing. The user makes their own animation (`docs/animation-pipeline.md`).
+- **Rule (revised by the user 2026-10-20, replaces the first version):** until real animation arrives in Phase 6, the project may use **Elden Ring material as temporary placeholders**: the numbers (timings, windows, speeds, cancel and turn times; see `docs/phase-3-feel-reference.md`) and the animations of the ported Bevy sandbox, which animate the capsule and stick character. The user's own animations (done in Blender so far: dodge, walk, run, idle, sheathed and drawn, all directions; jump in progress) are **not used in the game until Phase 6**. Not covered by this revision: sounds, models and any other game data; ask before using them. Nothing is ever shipped to the public with a placeholder in it (next bullet). The first version of the rule (nothing extracted, feel targets in words only) is replaced.
+- **Replacement gate (agreed 2026-10-20):** every Elden Ring placeholder is replaced by the user's own handcrafted work (a) when real animation is integrated in Phase 6, and (b) in any case **before the project goes public**: a Kickstarter, early access, a public demo, or anything else meant to attract public interest. Claude reminds the user of this at the start of every Phase 3 full check and when a Phase 3 milestone is finished, and keeps the checklist "Placeholders to replace" in `docs/handoff.md` up to date. Nothing placeholder ships past that point.
 - **Why before game flow:** the work adds fields to `ActionData` and changes the action states. Doing that before more actions, enemies and quests are authored avoids redoing them.
 - **Phase numbers shifted on 2026-10-20 (agreed):** this phase was inserted, the old Phases 3, 4 and 5 are now 4, 5 and 6, and Phase 2 stays as it was (its open backlog stays in handoff section 13, including the corner shimmy and the other ledge enhancements).
 
@@ -17,6 +18,8 @@ Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **
 ### 3a. Tools
 - **Feel overlay (agreed):** a debug-only readout of the current action and its time, with a timeline of which windows are open (locked, cancel, buffer, active hit, i-frames), and an i-frame tint on the character. It makes 3b and 3c tunable by eye.
 - **`ActionData` validator (agreed):** editor warnings for broken timing, such as a cancel before the lock ends, a window past the duration, or an attack without an active hit window.
+
+- **Placeholder animation import, 3a-3 (agreed as an item 2026-10-20, not yet checked):** a tool that converts the baked animations of the Bevy sandbox (`player_anims.bin`, joint positions at 30 fps, 38 joints, 1479 clips, plus the orientation axes of the head and the two weapon points) into data Godot can play, and a player that animates the capsule and stick character with them, driven by the action clock. A stand-in until Phase 6; gameplay still follows `ActionData`. Its own full check settles the format, how the stick figure is drawn (the 3d mannequin steps share this), and which clip backs which action.
 
 ### 3b. Action data
 New `ActionData` fields default to today's behavior, so nothing changes until an action is tuned.
@@ -48,13 +51,14 @@ New `ActionData` fields default to today's behavior, so nothing changes until an
 
 ## 4. Files likely touched (confirm at each milestone's full check)
 
-`scripts/resources/action_data.gd` and the `.tres` files of the actions; the action states in `scripts/player/states/` and the enemy attack code; `scripts/player/player.gd` and `locomotion_state.gd`; `scripts/combat/hitstop.gd`, `combatant.gd` and `hitbox.gd`; `scripts/player/lock_on.gd`; `scripts/core/sfx.gd`; `scenes/player/player.tscn` and `scenes/enemy/enemy.tscn` for the mannequin; new scripts for the overlay, the validator and the mannequin.
+`scripts/resources/action_data.gd` and the `.tres` files of the actions; the action states in `scripts/player/states/` and the enemy attack code; `scripts/player/player.gd` and `locomotion_state.gd`; `scripts/combat/hitstop.gd`, `combatant.gd` and `hitbox.gd`; `scripts/player/lock_on.gd`; `scripts/core/sfx.gd`; `scenes/player/player.tscn` and `scenes/enemy/enemy.tscn` for the mannequin; new scripts for the overlay, the validator, the mannequin and the placeholder animation import (3a-3).
 
 ## 5. Open points (ask once at the full check of the milestone they belong to)
 
 - 3b: how the new per-input cancel fields relate to `cancel_window` and `buffer_window`, and whether old `.tres` files are migrated or keep working unchanged.
 - 3c: what, if anything, stays on the global slowdown (a deathblow, for example); the thresholds for walking, and the landing heights.
 - 3d: the mannequin's proportions and colors, whether enemies share one figure, and the sound event data format.
+- 3a-3: the converted format (a Godot `Animation` with position tracks per joint, or a compact resource sampled by the mannequin script), where the converter lives, how the stick figure is drawn, and which clip backs which action.
 - Whether the sparring dummy returns for testing the hit tiers.
 
 ## 6. Relation to later phases

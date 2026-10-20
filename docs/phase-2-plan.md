@@ -33,7 +33,8 @@
 | 11.6 | Folder reorganization (addendum, section 3, item 11.6) | refactor | [x] done and tested 2026-10-19 |
 | 12a | Navigation: a navmesh for enemies (section 3, item 12a) | feature | [x] done and tested 2026-10-19 |
 | 12b | Navigation links: enemies jump, drop or climb between levels (section 3, item 12b) | feature | [x] done and tested 2026-10-20 (split 2026-10-19): 12b-1a drop links [x] done and tested 2026-10-19; 12b-1b drop-link generator tool [x] done and tested 2026-10-19; 12b-2 jump [x] done and tested 2026-10-19; 12b-3 climb [x] done and tested 2026-10-20 |
-| 13 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 13 | Ledge enhancements: 13a corner shimmy, 13b the low-ceiling climb, 13c hang hit reactions (section 3, item 13) | feature | [ ] planned 2026-10-20 (13a, 13b, 13c not started) |
+| 14 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
 
@@ -117,9 +118,17 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Open (the user's design choice):** if enemies can follow onto roofs, the roofs stop being a guaranteed escape (`docs/phase-4-6-notes.md`, section 5). Decide at the 12b full check which enemies get links.
 - **Needed by:** the Phase 4 hub (rooftop guards, hunters that follow, the roof escape).
 
-## 4. Backlog carried over (13 and later)
+### 13. Ledge enhancements (agreed 2026-10-20; split into 13a, 13b, 13c, built and tested one at a time)
 
-Items 8 to 12 above were picked on 2026-10-16 (the interact system and four ideas from the same talk). The other open entries stay in section 13 of `docs/handoff.md`, which remains the single list: ledge enhancements, heal and death extras, lock-on extras, the sweep duck, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
+- **Dropped by the user (already works):** a hang drop to a lower ledge (drop, then hold `interact` or `jump` near the lower ledge: `find_ledge()` grabs it) and a ledge-to-ledge jump (jump, then hold `interact`). Neither needs new code.
+- **13a. Corner shimmy:** while hanging, left or right at the end of the ledge turns around a **square corner**: inside (concave, the ledge turns toward you) and outside (convex, the ledge wraps away). 90 degrees only; any other angle keeps today's behavior (the shimmy stops). Default: a scripted blend of position and facing of about 0.35 s (`corner_turn_time`), the ledge height stays continuous, and the shimmy stops if the body would not fit after the turn. `LedgeSensor` gets the corner probe, `LedgeHangState` the turn. A corner station (an L-shaped and a box-shaped ledge) is added to `movement_yard` (editor steps, the scene is not shipped).
+- **13b. Low-ceiling climb (no separate fast climb):** the normal climb stays the default and `ledge_climb.tres` is not touched. When the top has room to crouch but not to stand, the climb is the **low variant** and ends in Crouch (`data/actions/player/ledge_climb_low.tres`, a copy of the normal climb with a longer placeholder duration, tuned by the user). If even the crouch capsule does not fit, the grab is refused as today. `LedgeSensor` gets a "fits crouching" check; `LedgeClimbState` picks the variant when it starts.
+- **13c. Hang hit reactions:** a hit while hanging no longer drops you at once. **Hit 1:** a flinch, the character swings to one side (random left or right) and keeps hanging. **Hit 2:** a flinch to the opposite side (so the order can be left then right, or right then left). **Hit 3:** knocked off, as `knock_off()` does today. Placeholder: the swing is the existing hit wobble plus an arm jolt. Open points to settle at the 13c full check: when the hit count resets (proposed: after 3 s without a hit, or on a new grab), and whether perilous or knockback hits still drop at once (proposed: yes).
+- **Not included:** wall hug corner moves (a separate backlog entry), enemy ledges, real animations, ledge sounds, corners at other angles.
+
+## 4. Backlog carried over (14 and later)
+
+Items 8 to 12 above were picked on 2026-10-16 (the interact system and four ideas from the same talk). The other open entries stay in section 13 of `docs/handoff.md`, which remains the single list: (the ledge enhancements became item 13), heal and death extras, lock-on extras, the sweep duck, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 
 ## 5. Not in this phase
 

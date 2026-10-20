@@ -111,6 +111,10 @@ const HEADROOM_RADIUS: float = 0.38
 ## Seconds to snap into the hanging spot after a grab.
 @export var hang_snap_time: float = 0.1
 @export var shimmy_speed: float = 1.5
+## Turning a square corner while hanging: how long the turn takes (s), and how far (m) past the
+## hang spot the probes look for the next wall.
+@export var corner_turn_time: float = 0.35
+@export var corner_reach: float = 0.5
 ## After a drop or leap, no ledge grab for this long (s).
 @export var ledge_regrab_cooldown: float = 0.3
 

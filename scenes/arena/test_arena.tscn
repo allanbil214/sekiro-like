@@ -76,7 +76,7 @@ size = Vector3(8, 6.057243, 0.5)
 material = SubResource("StandardMaterial3D_lh4ft")
 
 [node name="Wall2" type="CSGBox3D" parent="." unique_id=1908162604]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 10.2152195, 3.335864, 5.850957)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 10.2152195, 3.335864, 6.297051)
 use_collision = true
 size = Vector3(8, 6.057243, 0.5)
 material = SubResource("StandardMaterial3D_lh4ft")
@@ -170,7 +170,7 @@ size = Vector3(8, 4, 0.5)
 material = SubResource("StandardMaterial3D_lh4ft")
 
 [node name="HugWallB" type="CSGBox3D" parent="." unique_id=1084501757]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.076355, 2.2500002, -21.863617)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.076355, 2.2500002, -21.746239)
 use_collision = true
 size = Vector3(0.5, 4, 5)
 material = SubResource("StandardMaterial3D_lh4ft")

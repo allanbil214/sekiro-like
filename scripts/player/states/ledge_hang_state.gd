@@ -2,8 +2,9 @@ class_name LedgeHangState
 extends State
 ## Hanging from a ledge (entered from a grab with interact held). Stays here until the
 ## player acts: a fresh interact press = climb up, crouch = drop, jump = leap away,
-## left/right = shimmy along the one straight ledge line (stops where the ledge ends or
-## at corners). Holding toward the wall does nothing.
+## left/right = shimmy along the ledge. At the end of the ledge, a square corner (inside or
+## outside, 90 degrees) is turned with a short scripted blend; any other end stops the shimmy.
+## Holding toward the wall does nothing.
 
 ## Below this much sideways input the player does not shimmy.
 const SHIMMY_DEADZONE: float = 0.2
@@ -12,11 +13,21 @@ var _normal: Vector3 = Vector3.ZERO
 var _start: Vector3 = Vector3.ZERO
 var _snap_time: float = 0.0
 
+# The corner turn (a curved path from the old hang spot to the one on the new wall).
+var _turning: bool = false
+var _turn_time: float = 0.0
+var _turn_from: Vector3 = Vector3.ZERO
+var _turn_control: Vector3 = Vector3.ZERO
+var _turn_to: Vector3 = Vector3.ZERO
+var _turn_normal: Vector3 = Vector3.ZERO
+var _turn_top_y: float = 0.0
+
 
 func enter(_previous: StringName) -> void:
 	_normal = player.ledge_wall_normal
 	_start = player.global_position
 	_snap_time = 0.0
+	_turning = false
 	player.velocity = Vector3.ZERO
 	player.coyote_timer = 0.0
 	player.input_buffer.clear(Actions.JUMP)
@@ -37,6 +48,9 @@ func physics_update(delta: float) -> void:
 		_snap_time += delta
 		var u := smoothstep(0.0, 1.0, clampf(_snap_time / maxf(player.hang_snap_time, 0.001), 0.0, 1.0))
 		player.global_position = _start.lerp(player.ledge_hang_pos, u)
+		return
+	if _turning:
+		_update_turn(delta)
 		return
 	if Input.is_action_just_pressed(Actions.CROUCH):
 		_drop()
@@ -70,9 +84,44 @@ func _shimmy(want: Vector3, delta: float) -> void:
 	var candidate := player.global_position + tangent * lateral * player.shimmy_speed * delta
 	var probe := player.ledge_sensor.probe_hang_ledge(candidate, _normal)
 	if probe.is_empty() or not player.ledge_sensor.can_hang_at(candidate):
+		_try_corner(tangent * signf(lateral))
 		return
 	player.global_position = candidate
 	player.ledge_top_y = probe["top_y"]
+
+
+## At the end of the ledge: starts the corner turn if there is a square corner in that direction.
+func _try_corner(dir: Vector3) -> void:
+	var corner := player.ledge_sensor.find_corner(player.global_position, _normal, dir)
+	if corner.is_empty():
+		return
+	_turning = true
+	_turn_time = 0.0
+	_turn_from = player.global_position
+	_turn_control = corner["control"]
+	_turn_to = corner["position"]
+	_turn_normal = corner["normal"]
+	_turn_top_y = corner["top_y"]
+
+
+## Moves along the curve and turns the body; the input is ignored until the turn is done.
+func _update_turn(delta: float) -> void:
+	_turn_time += delta
+	var t := clampf(_turn_time / maxf(player.corner_turn_time, 0.001), 0.0, 1.0)
+	var u := smoothstep(0.0, 1.0, t)
+	var a := _turn_from.lerp(_turn_control, u)
+	var b := _turn_control.lerp(_turn_to, u)
+	player.global_position = a.lerp(b, u)
+	player.snap_facing((-_normal).slerp(-_turn_normal, u))
+	if t < 1.0:
+		return
+	_turning = false
+	_normal = _turn_normal
+	player.global_position = _turn_to
+	player.ledge_wall_normal = _normal
+	player.ledge_top_y = _turn_top_y
+	player.ledge_hang_pos = _turn_to
+	player.snap_facing(-_normal)
 
 
 func _drop() -> void:

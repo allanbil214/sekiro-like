@@ -191,6 +191,95 @@ func probe_hang_ledge(pos: Vector3, normal: Vector3) -> Dictionary:
 	}
 
 
+## While hanging at the end of the ledge, looks for a square (90 degree) corner in the shimmy
+## direction `dir` (unit, along the wall): an inside corner (a wall ahead, the ledge turns toward
+## you) or an outside corner (the wall ends and its side face continues the ledge). Returns
+## {"position", "control", "normal", "top_y", "outside"} for the hang spot on the new wall, or {}.
+## "control" is the middle point of the curved path the turn follows.
+func find_corner(pos: Vector3, normal: Vector3, dir: Vector3) -> Dictionary:
+	var inside := _find_inside_corner(pos, normal, dir)
+	if not inside.is_empty():
+		return inside
+	return _find_outside_corner(pos, normal, dir)
+
+
+func _find_inside_corner(pos: Vector3, normal: Vector3, dir: Vector3) -> Dictionary:
+	var face_distance := player.get_body_radius() + player.hang_gap
+	var origin := Vector3(pos.x, player.ledge_top_y - 0.4, pos.z)
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * (face_distance + player.corner_reach),
+			_world_mask(), [player.get_rid()])
+	var hit := player.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return {}
+	var hit_normal: Vector3 = hit["normal"]
+	if absf(hit_normal.y) > 0.3:
+		return {}
+	var flat := Vector3(hit_normal.x, 0.0, hit_normal.z).normalized()
+	if flat.dot(-dir) < 0.9:
+		return {}
+	var hit_pos: Vector3 = hit["position"]
+	var along := (hit_pos - pos).dot(dir)
+	var base := pos + dir * (along - face_distance)
+	# Slide away from the first wall until both hands are on the new ledge.
+	for i in 9:
+		var candidate := base + normal * 0.05 * float(i)
+		var probe := _probe_corner_spot(candidate, -dir)
+		if not probe.is_empty():
+			return {
+				"position": candidate,
+				"control": (pos + candidate) * 0.5,
+				"normal": -dir,
+				"top_y": probe["top_y"],
+				"outside": false,
+			}
+	return {}
+
+
+func _find_outside_corner(pos: Vector3, normal: Vector3, dir: Vector3) -> Dictionary:
+	var face_distance := player.get_body_radius() + player.hang_gap
+	# A ray back toward the hang spot from beyond the corner, just inside the first wall face,
+	# finds the side face of the block (its normal must point along dir).
+	var start_along := player.hang_hand_spacing + player.corner_reach
+	var origin := Vector3(pos.x, player.ledge_top_y - 0.4, pos.z) + dir * start_along - normal * (face_distance + 0.1)
+	var query := PhysicsRayQueryParameters3D.create(origin, origin - dir * (start_along + 0.2),
+			_world_mask(), [player.get_rid()])
+	var hit := player.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return {}
+	var hit_normal: Vector3 = hit["normal"]
+	if absf(hit_normal.y) > 0.3:
+		return {}
+	var flat := Vector3(hit_normal.x, 0.0, hit_normal.z).normalized()
+	if flat.dot(dir) < 0.9:
+		return {}
+	var hit_pos: Vector3 = hit["position"]
+	var along := (hit_pos - pos).dot(dir)
+	var out_point := pos + dir * (along + face_distance)
+	var control := pos + dir * (along + face_distance * 1.3) + normal * (face_distance * 0.3)
+	# Step onto the new face far enough that both hands are on the ledge.
+	for i in 7:
+		var candidate := out_point - normal * (face_distance + player.hang_hand_spacing + 0.05 * float(i))
+		var probe := _probe_corner_spot(candidate, dir)
+		if not probe.is_empty():
+			return {
+				"position": candidate,
+				"control": control,
+				"normal": dir,
+				"top_y": probe["top_y"],
+				"outside": true,
+			}
+	return {}
+
+
+## A hang spot after a corner turn is good if both hands are on the new ledge and the body fits
+## (the same test the shimmy uses). Returns the probe result or {}.
+func _probe_corner_spot(candidate: Vector3, new_normal: Vector3) -> Dictionary:
+	var probe := probe_hang_ledge(candidate, new_normal)
+	if probe.is_empty() or not can_hang_at(candidate):
+		return {}
+	return probe
+
+
 ## True if the body fits with its feet at the given point (used while shimmying).
 func can_hang_at(feet: Vector3) -> bool:
 	return player.fits_standing_at(feet + Vector3.UP * 0.02)
