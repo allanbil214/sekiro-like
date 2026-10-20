@@ -9,7 +9,8 @@
 > | `docs/handoff.md` (this file) | always |
 > | `docs/work-agreements.md` | always |
 > | `docs/phase-2-plan.md` | when working on Phase 2 (the agreed decisions; the finished items 1 to 7 are archived in `docs/archive/phase-2-done-items.md`) |
-> | `docs/phase-3-4-notes.md` | for Phase 2 items 8 to 12 (the sections that touch the item) and in full for Phase 3 or later (discussion notes of 2026-10-16, not agreed decisions) |
+> | `docs/phase-3-plan.md` | when working on Phase 3, feel and weight (planned 2026-10-20; milestones 3a to 3d) |
+> | `docs/phase-4-6-notes.md` | for Phase 2 items 8 to 12 (the sections that touch the item) and in full for Phase 4 or later (discussion notes of 2026-10-16, not agreed decisions) |
 > | `docs/design-later-steps.md` | only the section a task touches (hitboxes, guard, posture, enemy, lock-on, heal, the cleanup refactor) |
 > | `docs/step3-combat-spec.md` | only when a task changes attacks or sheathing |
 > | `docs/animation-pipeline.md` | for animation, Blender, rig or timeline-tool work (read it in full) |
@@ -200,7 +201,10 @@ Everything in steps 1 to 13 is **done and tested**; the original list with all i
 | 12 | Cleanup refactor (A to D) | `docs/design-later-steps.md`, 3.13 |
 | 13 | Phase 1.5 hardening (11 items) | `docs/phase-1-5-plan.md` |
 | 14 | **Phase 2, new features** (items 1 to 11, 11.6, 12a, 12b-1a, 12b-1b, 12b-2 and 12b-3 done) | `docs/phase-2-plan.md` |
-| later | Phase 3 (game flow, a small slice), Phase 4 (content and systems), Phase 5 (art) | `docs/phase-3-4-notes.md` (discussion notes, not agreed decisions) |
+| 15 | **Phase 3, feel and weight** (planned 2026-10-20, not started; milestones 3a to 3d) | `docs/phase-3-plan.md` |
+| later | Phase 4 (game flow, a small slice), Phase 5 (content and systems), Phase 6 (art) | `docs/phase-4-6-notes.md` (discussion notes, not agreed decisions) |
+
+> Phase numbers shifted on 2026-10-20 (a new Phase 3 was inserted): the old 3, 4, 5 are now 4, 5, 6. Texts in `docs/archive/` still use the old numbers.
 
 ---
 
@@ -247,7 +251,13 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
   - [x] 12a. Navigation: navmesh, `use_navigation` (flat levels; `EnemyNavigation`, `NavigationAgent` on the enemy, baked `NavRegion`, the `navigation_yard` arena; done and tested 2026-10-19)
   - [x] 12b. Navigation links (all done and tested 2026-10-20): enemies drop, jump and climb between levels. Split 2026-10-19: [x] 12b-1a drop links (done and tested 2026-10-19: `use_nav_links`, one-way `NavigationLink3D` on layer 2, the crossing in `EnemyNavigation`, `GuardRoof` in `navigation_yard`); [x] 12b-1b the drop-link generator, an editor tool (done and tested 2026-10-19: `scripts/tools/drop_link_generator.gd`, the `DropLinkGenerator` node in `navigation_yard`); [x] 12b-2 jump links (done and tested 2026-10-19: layer-4 `NavigationLink3D`, a computed arc in `EnemyNavigation`, `GuardJump` between `RoofPlatform` and `RoofPlatform2` in `navigation_yard`); [x] 12b-3 climb links (done and tested 2026-10-20: layer-8 `NavigationLink3D`, a two-leg climb in `EnemyNavigation`, `GuardClimb` in `navigation_yard`)
 
-**Current state (2026-10-20):** Steps 1 to 13 are done and tested. Phase 2 items 1 to 11, the 11.5 taunt addendum, the 11.6 folder reorganization, 12a and 12b (12b-1a, 12b-1b, 12b-2 and 12b-3) are done and tested (item 7, enemy awareness and the stealth deathblow, ended with 7e and the bars-in-combat addendum; item 8 is the interact system; item 9 is the wall hug; item 10 is non-lethal combat; item 11 is the item system: 11a the tap throw, 11b hold to aim, 11c sticky aim and click to throw, 11d guards check the spot). The project now uses the new folder layout (see "Folder layout" in the map below). Item 12 is split: 12a (navmesh, walking on flat levels) is done and tested; 12b is split: 12b-1a (drop links, enemies fall from a roof to the ground) is done and tested; 12b-1b (the editor button that generates drop links) is done and tested; 12b-2 (jump links across a gap) and 12b-3 (climb, going up from the ground to a platform) are done and tested, so item 12 is complete; the next item is another backlog entry (the user picks). Phases 3 to 5 exist only as discussion notes in `docs/phase-3-4-notes.md`. Every arena and enemy preset behaves exactly as before unless a per-instance switch (`use_awareness`, later `use_navigation`) is on.
+**Phase 3, feel and weight (planned 2026-10-20; plan and decisions: `docs/phase-3-plan.md`; nothing built yet):**
+  - [ ] 3a. Tools: the feel overlay (action timeline, i-frame tint) and the `ActionData` validator
+  - [ ] 3b. Action data: turn control inside actions, per-input cancel times, motion curves, multi-hit attacks
+  - [ ] 3c. Locomotion and reactions: per-fighter hitstop, locomotion tuning, landing and hit reaction tiers, lock-on range hysteresis, the small details (light-tilt walk, four-direction jumps and landings when locked on, fall start off a ledge, upper-body layers)
+  - [ ] 3d. Look and sound: the mannequin (in steps), foot placement, frame-driven sound
+
+**Current state (2026-10-20):** Steps 1 to 13 are done and tested. Phase 2 items 1 to 11, the 11.5 taunt addendum, the 11.6 folder reorganization, 12a and 12b (12b-1a, 12b-1b, 12b-2 and 12b-3) are done and tested (item 7, enemy awareness and the stealth deathblow, ended with 7e and the bars-in-combat addendum; item 8 is the interact system; item 9 is the wall hug; item 10 is non-lethal combat; item 11 is the item system: 11a the tap throw, 11b hold to aim, 11c sticky aim and click to throw, 11d guards check the spot). The project now uses the new folder layout (see "Folder layout" in the map below). Item 12 is split: 12a (navmesh, walking on flat levels) is done and tested; 12b is split: 12b-1a (drop links, enemies fall from a roof to the ground) is done and tested; 12b-1b (the editor button that generates drop links) is done and tested; 12b-2 (jump links across a gap) and 12b-3 (climb, going up from the ground to a platform) are done and tested, so item 12 is complete; the next work is Phase 3 (feel and weight), starting with 3a, or another Phase 2 backlog entry (the user picks). Phase 3 (feel and weight) is planned in `docs/phase-3-plan.md` and not started. Phases 4 to 6 exist only as discussion notes in `docs/phase-4-6-notes.md`. Every arena and enemy preset behaves exactly as before unless a per-instance switch (`use_awareness`, later `use_navigation`) is on.
 
 ### Where things live (a map; behavior details: `docs/built-reference.md`, each script's header comment, the build log)
 
@@ -266,7 +276,7 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - **Menus and screens (scenes under `scenes/ui/`, scripts under `scripts/ui/menus/`):** `main_menu`, `pause_menu`, `options_menu` (with `settings.gd` and `controls_bindings.gd`), `arena_chooser` (with `arena_library.gd`), `loading_screen` (with `scene_loader.gd` and `loading_tips.gd`), `death_screen`, `victory_screen`. `settings.gd`, `scene_loader.gd`, `ui_text_scaler.gd` stay in `scripts/ui/`.
 - **Arenas (`scenes/arena/`):** `test_arena`, `fighting_arena` and its eight variants (`fighting_dummy`, `_soldier`, `_duelist`, `_aura`, `_repulser`, `_monk`, `_grappler`, `_squad`) plus `fighting_duo`, `movement_yard`, `movement_gauntlet`, `stealth_compound`.
 - **Folder layout (since 11.6, 2026-10-19):** `scenes/` (scenes, as before), `scripts/` by job (`core`, `combat`, `player`, `enemy`, `items`, `interact`, `audio`, `resources`, `ui/hud`, `ui/menus`), `data/` (every `.tres` and the csv), `assets/` (audio, shaders). The old-to-new table is at the end of `docs/built-reference.md`.
-- **Docs:** `docs/CLAUDE.md` (the start order), `work-agreements.md`, `phase-2-plan.md`, `phase-3-4-notes.md`, `design-later-steps.md`, `step3-combat-spec.md`, `animation-pipeline.md`, `built-reference.md`, `archive/`.
+- **Docs:** `docs/CLAUDE.md` (the start order), `work-agreements.md`, `phase-2-plan.md`, `phase-4-6-notes.md`, `design-later-steps.md`, `step3-combat-spec.md`, `animation-pipeline.md`, `built-reference.md`, `archive/`.
 
 ---
 
@@ -356,21 +366,22 @@ The unresolved ones (O1, O2, O5, all about later steps; O3 was settled in Step 5
 - [x] Death from above (a drop on an unaware or suspicious enemy from a height, with the helm splitter dive) **(built as Phase 2 item 7c, done and tested by the user 2026-10-15)**
 - [x] Corpse discovery (guards finding bodies) **(built as Phase 2 item 7d, done and tested by the user 2026-10-15)**
 - [x] Carrying bodies (the finder checks the body in an arc, roams, then carries it to a wall) **(built as Phase 2 item 7e, done and tested by the user 2026-10-15; hiding bodies from the player stays out)**
-- [ ] Enemy variety (jumpers/chasers, ranged rock throwers) as data flags in `EnemyAIData` (archers, revolvers and rifles are planned for Phase 4, on the projectile system of Phase 2 item 11; see `docs/phase-3-4-notes.md`)
+- [ ] Enemy variety (jumpers/chasers, ranged rock throwers) as data flags in `EnemyAIData` (archers, revolvers and rifles are planned for Phase 5, on the projectile system of Phase 2 item 11; see `docs/phase-4-6-notes.md`)
 - [x] Generic interact system (doors, chests, NPCs; nearest-in-front priority, on-screen prompt) **(built as Phase 2 item 8, done and tested by the user 2026-10-16)**
 - [x] Wall hug (`interact` facing a wall: sidle along it, peek around corners, stealth bonus) **(built as Phase 2 item 9, done and tested by the user 2026-10-16)**
 - [ ] Wall hug extras (not built): the grab-and-pull stealth kill with real animations (the 0.15 s glide is a placeholder), an ambush attack from the hug, a lean pose, hugging in the air, vaulting and corner-to-corner moves
 - [x] Non-lethal combat (reverse blade, half health damage, knockout deathblow, choke as the stealth kill, unconscious bodies) **(built as Phase 2 item 10, done and tested by the user 2026-10-16)**
-- [ ] Non-lethal extras (not built): a boss cutscene when a boss is knocked out, counting kills and knockouts for the reputation system (Phase 3, the `knocked_out` signal exists), carrying unconscious bodies, a real choke animation
+- [ ] Non-lethal extras (not built): a boss cutscene when a boss is knocked out, counting kills and knockouts for the reputation system (Phase 4, the `knocked_out` signal exists), carrying unconscious bodies, a real choke animation
 - [x] Item system and throwables: **11a and 11b built (done and tested by the user 2026-10-19)** (11b: hold `use_item` to aim with a crosshair and an arc preview, the camera at head height, slow walk, the lock-on suspended)
 - [ ] Item extras (not built; later, on the item system): Tenchu-style items (onigiri, rice to mark a spot, and others), item categories on separate buttons, pickups and saving, moving the gourd to a bottom-right quick slot, button prompts on the item HUD
-- [ ] Taunt extras (not built): a real taunt animation and a sword flourish, taunt wavs for the two slots, NPC and crowd reactions (Phase 3), an optional reward for the player (provoked enemies guard less, off on purpose)
+- [ ] Taunt extras (not built): a real taunt animation and a sword flourish, taunt wavs for the two slots, NPC and crowd reactions (Phase 4), an optional reward for the player (provoked enemies guard less, off on purpose)
 - [x] Navigation (a navmesh and `NavigationAgent3D`, a per-enemy `use_navigation` flag off by default) **(built as Phase 2 item 12a, done and tested by the user 2026-10-19)**
 - [x] Navigation links, drop: enemies drop from a roof to the ground **(built as Phase 2 item 12b-1a, done and tested by the user 2026-10-19)**
 - [x] Navigation links, the drop-link generator: an editor tool that makes drop links along roof edges **(built as Phase 2 item 12b-1b, done and tested by the user 2026-10-19)**
 - [x] Navigation links, jump: enemies jump a gap between two surfaces **(built as Phase 2 item 12b-2, done and tested by the user 2026-10-19)**
 - [x] Navigation links, climb: enemies climb from the ground up to a platform and back down **(built as Phase 2 item 12b-3, done and tested by the user 2026-10-20)**
-- [ ] Game flow, the hub, quests, reputation, streaming, ranged enemies, art: **Phases 3 to 5, see `docs/phase-3-4-notes.md`** (discussion notes, not agreed build decisions)
+- [ ] Feel and weight: **Phase 3, see `docs/phase-3-plan.md`** (planned 2026-10-20)
+- [ ] Game flow, the hub, quests, reputation, streaming, ranged enemies, art: **Phases 4 to 6, see `docs/phase-4-6-notes.md`** (discussion notes, not agreed build decisions)
 - [ ] Sound extras (not built): wire `charge_loop` and `aura_loop` (needs a start and a stop call) and find wavs for `guard_raise`, `land_soft`, `heal_drink`; footsteps per surface (the grass, soil, and stone wavs exist); swingH/L and the slow sheathe for variety; the deathblow_opening sounds once the real animation exists (`deathblow_open_enabled`); enemy voice lines; music and ambience; per-slot tuning of the mix A different landing sound per throwable (a metal clink for the shuriken and kunai, a crack for the rock and ceramic; the landing uses the placeholder `LAND_HARD` and the throw `SWING_ALT`).
 
 - [ ] **Cleanup refactor: moved into Phase 1 as Step 12 (section 8 and 10; design in 3.13 of `docs/design-later-steps.md`).** The original note: move wall and ledge sensing out of `player.gd`, replace hard-coded state name strings with constants, give the states a shared base (not typed to `Player`) so the enemy can reuse `ActionState` and the `Combatant` rules

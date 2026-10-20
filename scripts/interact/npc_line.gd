@@ -1,7 +1,7 @@
 class_name NpcLine
 extends Interactable
 ## The placeholder NPC (Phase 2 item 8): each press shows the next line of `lines` as a short text near the
-## bottom of the screen (no freeze and no dialogue box, those are Phase 3). A crowd NPC later picks its line
+## bottom of the screen (no freeze and no dialogue box, those are Phase 4). A crowd NPC later picks its line
 ## by reputation; for now the lines are a plain list.
 
 @export var lines: Array[String] = ["Hello there.", "Mind the guards on the upper floor."]

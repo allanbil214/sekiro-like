@@ -1,7 +1,7 @@
 class_name Chest
 extends Interactable
 ## A chest (Phase 2 item 8). Opens once: the `Lid` (a Node3D at the hinge) tips back and a line says it is
-## empty (the contents come with the item system in Phase 3). Opening makes a small noise.
+## empty (the contents come with the item system in Phase 4). Opening makes a small noise.
 
 @export var open_angle_degrees: float = -100.0
 @export var open_time: float = 0.4

@@ -50,12 +50,12 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **7. Enemy awareness and the stealth deathblow (2026-10-15, addendum 2026-10-16).** 7a awareness core and the Stealth Compound's ground floor, 7b stealth deathblow, 7c upper levels and the death from above, 7d corpse discovery, 7e tending the body; the bars-in-combat addendum. **Rule kept for every item:** `Enemy.use_awareness` is off by default (per instance), so every existing arena and preset behaves as before; the numbers are in `EnemyAIData`. Not included: a light and shadow system, hiding places, throwables (item 11 now), enemy dialogue.
 
 ### 8. Generic interact system
-- **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Interact system"). The text below is the plan as discussed. Decisions made at the full check: the menu OK sound for everything, the demo in `test_arena`, flags kept across the death reload and cleared at the main menu, no group or physics layer (a static registry), `GameFlags` static (no autoload). Background and the bigger picture: `docs/phase-3-4-notes.md` (sections 4, 5 and 11).
-- **What:** an `Interactable` (prompt text, priority, `can_interact()`) in the world and a picker on the player: the nearest interactable in front within about 2.5 m, with an on-screen prompt such as "E: Open". What happens after the press is separate from the picker, so Phase 3 can add behaviors (notice board, shop, minigame) without touching it.
-- **First interactables (proposed):** a door (can be locked by a flag), a chest, a switch, and a placeholder NPC that shows one line of text. A crowd NPC is also an interactable with one or two generic lines from a pool (chosen by reputation in Phase 3).
-- **`GameFlags` (proposed):** a small in-memory flag store, so a door's lock has something to read now; Phase 3 adds saving without changing any door.
+- **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Interact system"). The text below is the plan as discussed. Decisions made at the full check: the menu OK sound for everything, the demo in `test_arena`, flags kept across the death reload and cleared at the main menu, no group or physics layer (a static registry), `GameFlags` static (no autoload). Background and the bigger picture: `docs/phase-4-6-notes.md` (sections 4, 5 and 11).
+- **What:** an `Interactable` (prompt text, priority, `can_interact()`) in the world and a picker on the player: the nearest interactable in front within about 2.5 m, with an on-screen prompt such as "E: Open". What happens after the press is separate from the picker, so Phase 4 can add behaviors (notice board, shop, minigame) without touching it.
+- **First interactables (proposed):** a door (can be locked by a flag), a chest, a switch, and a placeholder NPC that shows one line of text. A crowd NPC is also an interactable with one or two generic lines from a pool (chosen by reputation in Phase 4).
+- **`GameFlags` (proposed):** a small in-memory flag store, so a door's lock has something to read now; Phase 4 adds saving without changing any door.
 - **The shared `interact` button (user's rule, proposed order):** in the air a ledge grab (exactly as today); on the ground the nearest `Interactable` in front; on the ground with nothing to interact with, the wall hug (item 9). Interactables work on the ground in Locomotion or Crouch only.
-- **Not included:** the dialogue freeze and a real dialogue box (Phase 3), saving, the notice board, shops.
+- **Not included:** the dialogue freeze and a real dialogue box (Phase 4), saving, the notice board, shops.
 
 ### 9. Wall hug
 - **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Wall hug"). The text below is the plan as discussed. Decisions made at the full check: a single press, an automatic latched peek at a wall end (no button), attack, guard, dodge and jump just leave the hug and act normally, the stealth kill from the hug pulls the target in over 0.15 s (a cheap glide), the stealth numbers are Player exports (not `EnemyAIData`), a slim 0.2 m body and no personal space push while hugging, the demo wall in `test_arena`.
@@ -67,11 +67,11 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Not included in the first version:** an ambush attack from the hug when a guard walks past (Tenchu style).
 
 ### 10. Non-lethal combat
-- **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Non-lethal combat"). The text below is the plan as discussed. Decisions made at the full check: one sword with a toggle (T, D-pad Up), posture damage full, a boss is knocked out too (no banner), enemies wake by themselves after 300 s (a boss never) or by a guard, the stealth kill with the reversed blade is a code-drawn 1.5 s choke, reputation counting is Phase 3. Reasons and the reputation link: `docs/phase-3-4-notes.md`, sections 6 and 7.
+- **Status:** **built and tested 2026-10-16** (what was built: `docs/built-reference.md`, "Non-lethal combat"). The text below is the plan as discussed. Decisions made at the full check: one sword with a toggle (T, D-pad Up), posture damage full, a boss is knocked out too (no banner), enemies wake by themselves after 300 s (a boss never) or by a guard, the stealth kill with the reversed blade is a code-drawn 1.5 s choke, reputation counting is Phase 4. Reasons and the reputation link: `docs/phase-4-6-notes.md`, sections 6 and 7.
 - **What (user):** a **reverse blade** toggle (WoTS sakabato): health damage halved, a deathblow that makes the enemy **unconscious**, and a stealth deathblow that becomes a **choke** until unconscious.
 - **Posture damage:** the user asked whether it is halved too. **Proposed default: full** (**open**).
 - **Technical shape (proposed):** a lethal flag on `HitData`, a knocked-out state on `Combatant` and `Enemy` (a knockout replaces death at zero health), and unconscious bodies that reuse the 7d and 7e body code with a milder reaction ("wake him up", not an alarm).
-- **Needed by:** item 11 (the lethal flag of the ammo) and the Phase 3 reputation system.
+- **Needed by:** item 11 (the lethal flag of the ammo) and the Phase 4 reputation system.
 
 ### 11. Item system and throwables
 - **Status:** **11a and 11b built and tested 2026-10-19** (what was built: `docs/built-reference.md`, "Item system and throwables, 11a" and "Hold to aim, 11b"). At the 11b full check: the 0.2 s hold threshold (a tap throws on release), free aim from a lock (the camera swings onto the target's chest first, the lock comes back on release), and the throw solved to the crosshair's aim point. **11c (added after the 11b test, same day):** attack throws from the aim and the aim goes on (0.3 s recovery), releasing `use_item` never throws, and the Options "AIM MODE" STICKY (default) / HOLD decides whether letting go ends the aim; guard and heal end it in both modes. **11d (same day, from the 11a test):** a guard that hears a noise or loses a glimpse of the player now walks to the spot, looks around for `spot_check_time` (30 s) and then returns to its route or post; 3 noises in one check make it search (alert, still not knowing about the player). Discussed 2026-10-16; **redesigned 2026-10-19** (the user: items work like Tenchu and Nightreign, so the throw is the first item of a general item system). Decisions made at the full check: the defaults below stand (ammo set and counts, no sword draw, keys F and G with D-pad Right and Left); after the test the user set the shuriken and kunai noise to 10 m (the metal throwables are the accurate distraction tool, the rock and ceramic the loud wide lure). The text below is the plan as discussed.
@@ -87,13 +87,13 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **11a:** the tap throw (the camera's forward direction, or toward the locked target's chest when locked on), `ItemData`, `ThrowableData`, `ItemBelt`, the noise at a position, `cycle_item`, and the **item HUD**. Two new Input Map actions as editor steps.
 - **Item HUD (user, 2026-10-19):** like Sekiro, **bottom right**, in the prosthetic slot. A code-drawn square icon per item (grey rock, silver star, dark kunai, white shard), the name, and the count; dimmed at 0; a short flash on cycling. Margin, size and colors are `@export` values. The gourd stays bottom left under the health bar for now. No button prompts yet (backlog).
 - **11b (user, proposed shape accepted):** hold `use_item` to aim, for throwables only. The camera moves to head height with the head hidden (not a real first person), a crosshair shows for shuriken and kunai, and a **dotted arc preview with a landing marker** (grenade style) for rocks and ceramic. Releasing throws. While aiming: slow walk (like the guard's forced walk), the lock-on suspended, the spring arm shortened in tight spaces. The preview simulates the projectile's own gravity.
-- **Not included:** any non-throwable item (onigiri, marking rice and so on), pickups, saving (ammo counts are saved in Phase 3), enemy throwers, a real throw animation, moving the gourd to a bottom-right quick slot.
-- **Reuse:** the projectile system is reused by enemy archers, revolvers and rifles in Phase 4; the item system is reused by the Phase 3 and 4 items.
+- **Not included:** any non-throwable item (onigiri, marking rice and so on), pickups, saving (ammo counts are saved in Phase 4), enemy throwers, a real throw animation, moving the gourd to a bottom-right quick slot.
+- **Reuse:** the projectile system is reused by enemy archers, revolvers and rifles in Phase 5; the item system is reused by the Phase 4 and 5 items.
 - **Needs:** item 10's lethal flag, so this comes after it.
 
 ### 11.5. Taunt (addendum to item 11)
 - **Status:** **built and tested 2026-10-19** (what was built: `docs/built-reference.md`, "Taunt"). Decisions made with the user: a `taunt` button (V, Back/Select) that makes enemies in combat **provoked** (more aggressive, no advantage for the player, since there is no style meter); a real action with a wind-up, a locked part and a wind-down (like an attack); stacks up to 3 that fade after 10 s; a boss feels half; an unaware enemy hears it as an 8 m noise; the voice lines are wired (two empty sound slots, `taunt` and `enemy_provoked`). Defaults not changed: guard and damage stay as they are.
-- **Not included:** a taunt animation, NPC or crowd reactions (Phase 3), taunt wavs, a reward for the player.
+- **Not included:** a taunt animation, NPC or crowd reactions (Phase 4), taunt wavs, a reward for the player.
 
 ### 11.6. Folder reorganization (refactor, before item 12)
 - **Status:** **done and tested 2026-10-19** (the new layout and the old-to-new table: `docs/built-reference.md`, "Folder reorganization, 11.6"). A one-shot script (`reorganize.py`, now removed) made a zip backup, moved the files with their `.uid` and `.import` sidecars, rewrote every `res://` path (and the bare path mentions in `.gd` comments) and checked that none points to nothing; no behavior changed.
@@ -101,10 +101,10 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Not included:** any code or scene change, moving `scenes/`, renaming class names. Docs outside this item keep old paths only in history files (`docs/phase-1-5-plan.md`, the build log).
 
 ### 12a. Navigation (the navmesh)
-- **Status:** done and tested 2026-10-19 (discussed 2026-10-16); **split into 12a and 12b on 2026-10-19** (the user: the navmesh first, the links as a follow-up). 12a is walking on flat levels only. The hub of Phase 3 and the street encounters are its users (`docs/phase-3-4-notes.md`, section 5).
+- **Status:** done and tested 2026-10-19 (discussed 2026-10-16); **split into 12a and 12b on 2026-10-19** (the user: the navmesh first, the links as a follow-up). 12a is walking on flat levels only. The hub of Phase 4 and the street encounters are its users (`docs/phase-4-6-notes.md`, section 5).
 - **What (user):** a navmesh system for enemies. **Rule (proposed):** a per-enemy `use_navigation` flag, **off by default**, so every existing arena and preset behaves exactly as before (the same rule as `use_awareness`).
 - **Shape (proposed):** `NavigationRegion3D` for the baked walkable area, `NavigationAgent3D` on the enemy, the change mostly in the enemy's "walk toward a spot" code, plus baking the arenas that use it.
-- **Limits to know:** a navmesh handles walking around walls and stalls but **not climbing**. A ground enemy cannot follow onto a roof unless jump or climb links are added; the existing "from another level it stands and watches, still alert" rule covers it. Roofs get their own walkable area so rooftop guards can patrol. In Phase 3 and 4 the streamed world needs one region per cell with matching edges. Jump, drop and climb links are item 12b.
+- **Limits to know:** a navmesh handles walking around walls and stalls but **not climbing**. A ground enemy cannot follow onto a roof unless jump or climb links are added; the existing "from another level it stands and watches, still alert" rule covers it. Roofs get their own walkable area so rooftop guards can patrol. In Phase 4 and 5 the streamed world needs one region per cell with matching edges. Jump, drop and climb links are item 12b.
 
 ### 12b. Navigation links (follow-up to 12a)
 - **Status:** split on 2026-10-19 into **12b-1a** (the drop crossing, one hand-placed link: done and tested 2026-10-19), **12b-1b** (an editor tool that generates drop links: done and tested 2026-10-19), **12b-2** (jump: done and tested 2026-10-19) and **12b-3** (climb, going up from the ground to a platform: done and tested 2026-10-20).
@@ -114,8 +114,8 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **12b-1b as built (2026-10-19):** a `@tool` helper node in the arena with an `@export_tool_button` ("Generate drop links") that scans the baked navmesh edges, casts rays down just past each edge and adds `NavigationLink3D` nodes (layer 2, one-way) where the ground is between a step and `nav_drop_max_height` below; spacing and heights are settings on the node; pressing it again clears only the generated links, never hand-placed ones. Generated in the editor and saved in the scene, not at runtime.
 - **What (user, proposed order):** enemies that cross between levels with `NavigationLink3D` links: first a **drop** (roof to ground), then a **jump** over a gap, then a **climb** last. The navmesh side is only the links; the real work is an enemy state per link kind (timing, movement, later animation).
 - **Rule (proposed):** a per-enemy switch (off by default, like `use_navigation`), so only chosen enemies follow across levels.
-- **Open (the user's design choice):** if enemies can follow onto roofs, the roofs stop being a guaranteed escape (`docs/phase-3-4-notes.md`, section 5). Decide at the 12b full check which enemies get links.
-- **Needed by:** the Phase 3 hub (rooftop guards, hunters that follow, the roof escape).
+- **Open (the user's design choice):** if enemies can follow onto roofs, the roofs stop being a guaranteed escape (`docs/phase-4-6-notes.md`, section 5). Decide at the 12b full check which enemies get links.
+- **Needed by:** the Phase 4 hub (rooftop guards, hunters that follow, the roof escape).
 
 ## 4. Backlog carried over (13 and later)
 
@@ -123,7 +123,7 @@ Items 8 to 12 above were picked on 2026-10-16 (the interact system and four idea
 
 ## 5. Not in this phase
 
-- Saves, a real map, quests and the game flow around them (START becomes NEW GAME when they exist). These are **Phase 3** (the plan and the discussion notes are in `docs/phase-3-4-notes.md`).
+- Saves, a real map, quests and the game flow around them (START becomes NEW GAME when they exist). These are **Phase 4** (the plan and the discussion notes are in `docs/phase-4-6-notes.md`).
 - Settings beyond item 6: display (window mode, VSync), language, subtitles, difficulty, a UI scale.
 - Music in the arenas and any sound work beyond the main menu's.
 - A bundled title font and a drawn logo.

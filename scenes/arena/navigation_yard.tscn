@@ -191,6 +191,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 3, -12.5)
 [node name="J2" type="Marker3D" parent="Patrols/PathJump" unique_id=1740112065]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3, -12.5)
 
+[node name="PathClimb" type="Node3D" parent="Patrols" unique_id=1740112071]
+
+[node name="C1" type="Marker3D" parent="Patrols/PathClimb" unique_id=1740112072]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0, -6)
+
+[node name="C2" type="Marker3D" parent="Patrols/PathClimb" unique_id=1740112073]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 3, -12)
+
 [node name="GuardPatrol" parent="." unique_id=555044017 instance=ExtResource("3_enemy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -3)
 ai = ExtResource("4_soldier")
@@ -235,25 +243,25 @@ script = ExtResource("5_1fgra")
 region = NodePath("../NavRegion")
 metadata/_custom_type_script = "uid://dpsfk4220jp7g"
 
-[node name="NavigationLink3D" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=429397825]
+[node name="NavigationLink3D" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=301324156]
 bidirectional = false
 navigation_layers = 2
 start_position = Vector3(-9.5, 3.5, -13.25)
 end_position = Vector3(-8, 0.5, -13.25)
 
-[node name="NavigationLink3D2" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1408355689]
+[node name="NavigationLink3D2" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1563159840]
 bidirectional = false
 navigation_layers = 2
 start_position = Vector3(-11.25, 3.5, -9.5)
 end_position = Vector3(-11.25, 0.5, -8)
 
-[node name="NavigationLink3D3" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=53046355]
+[node name="NavigationLink3D3" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1587632079]
 bidirectional = false
 navigation_layers = 2
 start_position = Vector3(-1.5, 3.5, -13.25)
 end_position = Vector3(0, 0.5, -13.25)
 
-[node name="NavigationLink3D4" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=1434040276]
+[node name="NavigationLink3D4" type="NavigationLink3D" parent="DropLinkGenerator" unique_id=435939611]
 bidirectional = false
 navigation_layers = 2
 start_position = Vector3(-5.5, 3.5, -11.75)
@@ -277,14 +285,6 @@ use_nav_links = true
 navigation_layers = 8
 start_position = Vector3(-13, 0.5, -8)
 end_position = Vector3(-13, 3.5, -9.5)
-
-[node name="PathClimb" type="Node3D" parent="Patrols" unique_id=1740112071]
-
-[node name="C1" type="Marker3D" parent="Patrols/PathClimb" unique_id=1740112072]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0, -6)
-
-[node name="C2" type="Marker3D" parent="Patrols/PathClimb" unique_id=1740112073]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 3, -12)
 
 [node name="GuardClimb" parent="." unique_id=1740112074 instance=ExtResource("3_enemy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0, -6)

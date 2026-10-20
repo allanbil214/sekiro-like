@@ -127,7 +127,7 @@ Claude can open the user's latest `.blend`, key rough poses and the grip with a 
 - The old model **Ayame** (`ayame_wip.gltf`) is a game rip (PS2). Use it for learning only; replace it with an asset the user owns before any release.
 - The current stand-in is the Mixamo X Bot. Read Adobe's current Mixamo terms for game use **[verify]**. Other sources discussed: Cascadeur (free tier, check the licence), VRoid Studio (check the model licence), CC0 characters from Quaternius and Kenney.
 
-## 8. Phase 3 idea: a DS Anim Studio style tool (not started)
+## 8. Phase 4 idea: a DS Anim Studio style tool (not started)
 
 A Godot **editor plugin** (a `@tool` dock), for the developer only, not an in-game editor. Its role copies DS Anim Studio: it does **not** key bones, it places timing on top of animations. Planned stages, each with its own full check:
 
@@ -137,4 +137,4 @@ A Godot **editor plugin** (a `@tool` dock), for the developer only, not an in-ga
 4. **Event tracks:** sound, fx, swing trail and camera shake markers calling `Sfx` and `Fx`.
 5. **Later:** hitbox shape events (size and position per frame), a frame-data table of all actions, hot reload of timings in the running game.
 
-Cautions: window times are action-clock time, not real seconds (the phase speeds slow the clock), so show both. The same `ActionData` serves the enemy. The tool cannot be run or seen by Claude, so expect testing rounds on the UI feel. This is Phase 3; Phase 2 comes first.
+Cautions: window times are action-clock time, not real seconds (the phase speeds slow the clock), so show both. The same `ActionData` serves the enemy. The tool cannot be run or seen by Claude, so expect testing rounds on the UI feel. This is Phase 4; Phase 2 comes first.

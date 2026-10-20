@@ -2,7 +2,7 @@ class_name ItemBelt
 extends RefCounted
 ## The items the player carries (Phase 2 item 11): the list, which one is selected, and how many of each are left.
 ## In memory only: a new Player (the scene reload after a death) starts with the full counts again; saving and
-## pickups come with Phase 3. The gourd is not here: it keeps its own button (`heal`). `Player` makes the belt
+## pickups come with Phase 4. The gourd is not here: it keeps its own button (`heal`). `Player` makes the belt
 ## in `_ready()` from its `starting_items`; `ItemHud` reads it.
 
 var items: Array[ItemData] = []

@@ -4,7 +4,7 @@ extends Resource
 ## a placeholder icon (a shape and a color, drawn in code by `ItemHud` and on the flying projectile), and the
 ## count at the start. What the item DOES is in the subclass (`ThrowableData` for the throwables); later items
 ## (onigiri, marking rice, ...) extend this the same way and add a kind. The counts are not stored here: a
-## resource is shared, so the live counts live in `ItemBelt` (in memory for now; saving is Phase 3).
+## resource is shared, so the live counts live in `ItemBelt` (in memory for now; saving is Phase 4).
 
 enum Kind { OTHER, THROWABLE }
 ## The placeholder icon shapes (until real art exists).

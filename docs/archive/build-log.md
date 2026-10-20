@@ -1412,3 +1412,7 @@ A refactor with no gameplay change. Tested and verified by the user 2026-10-13.
 - **Test arena:** `navigation_yard` got `ClimbLinkS` (start (-13, 0.5, -8), end (-13, 3.5, -9.5), on the first roof's south face), `Patrols/PathClimb` (C1 on the ground, C2 on the roof) and `GuardClimb`, which patrols between them. No rebake was needed (a link adds no geometry). The start was put at z = -8, which is on the ground navmesh (z = -8.5 is not).
 - **Tested:** the user ran it and the guard climbed to the roof.
 - **Not done / noticed:** a climb-link generator and ladder or wall assets that carry their own link, climb animations, wall steering, the player using these links. Item 12 (navigation) is complete.
+
+### Docs: phase renumbering and the Phase 3 plan (2026-10-20)
+- A new **Phase 3, feel and weight** was inserted (plan: `docs/phase-3-plan.md`, milestones 3a to 3d, nothing built yet). The old Phases 3, 4 and 5 are now **4, 5 and 6**; Phase 2 stays as it was. `docs/phase-3-4-notes.md` was renamed `docs/phase-4-6-notes.md`.
+- Every phase number in the docs (except this archive) and in five script comments (`item_belt.gd`, `item_data.gd`, `chest.gd`, `npc_line.gd`, `game_flags.gd`) was shifted. **Texts in this archive still use the old numbers** (old 3, 4, 5 = new 4, 5, 6).
