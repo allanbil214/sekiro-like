@@ -191,18 +191,25 @@ const HEADROOM_RADIUS: float = 0.38
 ## The multiplier on the walk, run and crouch speeds while carrying a body. No extra noise: the normal
 ## speed-based rules apply.
 @export_range(0.1, 1.0, 0.05) var carry_speed_multiplier: float = 0.7
-## Where the body's root rests across the arms: how far (m) in front, and how high (m) above the feet standing and
-## crouched (the lying body's middle is about 0.4 m above its root), and the seconds the pick-up lift takes.
-@export var carry_forward: float = 0.45
-@export var carry_height: float = 0.5
-@export var carry_height_crouched: float = 0.2
+## The body hangs over the right shoulder, its length along the player's front-to-back line, the head behind and
+## tilted `carry_tilt_degrees` head-down. Where its middle rests: how far (m) to the right, and how high (m)
+## above the feet standing and crouched; and the seconds the pick-up lift takes.
+@export var carry_shoulder_right: float = 0.3
+@export var carry_height: float = 1.35
+@export var carry_height_crouched: float = 0.95
+@export var carry_tilt_degrees: float = 25.0
 @export var carry_pickup_time: float = 0.25
 ## Putting down: how far (m) ahead the body is set, how long (s) the motion takes, the footprint checked for room
 ## (length across the arms, height, depth, m), and the dip and its time (s) when the spot is blocked (the body
 ## goes back up and stays carried).
-@export var carry_put_distance: float = 0.7
+@export var carry_put_distance: float = 0.9
 @export var carry_put_time: float = 0.25
-@export var carry_room_size: Vector3 = Vector3(1.7, 0.5, 0.5)
+@export var carry_room_size: Vector3 = Vector3(1.8, 0.6, 0.8)
+## A safety gap (m) added to the footprint on every side, so the body never touches a wall.
+@export var carry_room_margin: float = 0.1
+## Debug (build-time aid, put-down check): log what the room check sees and draw its box for 3 s (red = blocked,
+## green = clear) plus the body's real footprint after a put-down (blue). Turn it off when done.
+@export var debug_carry: bool = true
 @export var carry_blocked_dip: float = 0.15
 @export var carry_blocked_time: float = 0.2
 ## A floor must be found within this many metres below the feet, or the released body falls instead.
@@ -376,12 +383,13 @@ var carried_body: Enemy
 var _carry_height_now: float = 0.0
 var _carry_blend: float = 1.0
 var _carry_from: Vector3 = Vector3.ZERO
-var _carry_from_yaw: float = 0.0
+var _carry_from_rot: Vector3 = Vector3.ZERO
 var _carry_dip_left: float = 0.0
 var _put_left: float = 0.0
 var _put_from: Vector3 = Vector3.ZERO
 var _put_to: Vector3 = Vector3.ZERO
 var _put_yaw: float = 0.0
+var _put_from_rot: Vector3 = Vector3.ZERO
 ## Item 10: is the blade reversed? Kept in `GameFlags` (so it survives the death reload, not the main menu).
 var blade_reversed: bool:
 	get:
@@ -685,7 +693,7 @@ func pick_up_body(body: Enemy) -> void:
 	carried_body = body
 	body.set_carried(true)
 	_carry_from = body.global_position
-	_carry_from_yaw = body.global_rotation.y
+	_carry_from_rot = body.global_rotation
 	_carry_blend = 0.0
 	_carry_dip_left = 0.0
 	_put_left = 0.0
@@ -701,17 +709,29 @@ func try_put_down_body() -> void:
 	if carried_body == null or _put_left > 0.0:
 		return
 	var spot := global_position + get_facing_direction() * carry_put_distance
+	_carry_log("put-down: pos=%s facing_yaw=%.1f spot=%s" % [global_position, rad_to_deg(visual.global_rotation.y), spot])
+	# Room first, at the player's own floor height: a spot inside a wall must read as blocked, not as "no floor".
+	if not _carry_room_at(Vector3(spot.x, global_position.y, spot.z)):
+		_carry_log("  -> blocked (dip)")
+		_carry_dip_left = carry_blocked_time
+		return
 	var floor_y := _find_floor_y(spot)
+	_carry_log("  floor_y=%s" % ("none" if is_nan(floor_y) else "%.2f" % floor_y))
 	if is_nan(floor_y):
+		_carry_log("  -> no floor: forced drop")
 		drop_carried_body()
 		return
 	spot.y = floor_y
-	if not _carry_room_at(spot):
+	# A floor lower than the player's: the footprint is checked again at that height.
+	if absf(floor_y - global_position.y) > 0.05 and not _carry_room_at(spot):
+		_carry_log("  -> blocked at the lower floor (dip)")
 		_carry_dip_left = carry_blocked_time
 		return
-	_put_from = carried_body.global_position
-	_put_to = spot
+	_carry_log("  -> clear: putting down")
 	_put_yaw = visual.global_rotation.y + PI * 0.5
+	_put_from = carried_body.global_position
+	_put_from_rot = carried_body.global_rotation
+	_put_to = _flat_root_for(carried_body, spot, _put_yaw)
 	_put_left = carry_put_time
 	if _put_left <= 0.0:
 		_finish_put_down()
@@ -732,11 +752,14 @@ func drop_carried_body() -> void:
 	if is_nan(floor_y):
 		body.place_body(body.global_position, yaw, true)
 		return
-	body.place_body(Vector3(spot.x, floor_y, spot.z), yaw, false)
+	body.place_body(_flat_root_for(body, Vector3(spot.x, floor_y, spot.z), yaw), yaw, false)
 
 
 func _finish_put_down() -> void:
 	var body := carried_body
+	if debug_carry and is_instance_valid(body):
+		var body_basis := Basis(Vector3.UP, _put_yaw)
+		_debug_box(_put_to + body_basis * Enemy.LYING_MIDDLE, Vector3(0.8, 0.8, 1.8), body_basis, Color(0.2, 0.3, 1.0, 0.35))
 	carried_body = null
 	_put_left = 0.0
 	if is_instance_valid(body):
@@ -755,17 +778,75 @@ func _find_floor_y(at: Vector3) -> float:
 	return (hit["position"] as Vector3).y
 
 
+## The root for a body lying flat on the floor with its middle above `floor_spot` (a put-down or a drop).
+func _flat_root_for(body: Enemy, floor_spot: Vector3, body_yaw: float) -> Vector3:
+	var middle := floor_spot + Vector3.UP * Enemy.LYING_MIDDLE.y
+	return body.lying_root_for(middle, Basis(Vector3.UP, body_yaw))
+
+
 ## True when the body's footprint (lying across the facing direction) fits at the spot.
 func _carry_room_at(floor_spot: Vector3) -> bool:
 	var shape := BoxShape3D.new()
-	shape.size = carry_room_size
+	shape.size = carry_room_size + Vector3.ONE * carry_room_margin * 2.0
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = shape
 	query.transform = Transform3D(Basis(Vector3.UP, visual.global_rotation.y),
-			floor_spot + Vector3.UP * (0.1 + carry_room_size.y * 0.5))
+			floor_spot + Vector3.UP * (0.1 + shape.size.y * 0.5))
 	query.collision_mask = collision_mask & ~Layers.INVISIBLE_WALL
 	query.exclude = [get_rid()]
-	return get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+	var space := get_world_3d().direct_space_state
+	var hits := space.intersect_shape(query, 8)
+	# A wall's collision (a CSG box) is a one-sided surface: a shape whose middle is inside the wall's thickness
+	# reads as clear. Rays from the player to the footprint's points catch those walls by their front face.
+	var ray_hits: Array[String] = []
+	var lateral := query.transform.basis * Vector3.RIGHT
+	var forward := query.transform.basis * Vector3.FORWARD
+	var half_length := shape.size.x * 0.5
+	var half_depth := shape.size.z * 0.5
+	for height: float in [0.2, shape.size.y * 0.5 + 0.1]:
+		var from := Vector3(global_position.x, global_position.y + height, global_position.z)
+		var base := Vector3(floor_spot.x, floor_spot.y + height, floor_spot.z)
+		for target: Vector3 in [base, base + lateral * half_length, base - lateral * half_length,
+				base + forward * half_depth]:
+			var ray := PhysicsRayQueryParameters3D.create(from, target, query.collision_mask, [get_rid()])
+			var ray_hit := space.intersect_ray(ray)
+			if not ray_hit.is_empty():
+				var collider := ray_hit.get("collider") as Node
+				ray_hits.append(str(collider.name) if collider != null else "?")
+	var blocked := not hits.is_empty() or not ray_hits.is_empty()
+	if debug_carry:
+		var names: Array[String] = []
+		for hit: Dictionary in hits:
+			var collider := hit.get("collider") as Node
+			names.append(str(collider.name) if collider != null else "?")
+		_carry_log("  room box center=%s size=%s yaw=%.1f mask=%d hits=%s ray_hits=%s" % [query.transform.origin,
+				shape.size, rad_to_deg(visual.global_rotation.y), query.collision_mask, names, ray_hits])
+		_debug_box(query.transform.origin, shape.size, query.transform.basis,
+				Color(1.0, 0.2, 0.2, 0.35) if blocked else Color(0.2, 1.0, 0.3, 0.35))
+	return not blocked
+
+
+func _carry_log(text: String) -> void:
+	if debug_carry and OS.is_debug_build():
+		print("[carry] ", text)
+
+
+## Debug only: a see-through box in the world for 3 seconds.
+func _debug_box(center: Vector3, size: Vector3, box_basis: Basis, color: Color) -> void:
+	if not debug_carry or not OS.is_debug_build():
+		return
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	mesh.mesh = box
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.material_override = material
+	get_tree().current_scene.add_child(mesh)
+	mesh.global_transform = Transform3D(box_basis, center)
+	get_tree().create_timer(3.0).timeout.connect(mesh.queue_free)
 
 
 ## Keeps the carried body across the arms (a placeholder for a carry animation), runs the pick-up lift, the
@@ -783,12 +864,16 @@ func _update_carried_body(delta: float) -> void:
 			return
 		var t := 1.0 - _put_left / maxf(carry_put_time, 0.001)
 		carried_body.global_position = _put_from.lerp(_put_to, smoothstep(0.0, 1.0, t))
-		carried_body.global_rotation = Vector3(0.0, _put_yaw, 0.0)
+		carried_body.global_rotation = Vector3(lerpf(_put_from_rot.x, 0.0, smoothstep(0.0, 1.0, t)),
+				lerp_angle(_put_from_rot.y, _put_yaw, smoothstep(0.0, 1.0, t)), 0.0)
 		return
 	var height_goal := carry_height_crouched if is_crouched else carry_height
 	_carry_height_now = lerpf(_carry_height_now, height_goal, 1.0 - exp(-12.0 * delta))
-	var goal := global_position + get_facing_direction() * carry_forward + Vector3.UP * _carry_height_now
-	var yaw := visual.global_rotation.y + PI * 0.5
+	var yaw := visual.global_rotation.y
+	var right := Basis(Vector3.UP, yaw) * Vector3.RIGHT
+	var goal := global_position + right * carry_shoulder_right + Vector3.UP * _carry_height_now
+	var hold_rot := Vector3(deg_to_rad(carry_tilt_degrees), yaw, 0.0)
+	var hold_basis := Basis.from_euler(hold_rot)
 	if _carry_dip_left > 0.0:
 		_carry_dip_left = maxf(_carry_dip_left - delta, 0.0)
 		var progress := 1.0 - _carry_dip_left / maxf(carry_blocked_time, 0.001)
@@ -796,11 +881,12 @@ func _update_carried_body(delta: float) -> void:
 	if _carry_blend < 1.0:
 		_carry_blend = minf(_carry_blend + delta / maxf(carry_pickup_time, 0.01), 1.0)
 		var u := smoothstep(0.0, 1.0, _carry_blend)
-		carried_body.global_position = _carry_from.lerp(goal, u)
-		carried_body.global_rotation = Vector3(0.0, lerp_angle(_carry_from_yaw, yaw, u), 0.0)
+		carried_body.global_position = _carry_from.lerp(carried_body.lying_root_for(goal, hold_basis), u)
+		carried_body.global_rotation = Vector3(lerpf(_carry_from_rot.x, hold_rot.x, u),
+				lerp_angle(_carry_from_rot.y, hold_rot.y, u), 0.0)
 		return
-	carried_body.global_position = goal
-	carried_body.global_rotation = Vector3(0.0, yaw, 0.0)
+	carried_body.global_position = carried_body.lying_root_for(goal, hold_basis)
+	carried_body.global_rotation = hold_rot
 
 
 func is_wall_hugging() -> bool:

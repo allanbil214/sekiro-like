@@ -686,13 +686,16 @@ func _find_wall_spot() -> bool:
 	return _has_wall
 
 
-## The body floats across the carrier's arms (a placeholder for a carry animation).
+## The body hangs over the carrier's right shoulder (a placeholder for a carry animation).
 func _hold_body() -> void:
 	if not _body_ok():
 		return
-	var forward := -_enemy.global_transform.basis.z
-	_tend_body.global_position = _enemy.global_position + forward * 0.45 + Vector3.UP * _ai.corpse_carry_height
-	_tend_body.global_rotation = Vector3(0.0, _enemy.rotation.y + PI * 0.5, 0.0)
+	var yaw := _enemy.global_rotation.y
+	var right := Basis(Vector3.UP, yaw) * Vector3.RIGHT
+	var middle := _enemy.global_position + right * _ai.corpse_carry_shoulder + Vector3.UP * _ai.corpse_carry_height
+	var rot := Vector3(deg_to_rad(_ai.corpse_carry_tilt_degrees), yaw, 0.0)
+	_tend_body.global_position = _tend_body.lying_root_for(middle, Basis.from_euler(rot))
+	_tend_body.global_rotation = rot
 
 
 ## Lay the body down: along the wall when the carrier got there, otherwise in front of it.

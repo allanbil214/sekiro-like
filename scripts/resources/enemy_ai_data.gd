@@ -286,7 +286,11 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var corpse_pickup_pause: float = 0.8
 @export var corpse_place_pause: float = 0.8
 @export var corpse_carry_speed: float = 1.4
-@export var corpse_carry_height: float = 0.55
+## The body hangs over the guard's right shoulder (item 15a): the height (m) of its middle above the feet, how far
+## (m) to the right, and the head-down tilt (degrees); the head hangs behind.
+@export var corpse_carry_height: float = 1.35
+@export var corpse_carry_shoulder: float = 0.3
+@export var corpse_carry_tilt_degrees: float = 25.0
 @export var corpse_wall_search: float = 25.0
 @export var corpse_wall_gap: float = 0.6
 ## An unconscious body (Phase 2 item 10): the pause (s) a guard takes to wake it by hand once it is next to it.

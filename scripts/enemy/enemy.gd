@@ -1132,6 +1132,15 @@ func place_body(at: Vector3, yaw: float, fall: bool) -> void:
 	_body_fall_speed = 0.0
 
 
+## Item 15a: where this lying body's root goes so its middle is at `center` with the root turned by `basis`. The
+## root is at the feet; the tipped-over body's middle is LYING_MIDDLE from it (in the root's own axes).
+const LYING_MIDDLE: Vector3 = Vector3(0.0, 0.4, 0.9)
+
+
+func lying_root_for(center: Vector3, basis: Basis) -> Vector3:
+	return center - basis * LYING_MIDDLE
+
+
 func _fall_body(delta: float) -> void:
 	_body_fall_speed += float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) * delta
 	var step := _body_fall_speed * delta
