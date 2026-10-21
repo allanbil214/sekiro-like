@@ -351,7 +351,7 @@ func _sight_rate(distance: float, target: Node3D) -> float:
 		elif Vector2(player.velocity.x, player.velocity.z).length() > player.walk_speed * 1.5:
 			rate *= _ai.sight_run_multiplier
 		# Item 9: pressed against a wall it is harder to see (on top of crouching).
-		if player.is_wall_hugging():
+		if player.is_wall_hugging() and not player.is_peeking_up():
 			rate *= player.wall_hug_sight_multiplier
 	return rate
 

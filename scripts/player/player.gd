@@ -156,6 +156,10 @@ const HEADROOM_RADIUS: float = 0.38
 @export var wall_hug_vault_max_height: float = 1.8
 @export var wall_hug_vault_max_thickness: float = 0.8
 @export var wall_hug_vault_time: float = 0.5
+## Peek up (item 14c): the highest wall top (m above the feet) that can be looked over, and how far (m) above
+## the top the camera is raised.
+@export var wall_hug_peek_up_max_height: float = 1.8
+@export var wall_hug_peek_up_clearance: float = 0.35
 
 @export_group("Reverse blade (Phase 2 item 10)")
 ## While the blade is reversed (the `reverse_blade` toggle): the multipliers on the health damage and the
@@ -610,6 +614,12 @@ func toggle_reverse_blade() -> void:
 
 func is_wall_hugging() -> bool:
 	return state_machine.current is WallHugState
+
+
+## Item 14c: hugging with the camera raised over a low wall (the hug's sight bonus is off).
+func is_peeking_up() -> bool:
+	var hug := state_machine.current as WallHugState
+	return hug != null and hug.is_peeking_up()
 
 
 ## A line of text near the bottom of the screen (an NPC's line, "It is empty.").

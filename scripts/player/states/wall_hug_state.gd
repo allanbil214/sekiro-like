@@ -15,6 +15,11 @@ extends State
 ## scripted arc, quiet like the hug) and lands hugging the wall's far side. A crouched hug starts on
 ## low walls too.
 ##
+## Peek up (item 14c): holding toward a low wall (a flat top up to `wall_hug_peek_up_max_height`) and
+## pressing `interact` raises the camera to look over it (`wall_hug_peek_up_clearance` above the top). It
+## stays until `interact` again, sidling, a vault, a turn or leaving. While it lasts the hug's sight
+## bonus is off (`is_peeking_up()`, read by `EnemyAwareness`). The vault still works from it.
+##
 ## Leaving: `interact` again, moving away from the wall, a jump, dodge, attack or guard press (the press
 ## is left in the buffer, so Locomotion or Crouch runs it next frame with all its usual rules, a
 ## stealth kill included), being hit, or the wall going away. All the numbers are on the Player.
@@ -41,6 +46,9 @@ var _pending_goal: Vector3 = Vector3.ZERO
 ## The side (+1 or -1 along the wall) the camera is peeking toward, or 0. It stays until the player pushes
 ## the other way.
 var _peek_side: float = 0.0
+## Peek up (item 14c): the camera is raised over a low wall by `_peek_up_lift` metres.
+var _peek_up: bool = false
+var _peek_up_lift: float = 0.0
 
 # The corner turn (a curved path from the old spot to the one on the new wall).
 var _turning: bool = false
@@ -90,6 +98,7 @@ func enter(_previous: StringName) -> void:
 	_snap_time = 0.0
 	_age = 0.0
 	_peek_side = 0.0
+	_peek_up = false
 	_turning = false
 	_vaulting = false
 	_landing_grace = 0.0
@@ -104,6 +113,7 @@ func exit(next: StringName) -> void:
 	if _vaulting:
 		_vaulting = false
 		player.set_body_collision_enabled(true)
+	_peek_up = false
 	_set_peek(Vector3.ZERO)
 	# Step away from the wall by the radius that comes back, so the full body does not start inside it.
 	var grow := player.get_default_body_radius() - player.get_body_radius()
@@ -143,8 +153,14 @@ func physics_update(delta: float) -> void:
 			and _try_vault():
 		return
 	if Input.is_action_just_pressed(Actions.INTERACT):
-		# Peeking past an outside corner and holding that way: turn around it. Otherwise leave.
-		if not _try_outside_turn(want):
+		# Peeking past an outside corner and holding that way: turn around it. Peeking up: put the head
+		# down. Holding toward a low wall: peek up. Otherwise leave.
+		if _try_outside_turn(want):
+			return
+		if _peek_up:
+			_peek_up = false
+			_set_peek(Vector3.ZERO)
+		elif not (want.dot(-_normal) >= player.wall_hug_facing_dot and _try_peek_up()):
 			_leave()
 		return
 	if _wants_action():
@@ -179,6 +195,9 @@ func _sidle(want: Vector3) -> void:
 	var tangent := _normal.cross(Vector3.UP).normalized()
 	var lateral := clampf(want.dot(tangent), -1.0, 1.0)
 	var side := signf(lateral) if absf(lateral) >= SIDLE_DEADZONE else 0.0
+	if _peek_up and side != 0.0:
+		# Sidling puts the head down.
+		_peek_up = false
 	if _peek_side != 0.0:
 		if side == -_peek_side:
 			# Pushing the other way ends the peek and sidles back.
@@ -205,6 +224,43 @@ func _sidle(want: Vector3) -> void:
 	_set_peek(Vector3.ZERO)
 	player.velocity.x = tangent.x * lateral * player.wall_hug_speed
 	player.velocity.z = tangent.z * lateral * player.wall_hug_speed
+
+
+## True while the camera is raised over a low wall (item 14c); `EnemyAwareness` skips the hug's sight bonus.
+func is_peeking_up() -> bool:
+	return _peek_up
+
+
+## Item 14c: looks for a flat wall top in front no higher than wall_hug_peek_up_max_height and raises the
+## camera over it. False (nothing changes) when there is no such wall.
+func _try_peek_up() -> bool:
+	var pos := player.global_position
+	var origin := _chest(pos)
+	var front := _ray(origin, origin - _normal * (player.get_body_radius() + player.wall_hug_edge_reach))
+	if front.is_empty():
+		return false
+	var front_pos: Vector3 = front["position"]
+	var inside := front_pos - _normal * 0.1
+	var mask := player.collision_mask & ~Layers.INVISIBLE_WALL
+	var down := PhysicsRayQueryParameters3D.create(
+			Vector3(inside.x, pos.y + player.wall_hug_peek_up_max_height + 0.5, inside.z),
+			Vector3(inside.x, pos.y + 0.2, inside.z), mask, [player.get_rid()])
+	var top := player.get_world_3d().direct_space_state.intersect_ray(down)
+	if top.is_empty() or (top["normal"] as Vector3).y < 0.9:
+		return false
+	var top_height: float = (top["position"] as Vector3).y - pos.y
+	if top_height > player.wall_hug_peek_up_max_height:
+		return false
+	# The camera pivot's resting height (the rig's follow height, lower when crouched); lift it so it
+	# clears the top.
+	var base := 1.5
+	var rig := player.camera_rig as CameraRig
+	if rig != null:
+		base = rig.follow_height - (rig.crouch_height_drop if player.is_crouched else 0.0)
+	_peek_up_lift = maxf(top_height + player.wall_hug_peek_up_clearance - base, 0.0)
+	_peek_up = true
+	_set_peek(Vector3.ZERO)
+	return true
 
 
 ## Looks for a low wall in front (a flat top no higher than wall_hug_vault_max_height, no thicker than
@@ -243,6 +299,7 @@ func _try_vault() -> bool:
 	if not _spot_ok(goal, -_normal):
 		return false
 	player.input_buffer.consume(Actions.JUMP)
+	_peek_up = false
 	_set_peek(Vector3.ZERO)
 	_peek_side = 0.0
 	_vaulting = true
@@ -343,6 +400,7 @@ func _spot_ok(feet: Vector3, normal: Vector3) -> bool:
 
 
 func _start_turn(goal: Vector3, control: Vector3, new_normal: Vector3) -> void:
+	_peek_up = false
 	_set_peek(Vector3.ZERO)
 	_peek_side = 0.0
 	player.input_buffer.consume(Actions.INTERACT)
@@ -416,7 +474,7 @@ func _probe_at(feet: Vector3, normal: Vector3) -> Dictionary:
 func _set_peek(offset: Vector3) -> void:
 	var rig := player.camera_rig as CameraRig
 	if rig != null:
-		rig.set_peek(offset)
+		rig.set_peek(offset + (Vector3.UP * _peek_up_lift if _peek_up else Vector3.ZERO))
 
 
 func _leave() -> void:
