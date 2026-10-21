@@ -1120,12 +1120,15 @@ func set_carried(on: bool) -> void:
 	_carried = on
 	if on:
 		_body_falling = false
+		scale = Vector3.ONE
 
 
 ## Item 15a: the player lets go of the body: it is set at `at` facing `yaw` (its tipped-over pose is kept), or,
-## with `fall`, starts to fall from there until it lands (below -30 m it is lost for good).
-func place_body(at: Vector3, yaw: float, fall: bool) -> void:
+## with `fall`, starts to fall from there until it lands (below -30 m it is lost for good). Item 15b: a body
+## stuffed into a container is shrunk to `body_scale`; picking it up or waking restores the size.
+func place_body(at: Vector3, yaw: float, fall: bool, body_scale: float = 1.0) -> void:
 	_carried = false
+	scale = Vector3.ONE * body_scale
 	global_position = at
 	global_rotation = Vector3(0.0, yaw, 0.0)
 	_body_falling = fall
@@ -1137,8 +1140,26 @@ func place_body(at: Vector3, yaw: float, fall: bool) -> void:
 const LYING_MIDDLE: Vector3 = Vector3(0.0, 0.4, 0.9)
 
 
-func lying_root_for(center: Vector3, basis: Basis) -> Vector3:
-	return center - basis * LYING_MIDDLE
+func lying_root_for(center: Vector3, body_basis: Basis) -> Vector3:
+	return center - body_basis * LYING_MIDDLE
+
+
+## Item 15b: the middle of the lying body, in the world.
+func get_lying_middle() -> Vector3:
+	return global_position + global_basis * LYING_MIDDLE
+
+
+## Item 15b: a body (dead or unconscious) lying mostly inside a `CoverVolume` (most of its points along its
+## length): guards cannot discover it by sight.
+func is_hidden_in_cover() -> bool:
+	if _carried or not (_is_corpse or _unconscious):
+		return false
+	var middle := get_lying_middle()
+	var along := global_basis * Vector3(0.0, 0.0, 1.0)
+	var points: Array[Vector3] = []
+	for t in CoverVolume.POINT_OFFSETS:
+		points.append(middle + along * t)
+	return CoverVolume.count_inside(get_tree(), points) >= CoverVolume.MIN_POINTS
 
 
 func _fall_body(delta: float) -> void:
@@ -1563,6 +1584,7 @@ func wake_up(from_position: Vector3, at_post: bool) -> void:
 		return
 	_unconscious = false
 	corpse_discovered = false
+	scale = Vector3.ONE
 	body.material_override = _base_material
 	visual.rotation.x = 0.0
 	visual.position = Vector3.ZERO

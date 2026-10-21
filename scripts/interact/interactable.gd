@@ -15,6 +15,8 @@ signal interacted(player: Player)
 ## True lets the player use it while carrying a body (a door, a switch, a chest by kicking; Phase 2 item 15a).
 ## Off by default: an NPC, say, cannot be used with a body in the arms.
 @export var usable_while_carrying: bool = false
+## False: the picker does not need the player to face it (a big volume like a bush; Phase 2 item 15b).
+@export var needs_facing: bool = true
 
 static var _all: Array[Interactable] = []
 
@@ -40,6 +42,11 @@ func can_interact(_player: Player) -> bool:
 ## The text after the key name on the prompt.
 func get_prompt_text(_player: Player) -> String:
 	return prompt_text
+
+
+## The point the picker measures the distance and the facing from (the node's origin unless overridden).
+func reach_point(_player: Player) -> Vector3:
+	return global_position
 
 
 ## Called by the player on a press. Behaviors override `_on_interact`.

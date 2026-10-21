@@ -49,6 +49,7 @@
 [ext_resource type="Script" uid="uid://ca6wud8a5vyd8" path="res://scripts/player/states/taunt_state.gd" id="36_t1aof"]
 [ext_resource type="Script" uid="uid://b16888o6dv8yx" path="res://scripts/ui/hud/player_hud.gd" id="36_wva7c"]
 [ext_resource type="Resource" path="res://data/actions/player/taunt.tres" id="37_w8qe1"]
+[ext_resource type="Script" uid="uid://cwkonxvanccue" path="res://scripts/player/states/cover_place_state.gd" id="39_hdvrm"]
 [ext_resource type="Script" uid="uid://d2j5n5aect3oh" path="res://scripts/ui/hud/interact_prompt.gd" id="39_ttakn"]
 [ext_resource type="Script" uid="uid://c6i12djbtmd6b" path="res://scripts/ui/hud/crouch_vignette.gd" id="40_7obkq"]
 [ext_resource type="Script" uid="uid://1urjcpf1tuvo" path="res://scripts/ui/hud/item_hud.gd" id="40_ds1xl"]
@@ -82,7 +83,6 @@ radius = 0.2
 collision_layer = 33
 collision_mask = 33
 script = ExtResource("1_dovo2")
-wall_hug_vault_max_height = 1.8
 starting_items = Array[ExtResource("2_ahqnk")]([ExtResource("3_vb1ce"), ExtResource("4_0ncpa"), ExtResource("5_upxxc"), ExtResource("6_ln3h3")])
 weapon = ExtResource("2_3j4b4")
 hurtbox = NodePath("Hurtbox")
@@ -172,6 +172,9 @@ script = ExtResource("35_ln3h3")
 [node name="Taunt" type="Node" parent="StateMachine" unique_id=1362315424]
 script = ExtResource("36_t1aof")
 action = ExtResource("37_w8qe1")
+
+[node name="CoverPlace" type="Node" parent="StateMachine" unique_id=646863588]
+script = ExtResource("39_hdvrm")
 
 [node name="Combatant" type="Node" parent="." unique_id=1176548210]
 script = ExtResource("28_uniwh")

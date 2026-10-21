@@ -212,6 +212,11 @@ const HEADROOM_RADIUS: float = 0.38
 @export var debug_carry: bool = false
 @export var carry_blocked_dip: float = 0.15
 @export var carry_blocked_time: float = 0.2
+## Cover volumes (item 15b): how far (m) from the player the volume and the spot may be, the seconds the glide to
+## the spot takes, and the grid step (m) the best spot is searched on.
+@export var cover_snap_reach: float = 1.5
+@export var cover_glide_time: float = 0.3
+@export var cover_grid_step: float = 0.25
 ## A floor must be found within this many metres below the feet, or the released body falls instead.
 @export var carry_floor_reach: float = 1.0
 
@@ -390,6 +395,20 @@ var _put_from: Vector3 = Vector3.ZERO
 var _put_to: Vector3 = Vector3.ZERO
 var _put_yaw: float = 0.0
 var _put_from_rot: Vector3 = Vector3.ZERO
+## The pick-up runs in two steps: the sheathe (the sword's own animation), then the lift. While the first runs the
+## body stays where it lies; after PICKUP_SHEATHE_LIMIT seconds the lift starts anyway.
+const PICKUP_SHEATHE_LIMIT: float = 1.0
+var _pickup_waiting: bool = false
+var _pickup_wait_left: float = 0.0
+var _put_scale: float = 1.0
+var _put_from_scale: float = 1.0
+## Item 15b: the spot `CoverPlaceState` glides to (see `CoverPlacement.find`), the finder and its short cache.
+var cover_plan: Dictionary = {}
+var _cover_placement: CoverPlacement
+var _cover_cache: Dictionary = {}
+var _cover_cache_id: int = 0
+var _cover_cache_ms: int = -100000
+var _cover_cache_pos: Vector3 = Vector3.ZERO
 ## Item 10: is the blade reversed? Kept in `GameFlags` (so it survives the death reload, not the main menu).
 var blade_reversed: bool:
 	get:
@@ -481,6 +500,7 @@ func _ready() -> void:
 	_spawn_yaw = visual.rotation.y
 	ledge_sensor = LedgeSensor.new(self)
 	_interact_picker = InteractPicker.new(self)
+	_cover_placement = CoverPlacement.new(self)
 	_forced = PlayerForcedMovement.new(self)
 	_reaction = PlayerBodyReaction.new(self)
 	Fx.blood_enabled = show_blood
@@ -692,21 +712,38 @@ func pick_up_body(body: Enemy) -> void:
 		return
 	carried_body = body
 	body.set_carried(true)
-	_carry_from = body.global_position
-	_carry_from_rot = body.global_rotation
-	_carry_blend = 0.0
 	_carry_dip_left = 0.0
 	_put_left = 0.0
-	_carry_height_now = carry_height_crouched if is_crouched else carry_height
+	_pickup_waiting = false
 	if not sheathed:
-		set_sheathed(true)
+		_begin_pickup_sheathe()
+	else:
+		_begin_pickup_lift()
+
+
+## Pick-up step 1: the sword goes into the scabbard with its own animation (the same as the sheathe press).
+func _begin_pickup_sheathe() -> void:
+	_pickup_waiting = true
+	_pickup_wait_left = PICKUP_SHEATHE_LIMIT
+	set_sheathed(true)
+
+
+## Pick-up step 2: the body lifts onto the shoulder (a placeholder motion; a real pick-up animation replaces this).
+func _begin_pickup_lift() -> void:
+	_pickup_waiting = false
+	if carried_body == null:
+		return
+	_carry_from = carried_body.global_position
+	_carry_from_rot = carried_body.global_rotation
+	_carry_blend = 0.0
+	_carry_height_now = carry_height_crouched if is_crouched else carry_height
 	Sfx.play(get_tree(), Sfx.Id.MENU_OK)
 
 
 ## `interact` while carrying: puts the body down in front, or, when the spot is blocked, the body dips and comes
 ## back up (still carried: the player moves and tries again). With no floor ahead it is let go and falls.
 func try_put_down_body() -> void:
-	if carried_body == null or _put_left > 0.0:
+	if carried_body == null or _put_left > 0.0 or _pickup_waiting:
 		return
 	var spot := global_position + get_facing_direction() * carry_put_distance
 	_carry_log("put-down: pos=%s facing_yaw=%.1f spot=%s" % [global_position, rad_to_deg(visual.global_rotation.y), spot])
@@ -728,13 +765,74 @@ func try_put_down_body() -> void:
 		_carry_dip_left = carry_blocked_time
 		return
 	_carry_log("  -> clear: putting down")
-	_put_yaw = visual.global_rotation.y + PI * 0.5
+	_begin_put_motion(spot, visual.global_rotation.y + PI * 0.5)
+
+
+## Starts the body's motion from where it is to lying flat with its middle above `spot` (a floor point), turned
+## to `body_yaw`; `_update_carried_body` runs it and `_finish_put_down` lets the body go.
+func _begin_put_motion(spot: Vector3, body_yaw: float, body_scale: float = 1.0) -> void:
+	_put_yaw = body_yaw
+	_put_scale = body_scale
+	_put_from_scale = carried_body.scale.x
 	_put_from = carried_body.global_position
 	_put_from_rot = carried_body.global_rotation
-	_put_to = _flat_root_for(carried_body, spot, _put_yaw)
+	_put_to = _flat_root_for(carried_body, spot, _put_yaw, body_scale)
 	_put_left = carry_put_time
 	if _put_left <= 0.0:
 		_finish_put_down()
+
+
+## Item 15b: where to lay the carried body in this cover volume (an empty Dictionary: nowhere). Kept for a
+## moment, so the prompt can ask every frame.
+func find_cover_placement(cover: CoverVolume, fresh: bool = false) -> Dictionary:
+	var now := Time.get_ticks_msec()
+	if not fresh and _cover_cache_id == cover.get_instance_id() and now - _cover_cache_ms < 200 \
+			and global_position.distance_to(_cover_cache_pos) < 0.1:
+		return _cover_cache
+	_cover_cache = _cover_placement.find(cover)
+	_cover_cache_id = cover.get_instance_id()
+	_cover_cache_ms = now
+	_cover_cache_pos = global_position
+	return _cover_cache
+
+
+## Item 15b: `interact` on a "Hide body" prompt: glide to the spot and lay the body in.
+func begin_cover_place(cover: CoverVolume) -> void:
+	if carried_body == null or _put_left > 0.0 or not is_on_floor():
+		return
+	var plan := find_cover_placement(cover, true)
+	if plan.is_empty():
+		return
+	cover_plan = plan
+	input_buffer.consume(Actions.INTERACT)
+	state_machine.transition_to(StateName.COVER_PLACE)
+
+
+## Item 15b: the glide is done: the body goes into the volume.
+func finish_cover_place() -> void:
+	var plan := cover_plan
+	cover_plan = {}
+	if carried_body == null or plan.is_empty():
+		return
+	_begin_put_motion(plan["spot"], plan["body_yaw"], float(plan.get("scale", 1.0)))
+
+
+## Item 15b: can the player stand at `feet`, facing `facing_yaw`, and put the body down with its middle above
+## `spot`? Floor under the feet, room for the body, a clear path there, room for the footprint.
+func cover_spot_valid(feet: Vector3, facing_yaw: float, spot: Vector3) -> bool:
+	var floor_y := _find_floor_y(feet)
+	if is_nan(floor_y) or absf(floor_y - global_position.y) > 0.3:
+		return false
+	var at := Vector3(feet.x, floor_y, feet.z)
+	var fits := fits_crouching_at(at + Vector3.UP * 0.02) if is_crouched else fits_standing_at(at + Vector3.UP * 0.02)
+	if not fits:
+		return false
+	var mask := collision_mask & ~Layers.INVISIBLE_WALL
+	var path := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 0.5, at + Vector3.UP * 0.5, mask,
+			[get_rid()])
+	if not get_world_3d().direct_space_state.intersect_ray(path).is_empty():
+		return false
+	return _carry_room_at(Vector3(spot.x, floor_y, spot.z), facing_yaw, at, true)
 
 
 ## Lets go of the body at once, in front of the feet (a dodge, an attack, a hit, a ledge). With no floor
@@ -746,6 +844,11 @@ func drop_carried_body() -> void:
 	carried_body = null
 	_put_left = 0.0
 	_carry_dip_left = 0.0
+	if _pickup_waiting:
+		# The pick-up was cancelled before the lift: the body stays where it lies.
+		_pickup_waiting = false
+		body.place_body(body.global_position, body.global_rotation.y, false)
+		return
 	var spot := global_position + get_facing_direction() * 0.4
 	var yaw := visual.global_rotation.y + PI * 0.5
 	var floor_y := _find_floor_y(spot)
@@ -763,7 +866,7 @@ func _finish_put_down() -> void:
 	carried_body = null
 	_put_left = 0.0
 	if is_instance_valid(body):
-		body.place_body(_put_to, _put_yaw, false)
+		body.place_body(_put_to, _put_yaw, false, _put_scale)
 
 
 ## The floor height under a spot (within `carry_floor_reach` below the feet), or NAN when there is none.
@@ -779,18 +882,20 @@ func _find_floor_y(at: Vector3) -> float:
 
 
 ## The root for a body lying flat on the floor with its middle above `floor_spot` (a put-down or a drop).
-func _flat_root_for(body: Enemy, floor_spot: Vector3, body_yaw: float) -> Vector3:
-	var middle := floor_spot + Vector3.UP * Enemy.LYING_MIDDLE.y
-	return body.lying_root_for(middle, Basis(Vector3.UP, body_yaw))
+func _flat_root_for(body: Enemy, floor_spot: Vector3, body_yaw: float, body_scale: float = 1.0) -> Vector3:
+	var middle := floor_spot + Vector3.UP * Enemy.LYING_MIDDLE.y * body_scale
+	return body.lying_root_for(middle, Basis(Vector3.UP, body_yaw).scaled(Vector3.ONE * body_scale))
 
 
 ## True when the body's footprint (lying across the facing direction) fits at the spot.
-func _carry_room_at(floor_spot: Vector3) -> bool:
+func _carry_room_at(floor_spot: Vector3, yaw: float = INF, origin: Vector3 = Vector3.INF, quiet: bool = false) -> bool:
+	var box_yaw := visual.global_rotation.y if is_inf(yaw) else yaw
+	var from_pos := global_position if not origin.is_finite() else origin
 	var shape := BoxShape3D.new()
 	shape.size = carry_room_size + Vector3.ONE * carry_room_margin * 2.0
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = shape
-	query.transform = Transform3D(Basis(Vector3.UP, visual.global_rotation.y),
+	query.transform = Transform3D(Basis(Vector3.UP, box_yaw),
 			floor_spot + Vector3.UP * (0.1 + shape.size.y * 0.5))
 	query.collision_mask = collision_mask & ~Layers.INVISIBLE_WALL
 	query.exclude = [get_rid()]
@@ -804,7 +909,7 @@ func _carry_room_at(floor_spot: Vector3) -> bool:
 	var half_length := shape.size.x * 0.5
 	var half_depth := shape.size.z * 0.5
 	for height: float in [0.2, shape.size.y * 0.5 + 0.1]:
-		var from := Vector3(global_position.x, global_position.y + height, global_position.z)
+		var from := Vector3(from_pos.x, from_pos.y + height, from_pos.z)
 		var base := Vector3(floor_spot.x, floor_spot.y + height, floor_spot.z)
 		for target: Vector3 in [base, base + lateral * half_length, base - lateral * half_length,
 				base + forward * half_depth]:
@@ -814,13 +919,13 @@ func _carry_room_at(floor_spot: Vector3) -> bool:
 				var collider := ray_hit.get("collider") as Node
 				ray_hits.append(str(collider.name) if collider != null else "?")
 	var blocked := not hits.is_empty() or not ray_hits.is_empty()
-	if debug_carry:
+	if debug_carry and not quiet:
 		var names: Array[String] = []
 		for hit: Dictionary in hits:
 			var collider := hit.get("collider") as Node
 			names.append(str(collider.name) if collider != null else "?")
 		_carry_log("  room box center=%s size=%s yaw=%.1f mask=%d hits=%s ray_hits=%s" % [query.transform.origin,
-				shape.size, rad_to_deg(visual.global_rotation.y), query.collision_mask, names, ray_hits])
+				shape.size, rad_to_deg(box_yaw), query.collision_mask, names, ray_hits])
 		_debug_box(query.transform.origin, shape.size, query.transform.basis,
 				Color(1.0, 0.2, 0.2, 0.35) if blocked else Color(0.2, 1.0, 0.3, 0.35))
 	return not blocked
@@ -856,6 +961,12 @@ func _update_carried_body(delta: float) -> void:
 		return
 	if not is_instance_valid(carried_body):
 		carried_body = null
+		_pickup_waiting = false
+		return
+	if _pickup_waiting:
+		_pickup_wait_left -= delta
+		if sword_visual == null or not sword_visual.is_busy() or _pickup_wait_left <= 0.0:
+			_begin_pickup_lift()
 		return
 	if _put_left > 0.0:
 		_put_left -= delta
@@ -866,6 +977,7 @@ func _update_carried_body(delta: float) -> void:
 		carried_body.global_position = _put_from.lerp(_put_to, smoothstep(0.0, 1.0, t))
 		carried_body.global_rotation = Vector3(lerpf(_put_from_rot.x, 0.0, smoothstep(0.0, 1.0, t)),
 				lerp_angle(_put_from_rot.y, _put_yaw, smoothstep(0.0, 1.0, t)), 0.0)
+		carried_body.scale = Vector3.ONE * lerpf(_put_from_scale, _put_scale, smoothstep(0.0, 1.0, t))
 		return
 	var height_goal := carry_height_crouched if is_crouched else carry_height
 	_carry_height_now = lerpf(_carry_height_now, height_goal, 1.0 - exp(-12.0 * delta))

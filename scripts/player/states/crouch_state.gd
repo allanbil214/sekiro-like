@@ -22,7 +22,7 @@ func enter(previous: StringName) -> void:
 
 func exit(next: StringName) -> void:
 	# Crouch attacks start from here and keep you crouched; so does the wall hug (item 9).
-	if next != StateName.ATTACK and next != StateName.WALL_HUG:
+	if next != StateName.ATTACK and next != StateName.WALL_HUG and next != StateName.COVER_PLACE:
 		player.set_crouched(false)
 
 

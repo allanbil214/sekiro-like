@@ -409,6 +409,8 @@ func _look_for_corpses(delta: float) -> void:
 		var flat := Vector3(to_body.x, 0.0, to_body.z)
 		if flat.length() > _ai.corpse_sight_range or not _in_cone(flat):
 			continue
+		if other.is_hidden_in_cover():
+			continue
 		if not _line_to_point_is_clear(other.global_position + Vector3.UP * 0.4):
 			continue
 		other.mark_corpse_discovered()

@@ -14,3 +14,5 @@ const DANGER_SYMBOL: StringName = &"danger_symbol"
 const CAMERA_RIG: StringName = &"camera_rig"
 ## The boss-slain screen (`VictoryScreen.show_victory`).
 const VICTORY_SCREEN: StringName = &"victory_screen"
+## Every cover volume, a place where a body can lie hidden (`CoverVolume`, Phase 2 item 15b).
+const COVER: StringName = &"cover"

@@ -20,7 +20,7 @@ func pick() -> Interactable:
 			continue
 		if _player.is_carrying() and not item.usable_while_carrying:
 			continue
-		var offset := item.global_position - _player.global_position
+		var offset := item.reach_point(_player) - _player.global_position
 		if absf(offset.y) > _player.interact_height_range:
 			continue
 		offset.y = 0.0
@@ -28,7 +28,7 @@ func pick() -> Interactable:
 		if distance > _player.interact_range:
 			continue
 		# Very close is always "in front" (no angle for a zero-length offset).
-		if distance > 0.3 and forward.dot(offset / distance) < _player.interact_min_dot:
+		if item.needs_facing and distance > 0.3 and forward.dot(offset / distance) < _player.interact_min_dot:
 			continue
 		if best == null or item.priority > best.priority \
 				or (item.priority == best.priority and distance < best_distance):
