@@ -207,9 +207,9 @@ const HEADROOM_RADIUS: float = 0.38
 @export var carry_room_size: Vector3 = Vector3(1.8, 0.6, 0.8)
 ## A safety gap (m) added to the footprint on every side, so the body never touches a wall.
 @export var carry_room_margin: float = 0.1
-## Debug (build-time aid, put-down check): log what the room check sees and draw its box for 3 s (red = blocked,
+## Debug (put-down check): log what the room check sees and draw its box for 3 s (red = blocked,
 ## green = clear) plus the body's real footprint after a put-down (blue). Turn it off when done.
-@export var debug_carry: bool = true
+@export var debug_carry: bool = false
 @export var carry_blocked_dip: float = 0.15
 @export var carry_blocked_time: float = 0.2
 ## A floor must be found within this many metres below the feet, or the released body falls instead.
