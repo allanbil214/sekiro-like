@@ -247,6 +247,8 @@ func hear_noise_at(point: Vector3, radius: float) -> void:
 func reset() -> void:
 	_set_tend(Tend.NONE, "reset")
 	_clear_spot()
+	if is_instance_valid(_tend_body):
+		_tend_body.held_by_guard = false
 	_tend_body = null
 	_carrying = false
 	meter = 0.0
@@ -496,7 +498,7 @@ func _style_speed() -> float:
 
 
 func _body_ok() -> bool:
-	return is_instance_valid(_tend_body) and _tend_body.is_corpse()
+	return is_instance_valid(_tend_body) and _tend_body.is_corpse() and not _tend_body.is_carried()
 
 
 func _flat_distance_to(point: Vector3) -> float:
@@ -546,7 +548,7 @@ func _run_investigation(delta: float) -> void:
 ## An unconscious body (item 10): walk to it, pause, wake it. It wakes where it lies, and both guards are then
 ## suspicious about the spot (no alarm), then the guard goes back to its patrol.
 func _run_wake(delta: float) -> void:
-	if not is_instance_valid(_tend_body) or not _tend_body.is_unconscious():
+	if not is_instance_valid(_tend_body) or not _tend_body.is_unconscious() or _tend_body.is_carried():
 		_set_tend(Tend.NONE, "the sleeper is gone")
 		_tend_body = null
 		return
@@ -586,6 +588,7 @@ func _run_respect(delta: float) -> void:
 			_tend_timer += delta
 			if _tend_timer >= _ai.corpse_pickup_pause:
 				_carrying = true
+				_tend_body.held_by_guard = true
 				_set_tend(Tend.CARRY, "")
 				_hold_body()
 		Tend.CARRY:
@@ -695,6 +698,8 @@ func _hold_body() -> void:
 ## Lay the body down: along the wall when the carrier got there, otherwise in front of it.
 func _put_down(at_wall: bool) -> void:
 	_carrying = false
+	if is_instance_valid(_tend_body):
+		_tend_body.held_by_guard = false
 	if not _body_ok():
 		return
 	if at_wall and _has_wall and _flat_distance_to(_wall_spot) <= 1.5:

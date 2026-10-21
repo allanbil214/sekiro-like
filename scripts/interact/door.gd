@@ -23,6 +23,7 @@ var is_open: bool = false
 func _ready() -> void:
 	if prompt_text == "Use":
 		prompt_text = "Open"
+	usable_while_carrying = true
 
 
 func is_locked() -> bool:

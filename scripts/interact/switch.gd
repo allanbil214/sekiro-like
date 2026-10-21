@@ -12,6 +12,7 @@ extends Interactable
 func _ready() -> void:
 	if prompt_text == "Use":
 		prompt_text = "Pull"
+	usable_while_carrying = true
 	_handle.rotation.z = deg_to_rad(handle_angle_degrees if GameFlags.has_flag(flag) else -handle_angle_degrees)
 
 

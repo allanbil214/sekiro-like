@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="6_hurtbox"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="7_combatant"]
 [ext_resource type="Script" uid="uid://84kjs2gkp6la" path="res://scripts/ui/hud/enemy_bar.gd" id="8_bar"]
+[ext_resource type="Script" uid="uid://bd67na816tt85" path="res://scripts/interact/body_pickup.gd" id="9_4efjx"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4
@@ -84,3 +85,6 @@ visible = false
 mesh = SubResource("SphereMesh_aura")
 
 [node name="NavigationAgent" type="NavigationAgent3D" parent="." unique_id=2072699534]
+
+[node name="BodyPickup" type="Node3D" parent="." unique_id=1073737395]
+script = ExtResource("9_4efjx")

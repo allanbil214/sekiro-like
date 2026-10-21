@@ -187,6 +187,27 @@ const HEADROOM_RADIUS: float = 0.38
 ## Seconds from the start of a taunt until the next one can start.
 @export var taunt_cooldown: float = 1.5
 
+@export_group("Carry (Phase 2 item 15a)")
+## The multiplier on the walk, run and crouch speeds while carrying a body. No extra noise: the normal
+## speed-based rules apply.
+@export_range(0.1, 1.0, 0.05) var carry_speed_multiplier: float = 0.7
+## Where the body's root rests across the arms: how far (m) in front, and how high (m) above the feet standing and
+## crouched (the lying body's middle is about 0.4 m above its root), and the seconds the pick-up lift takes.
+@export var carry_forward: float = 0.45
+@export var carry_height: float = 0.5
+@export var carry_height_crouched: float = 0.2
+@export var carry_pickup_time: float = 0.25
+## Putting down: how far (m) ahead the body is set, how long (s) the motion takes, the footprint checked for room
+## (length across the arms, height, depth, m), and the dip and its time (s) when the spot is blocked (the body
+## goes back up and stays carried).
+@export var carry_put_distance: float = 0.7
+@export var carry_put_time: float = 0.25
+@export var carry_room_size: Vector3 = Vector3(1.7, 0.5, 0.5)
+@export var carry_blocked_dip: float = 0.15
+@export var carry_blocked_time: float = 0.2
+## A floor must be found within this many metres below the feet, or the released body falls instead.
+@export var carry_floor_reach: float = 1.0
+
 @export_group("Interact (Phase 2 item 8)")
 ## How far (m) an interactable can be and still be picked, the largest height difference (m), and how far
 ## in front it must be (1 = dead ahead, 0.5 = within 60 degrees).
@@ -350,6 +371,17 @@ var item_belt: ItemBelt
 var ledge_sensor: LedgeSensor
 ## The interactable the press of `interact` would use right now (ground, Locomotion or Crouch only).
 var interact_target: Interactable
+## Phase 2 item 15a: the body being carried (null = none), and the put-down and pick-up motions.
+var carried_body: Enemy
+var _carry_height_now: float = 0.0
+var _carry_blend: float = 1.0
+var _carry_from: Vector3 = Vector3.ZERO
+var _carry_from_yaw: float = 0.0
+var _carry_dip_left: float = 0.0
+var _put_left: float = 0.0
+var _put_from: Vector3 = Vector3.ZERO
+var _put_to: Vector3 = Vector3.ZERO
+var _put_yaw: float = 0.0
 ## Item 10: is the blade reversed? Kept in `GameFlags` (so it survives the death reload, not the main menu).
 var blade_reversed: bool:
 	get:
@@ -524,6 +556,7 @@ func _physics_process(delta: float) -> void:
 	velocity.x -= push.x
 	velocity.z -= push.z
 	_forced.update_enemy_head()
+	_update_carried_body(delta)
 	_update_footsteps(delta)
 	_forced.update_personal_space(delta)
 	_update_hurtbox()
@@ -574,7 +607,12 @@ func get_move_input() -> Vector3:
 
 
 func get_move_speed() -> float:
-	return walk_speed if walk_only else run_speed
+	var speed := walk_speed if walk_only else run_speed
+	return speed * carry_speed_multiplier if carried_body != null else speed
+
+
+func get_crouch_speed() -> float:
+	return crouch_speed * carry_speed_multiplier if carried_body != null else crouch_speed
 
 
 ## Picks the interactable in reach and in front (item 8) and feeds the prompt. Only on the ground in
@@ -590,6 +628,14 @@ func _update_interact_target() -> void:
 ## Called by Locomotion and Crouch on a fresh `interact` press: uses the picked interactable.
 ## Returns true if one was used (the press is then used up so it can't also grab a ledge).
 func try_interact() -> bool:
+	if _put_left > 0.0:
+		input_buffer.consume(Actions.INTERACT)
+		return true
+	if interact_target == null and carried_body != null:
+		# Carrying: no wall hug; the press puts the body down.
+		input_buffer.consume(Actions.INTERACT)
+		try_put_down_body()
+		return true
 	if interact_target == null:
 		# Nothing to use: a wall in front is a wall hug (item 9).
 		var hug := state_machine.get_state(StateName.WALL_HUG) as WallHugState
@@ -610,6 +656,151 @@ func toggle_reverse_blade() -> void:
 	if sword_visual != null:
 		sword_visual.set_reversed(on)
 	Sfx.play_ui(get_tree(), Sfx.Id.MENU_OK)
+
+
+# --- Carrying a body (Phase 2 item 15a) --------------------------------------------------------------
+
+## The states that need both hands or the sword: entering one drops the carried body (the attack, the guard
+## and the dodge then run as usual). Called by `StateMachine.transition_to`.
+const CARRY_DROP_STATES: Array[StringName] = [
+	StateName.DODGE, StateName.DASH, StateName.ATTACK, StateName.AIR_ATTACK, StateName.HELM_SPLITTER,
+	StateName.GUARD, StateName.STAGGER, StateName.DEATHBLOW, StateName.DEAD, StateName.LEDGE_HANG,
+	StateName.LEDGE_CLIMB,
+]
+
+
+func on_state_entering(state_name: StringName) -> void:
+	if carried_body != null and CARRY_DROP_STATES.has(state_name):
+		drop_carried_body()
+
+
+func is_carrying() -> bool:
+	return carried_body != null
+
+
+## Picks the body up (`BodyPickup`): the sword is sheathed, the body lifts across the arms.
+func pick_up_body(body: Enemy) -> void:
+	if carried_body != null or body == null or combatant.dead or not is_on_floor():
+		return
+	carried_body = body
+	body.set_carried(true)
+	_carry_from = body.global_position
+	_carry_from_yaw = body.global_rotation.y
+	_carry_blend = 0.0
+	_carry_dip_left = 0.0
+	_put_left = 0.0
+	_carry_height_now = carry_height_crouched if is_crouched else carry_height
+	if not sheathed:
+		set_sheathed(true)
+	Sfx.play(get_tree(), Sfx.Id.MENU_OK)
+
+
+## `interact` while carrying: puts the body down in front, or, when the spot is blocked, the body dips and comes
+## back up (still carried: the player moves and tries again). With no floor ahead it is let go and falls.
+func try_put_down_body() -> void:
+	if carried_body == null or _put_left > 0.0:
+		return
+	var spot := global_position + get_facing_direction() * carry_put_distance
+	var floor_y := _find_floor_y(spot)
+	if is_nan(floor_y):
+		drop_carried_body()
+		return
+	spot.y = floor_y
+	if not _carry_room_at(spot):
+		_carry_dip_left = carry_blocked_time
+		return
+	_put_from = carried_body.global_position
+	_put_to = spot
+	_put_yaw = visual.global_rotation.y + PI * 0.5
+	_put_left = carry_put_time
+	if _put_left <= 0.0:
+		_finish_put_down()
+
+
+## Lets go of the body at once, in front of the feet (a dodge, an attack, a hit, a ledge). With no floor
+## below it falls.
+func drop_carried_body() -> void:
+	if carried_body == null:
+		return
+	var body := carried_body
+	carried_body = null
+	_put_left = 0.0
+	_carry_dip_left = 0.0
+	var spot := global_position + get_facing_direction() * 0.4
+	var yaw := visual.global_rotation.y + PI * 0.5
+	var floor_y := _find_floor_y(spot)
+	if is_nan(floor_y):
+		body.place_body(body.global_position, yaw, true)
+		return
+	body.place_body(Vector3(spot.x, floor_y, spot.z), yaw, false)
+
+
+func _finish_put_down() -> void:
+	var body := carried_body
+	carried_body = null
+	_put_left = 0.0
+	if is_instance_valid(body):
+		body.place_body(_put_to, _put_yaw, false)
+
+
+## The floor height under a spot (within `carry_floor_reach` below the feet), or NAN when there is none.
+func _find_floor_y(at: Vector3) -> float:
+	var mask := collision_mask & ~Layers.INVISIBLE_WALL
+	var query := PhysicsRayQueryParameters3D.create(
+			Vector3(at.x, global_position.y + 0.6, at.z),
+			Vector3(at.x, global_position.y - carry_floor_reach, at.z), mask, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty() or (hit["normal"] as Vector3).y < 0.7:
+		return NAN
+	return (hit["position"] as Vector3).y
+
+
+## True when the body's footprint (lying across the facing direction) fits at the spot.
+func _carry_room_at(floor_spot: Vector3) -> bool:
+	var shape := BoxShape3D.new()
+	shape.size = carry_room_size
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = shape
+	query.transform = Transform3D(Basis(Vector3.UP, visual.global_rotation.y),
+			floor_spot + Vector3.UP * (0.1 + carry_room_size.y * 0.5))
+	query.collision_mask = collision_mask & ~Layers.INVISIBLE_WALL
+	query.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
+
+## Keeps the carried body across the arms (a placeholder for a carry animation), runs the pick-up lift, the
+## put-down motion and the dip of a blocked put-down.
+func _update_carried_body(delta: float) -> void:
+	if carried_body == null:
+		return
+	if not is_instance_valid(carried_body):
+		carried_body = null
+		return
+	if _put_left > 0.0:
+		_put_left -= delta
+		if _put_left <= 0.0:
+			_finish_put_down()
+			return
+		var t := 1.0 - _put_left / maxf(carry_put_time, 0.001)
+		carried_body.global_position = _put_from.lerp(_put_to, smoothstep(0.0, 1.0, t))
+		carried_body.global_rotation = Vector3(0.0, _put_yaw, 0.0)
+		return
+	var height_goal := carry_height_crouched if is_crouched else carry_height
+	_carry_height_now = lerpf(_carry_height_now, height_goal, 1.0 - exp(-12.0 * delta))
+	var goal := global_position + get_facing_direction() * carry_forward + Vector3.UP * _carry_height_now
+	var yaw := visual.global_rotation.y + PI * 0.5
+	if _carry_dip_left > 0.0:
+		_carry_dip_left = maxf(_carry_dip_left - delta, 0.0)
+		var progress := 1.0 - _carry_dip_left / maxf(carry_blocked_time, 0.001)
+		goal.y -= sin(PI * progress) * carry_blocked_dip
+	if _carry_blend < 1.0:
+		_carry_blend = minf(_carry_blend + delta / maxf(carry_pickup_time, 0.01), 1.0)
+		var u := smoothstep(0.0, 1.0, _carry_blend)
+		carried_body.global_position = _carry_from.lerp(goal, u)
+		carried_body.global_rotation = Vector3(0.0, lerp_angle(_carry_from_yaw, yaw, u), 0.0)
+		return
+	carried_body.global_position = goal
+	carried_body.global_rotation = Vector3(0.0, yaw, 0.0)
 
 
 func is_wall_hugging() -> bool:
@@ -848,7 +1039,7 @@ func stop_slide_arms() -> void:
 ## True if the equipped weapon has at least one combo attack.
 ## R: draw the sword (without attacking) or sheathe it. Ignored while it is still moving.
 func toggle_sheathe() -> void:
-	if weapon == null or (sword_visual != null and sword_visual.is_busy()):
+	if weapon == null or carried_body != null or (sword_visual != null and sword_visual.is_busy()):
 		return
 	set_sheathed(not sheathed)
 
@@ -1272,6 +1463,7 @@ func begin_fall_respawn(damage_fraction: float) -> void:
 	var current := state_machine.current
 	if current is DeadState or current is DeathblowState:
 		return
+	drop_carried_body()
 	combatant.take_flat_damage(combatant.max_health * damage_fraction, false)
 	Sfx.play(get_tree(), Sfx.Id.PLAYER_HURT)
 	_revive_invulnerable_left = fall_fade_out + fall_fade_in + fall_invulnerable_time
@@ -1362,7 +1554,7 @@ func _try_cycle_item() -> void:
 ## press is: a tap (released within `hold_to_aim_time`) throws on release (`_try_throw`), a hold starts the aim
 ## (`_try_aim`, item 11b; `AimState` then throws on each attack press, item 11c).
 func _try_use_item(delta: float) -> void:
-	if combatant.dead or combatant.vulnerable:
+	if combatant.dead or combatant.vulnerable or carried_body != null:
 		_use_pending = false
 		return
 	if Input.is_action_just_pressed(Actions.USE_ITEM):
@@ -1405,6 +1597,8 @@ func _try_throw() -> void:
 func _try_taunt(delta: float) -> void:
 	_taunt_cooldown_left = maxf(_taunt_cooldown_left - delta, 0.0)
 	if not Input.is_action_just_pressed(Actions.TAUNT):
+		return
+	if carried_body != null:
 		return
 	if combatant.dead or combatant.vulnerable or _taunt_cooldown_left > 0.0 or not is_on_floor():
 		return

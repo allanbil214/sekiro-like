@@ -71,5 +71,5 @@ func physics_update(delta: float) -> void:
 		if wants_stand:
 			machine.transition_to(StateName.LOCOMOTION)
 			return
-	player.apply_horizontal_movement(delta, player.crouch_speed, player.crouch_decel)
+	player.apply_horizontal_movement(delta, player.get_crouch_speed(), player.crouch_decel)
 	player.face_input(delta)

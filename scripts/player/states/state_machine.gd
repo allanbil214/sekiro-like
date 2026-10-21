@@ -41,6 +41,8 @@ func transition_to(state_name: StringName) -> void:
 	if current != null:
 		previous = current.name
 		current.exit(next.name)
+	if next.player != null:
+		next.player.on_state_entering(next.name)
 	current = next
 	current.enter(previous)
 

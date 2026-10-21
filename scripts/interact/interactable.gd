@@ -12,6 +12,9 @@ signal interacted(player: Player)
 @export var prompt_text: String = "Use"
 ## A higher priority wins over a nearer one when several are in reach.
 @export var priority: int = 0
+## True lets the player use it while carrying a body (a door, a switch, a chest by kicking; Phase 2 item 15a).
+## Off by default: an NPC, say, cannot be used with a body in the arms.
+@export var usable_while_carrying: bool = false
 
 static var _all: Array[Interactable] = []
 

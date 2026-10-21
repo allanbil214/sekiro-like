@@ -153,6 +153,12 @@ var _held: bool = false
 var _held_amount: float = 0.0
 var _held_clock: float = 0.0
 var corpse_discovered: bool = false
+## Phase 2 item 15a: the player carries this body (guards neither see nor lift it meanwhile; temporary until
+## item 15d), a guard carries it (the player cannot pick it up), and a released body that is falling.
+var _carried: bool = false
+var held_by_guard: bool = false
+var _body_falling: bool = false
+var _body_fall_speed: float = 0.0
 var _corpse_material: StandardMaterial3D
 ## Awareness enemies only: it was in combat when it stood down, so it yields when the player is back (an unaware one
 ## just carries on).
@@ -295,6 +301,9 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _body_falling:
+		_fall_body(delta)
+		return
 	if combatant.dead:
 		if _unconscious:
 			_tick_wake(delta)
@@ -1099,7 +1108,43 @@ func is_unconscious() -> bool:
 
 ## A body (dead or unconscious) no guard has seen yet.
 func is_undiscovered_body() -> bool:
-	return (_is_corpse or _unconscious) and not corpse_discovered
+	return (_is_corpse or _unconscious) and not corpse_discovered and not _carried
+
+
+## Item 15a: the player is carrying this body.
+func is_carried() -> bool:
+	return _carried
+
+
+func set_carried(on: bool) -> void:
+	_carried = on
+	if on:
+		_body_falling = false
+
+
+## Item 15a: the player lets go of the body: it is set at `at` facing `yaw` (its tipped-over pose is kept), or,
+## with `fall`, starts to fall from there until it lands (below -30 m it is lost for good).
+func place_body(at: Vector3, yaw: float, fall: bool) -> void:
+	_carried = false
+	global_position = at
+	global_rotation = Vector3(0.0, yaw, 0.0)
+	_body_falling = fall
+	_body_fall_speed = 0.0
+
+
+func _fall_body(delta: float) -> void:
+	_body_fall_speed += float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) * delta
+	var step := _body_fall_speed * delta
+	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 0.1,
+			global_position + Vector3.DOWN * (step + 0.05), Layers.WORLD, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty():
+		global_position.y = (hit["position"] as Vector3).y
+		_body_falling = false
+		return
+	global_position.y -= step
+	if global_position.y < -30.0:
+		queue_free()
 
 
 ## Item 10: the player's choke holds this enemy (true) or lets go (false).
@@ -1131,7 +1176,7 @@ func _update_held_pose(delta: float) -> void:
 
 ## A body no guard has seen yet.
 func is_undiscovered_corpse() -> bool:
-	return _is_corpse and not corpse_discovered
+	return _is_corpse and not corpse_discovered and not _carried
 
 
 func mark_corpse_discovered() -> void:

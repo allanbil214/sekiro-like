@@ -18,6 +18,8 @@ func pick() -> Interactable:
 	for item: Interactable in Interactable.all():
 		if not item.can_interact(_player):
 			continue
+		if _player.is_carrying() and not item.usable_while_carrying:
+			continue
 		var offset := item.global_position - _player.global_position
 		if absf(offset.y) > _player.interact_height_range:
 			continue

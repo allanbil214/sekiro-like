@@ -1454,3 +1454,10 @@ Done and tested by the user. Two parts: the hug can now start on low walls, and 
 - **Landing:** after the hop the body is on the floor level but the collision was off, so `LANDING_GRACE` (0.2 s) applies gravity instead of handing over to Air (the same cause as the 13b crouch pop-up).
 - **Files:** `WallHugState`, `LedgeSensor`, `Player` (exports `wall_hug_vault_max_height`, `wall_hug_vault_max_thickness`, `wall_hug_vault_time`). No editor steps.
 - **Not done:** peek up over a low wall (planned as 14c), drops to lower ground, vaulting from outside the hug, sound, real animation.
+
+### Step 14c: wall hug peek up (2026-10-21)
+
+- **Decisions:** the top limit is 1.8 m, matching the vault (the plan's 1.4 m predated the 1.7 m vault test); the camera rises to 0.35 m over the wall top; while raised the hug's 0.5 sight multiplier is off, noise stays 0.5 m; `interact` order in a hug: outside-corner turn, end peek up, start peek up (holding toward a flat-topped wall), else leave.
+- **Files:** `WallHugState` (`_try_peek_up`, `is_peeking_up`, `_peek_up` cleared on enter, exit, vault, turn and sidle), `Player` (exports `wall_hug_peek_up_max_height`, `wall_hug_peek_up_clearance`, `is_peeking_up()`), `EnemyAwareness` (one condition). `CameraRig` unchanged. No editor steps.
+- **Not obvious:** the lift is worked out from the rig's `follow_height` (minus `crouch_height_drop` when crouched) and ignores the lock-on height bonus. Item 14 is complete.
+- **Not done:** real animations, peeking over walls above 1.8 m, peeking from outside the hug.
