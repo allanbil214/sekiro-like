@@ -60,6 +60,7 @@
 [ext_resource type="Script" uid="uid://d22ur2c45ipfd" path="res://scripts/ui/hud/boss_hud.gd" id="43_niom3"]
 [ext_resource type="Script" uid="uid://dtq44sg5foe03" path="res://scripts/items/aim_preview.gd" id="43_uygh0"]
 [ext_resource type="Script" uid="uid://bs16xhj3rdx0g" path="res://scripts/ui/hud/aim_hud.gd" id="49_t1aof"]
+[ext_resource type="Script" uid="uid://ve6lva1taao4" path="res://scripts/ui/hud/traversal_hint.gd" id="61_5xbmr"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -264,3 +265,6 @@ script = ExtResource("42_genst")
 
 [node name="CrouchVignette" type="CanvasLayer" parent="." unique_id=1888972953]
 script = ExtResource("40_7obkq")
+
+[node name="TraversalHint" type="CanvasLayer" parent="." unique_id=1518354657]
+script = ExtResource("61_5xbmr")

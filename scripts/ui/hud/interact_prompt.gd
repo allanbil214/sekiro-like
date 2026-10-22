@@ -15,6 +15,8 @@ extends CanvasLayer
 
 var _canvas: Control
 var _text: String = ""
+var _glyph: Dictionary = {}
+var _glyph_signature: String = ""
 var _line: String = ""
 var _line_left: float = 0.0
 
@@ -32,11 +34,21 @@ func _ready() -> void:
 ## `target` null hides the prompt.
 func set_target(target: Interactable, player: Player) -> void:
 	var text := ""
+	var glyph := {}
+	var signature := ""
 	if target != null:
-		text = "%s: %s" % [_key_name(), target.get_prompt_text(player)]
-	if text != _text:
+		text = target.get_prompt_text(player)
+		glyph = ButtonPrompts.glyph_for(Actions.INTERACT)
+		signature = ButtonPrompts.signature(glyph)
+	if text != _text or signature != _glyph_signature:
 		_text = text
+		_glyph = glyph
+		_glyph_signature = signature
 		_canvas.queue_redraw()
+
+
+func _input(event: InputEvent) -> void:
+	ButtonPrompts.note_event(event)
 
 
 func show_line(text: String) -> void:
@@ -53,13 +65,22 @@ func _process(delta: float) -> void:
 			_canvas.queue_redraw()
 
 
-func _key_name() -> String:
-	for event in InputMap.action_get_events(Actions.INTERACT):
+## The first keyboard key (or mouse button) bound to `action`, as text ("E", "Space"); the action's name if none.
+## Shared with `TraversalHint`.
+static func key_name(action: StringName) -> String:
+	for event in InputMap.action_get_events(action):
 		if event is InputEventKey:
 			var key := event as InputEventKey
 			var code := key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode
 			return OS.get_keycode_string(code)
-	return "E"
+	for event in InputMap.action_get_events(action):
+		if event is InputEventMouseButton:
+			match (event as InputEventMouseButton).button_index:
+				MOUSE_BUTTON_LEFT: return "LMB"
+				MOUSE_BUTTON_RIGHT: return "RMB"
+				MOUSE_BUTTON_MIDDLE: return "MMB"
+				_: return "Mouse"
+	return String(action).to_upper() if action != Actions.INTERACT else "E"
 
 
 func _draw_prompt() -> void:
@@ -67,8 +88,28 @@ func _draw_prompt() -> void:
 	var s := size.y / maxf(ui_reference_height, 1.0)
 	var font := ThemeDB.fallback_font
 	var px := int(font_size * s)
-	_draw_centered(font, _text, Vector2(size.x * 0.5, size.y * prompt_y), px, s)
+	_draw_prompt_row(font, Vector2(size.x * 0.5, size.y * prompt_y), px, s)
 	_draw_centered(font, _line, Vector2(size.x * 0.5, size.y * line_y), px, s)
+
+
+## "[button] : Verb", centered on `center`.
+func _draw_prompt_row(font: Font, center: Vector2, px: int, s: float) -> void:
+	if _text.is_empty() or _glyph.is_empty():
+		return
+	var inner := 10.0 * s
+	var glyph_w := ButtonPrompts.glyph_width(_glyph, font, px, s)
+	var colon_w := font.get_string_size(":", HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	var text_w := font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	var x := center.x - (glyph_w + inner + colon_w + inner + text_w) * 0.5
+	ButtonPrompts.draw_glyph(_canvas, _glyph, x, center.y, font, px, s, text_color)
+	x += glyph_w + inner
+	_draw_string(font, ":", Vector2(x, center.y), px, s)
+	_draw_string(font, _text, Vector2(x + colon_w + inner, center.y), px, s)
+
+
+func _draw_string(font: Font, text: String, pos: Vector2, px: int, s: float) -> void:
+	_canvas.draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(6 * s), outline_color)
+	_canvas.draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, text_color)
 
 
 func _draw_centered(font: Font, text: String, center: Vector2, px: int, s: float) -> void:

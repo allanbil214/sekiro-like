@@ -32,6 +32,9 @@ static var lock_next: bool = true
 static var mouse_sensitivity: float = 1.0
 static var stick_sensitivity: float = 1.0
 static var invert_y: bool = false
+static var traversal_hints: bool = true
+## 0 AUTO, 1 KEYBOARD, 2 XBOX, 3 PLAYSTATION (`ButtonPrompts.Style`).
+static var button_prompts: int = 0
 
 static var _loaded: bool = false
 static var _warned_bus: bool = false
@@ -57,6 +60,8 @@ static func ensure_loaded() -> void:
 		mouse_sensitivity = _fraction(config, "gameplay", "mouse_sensitivity", mouse_sensitivity, 0.25, 2.0)
 		stick_sensitivity = _fraction(config, "gameplay", "stick_sensitivity", stick_sensitivity, 0.25, 2.0)
 		invert_y = bool(config.get_value("gameplay", "invert_y", invert_y))
+		traversal_hints = bool(config.get_value("gameplay", "traversal_hints", traversal_hints))
+		button_prompts = clampi(int(config.get_value("gameplay", "button_prompts", button_prompts)), 0, 3)
 		ControlsBindings.load_from(config)
 	elif error != ERR_FILE_NOT_FOUND:
 		push_warning("Settings: could not read %s (error %d); using the defaults." % [PATH, error])
@@ -77,6 +82,8 @@ static func save() -> void:
 	config.set_value("gameplay", "mouse_sensitivity", mouse_sensitivity)
 	config.set_value("gameplay", "stick_sensitivity", stick_sensitivity)
 	config.set_value("gameplay", "invert_y", invert_y)
+	config.set_value("gameplay", "traversal_hints", traversal_hints)
+	config.set_value("gameplay", "button_prompts", button_prompts)
 	ControlsBindings.save_to(config)
 	var error := config.save(PATH)
 	if error != OK:

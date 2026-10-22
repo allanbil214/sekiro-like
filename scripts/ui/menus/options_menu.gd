@@ -47,6 +47,8 @@ class ToggleRow extends RefCounted:
 	var off_text: String
 	var getter: Callable
 	var setter: Callable
+	## Not empty: a row that cycles through these texts (the getter and setter use the index).
+	var choices: PackedStringArray = PackedStringArray()
 
 class BindRow extends RefCounted:
 	var button: Button
@@ -243,6 +245,12 @@ func _build_gameplay_page() -> void:
 	controls.append(_add_toggle(_gameplay_page, "INVERT Y", "ON", "OFF",
 		func() -> bool: return Settings.invert_y,
 		func(value: bool) -> void: Settings.invert_y = value))
+	controls.append(_add_toggle(_gameplay_page, "TRAVERSAL HINTS", "ON", "OFF",
+		func() -> bool: return Settings.traversal_hints,
+		func(value: bool) -> void: Settings.traversal_hints = value))
+	controls.append(_add_choice(_gameplay_page, "BUTTON PROMPTS", PackedStringArray(["AUTO", "KEYBOARD", "XBOX", "PLAYSTATION"]),
+		func() -> int: return Settings.button_prompts,
+		func(value: int) -> void: Settings.button_prompts = value))
 	_page_controls[Page.GAMEPLAY] = controls
 
 
@@ -336,6 +344,13 @@ func _add_toggle(page: VBoxContainer, title: String, on_text: String, off_text: 
 	button.pressed.connect(_on_toggle_pressed.bind(row))
 	button.mouse_entered.connect(_on_hovered.bind(button))
 	button.focus_entered.connect(_on_focused)
+	return button
+
+
+## A row that cycles through `choices` on a press; the getter returns the index and the setter takes it.
+func _add_choice(page: VBoxContainer, title: String, choices: PackedStringArray, getter: Callable, setter: Callable) -> Button:
+	var button := _add_toggle(page, title, "", "", getter, setter)
+	_toggles[_toggles.size() - 1].choices = choices
 	return button
 
 
@@ -508,6 +523,9 @@ func _refresh_rows() -> void:
 
 
 func _update_toggle_text(row: ToggleRow) -> void:
+	if not row.choices.is_empty():
+		row.button.text = "%s: %s" % [row.title, row.choices[clampi(int(row.getter.call()), 0, row.choices.size() - 1)]]
+		return
 	var on: bool = bool(row.getter.call())
 	row.button.text = "%s: %s" % [row.title, row.on_text if on else row.off_text]
 
@@ -515,7 +533,10 @@ func _update_toggle_text(row: ToggleRow) -> void:
 func _on_toggle_pressed(row: ToggleRow) -> void:
 	if not _is_open:
 		return
-	row.setter.call(not bool(row.getter.call()))
+	if row.choices.is_empty():
+		row.setter.call(not bool(row.getter.call()))
+	else:
+		row.setter.call((int(row.getter.call()) + 1) % row.choices.size())
 	_update_toggle_text(row)
 	_changed()
 	_save_if_dirty()

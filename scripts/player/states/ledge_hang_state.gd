@@ -21,6 +21,9 @@ var _hit_count: int = 0
 var _hit_clock: float = 0.0
 var _flinch_left: float = 0.0
 var _last_swing_side: float = 0.0
+## The climb hint's probe is repeated at most every 0.2 s.
+var _hint_probe_at: int = 0
+var _hint_climb: bool = false
 
 var _normal: Vector3 = Vector3.ZERO
 var _start: Vector3 = Vector3.ZERO
@@ -44,6 +47,8 @@ func enter(_previous: StringName) -> void:
 	_hit_count = 0
 	_hit_clock = 0.0
 	_flinch_left = 0.0
+	_hint_probe_at = 0
+	_hint_climb = false
 	player.velocity = Vector3.ZERO
 	player.coyote_timer = 0.0
 	player.input_buffer.clear(Actions.JUMP)
@@ -92,6 +97,23 @@ func physics_update(delta: float) -> void:
 			machine.transition_to(StateName.LEDGE_CLIMB)
 		return
 	_shimmy(want, delta)
+
+
+## Item 16: Climb (only when the top has room), Leap and Drop down.
+func get_hints() -> Array[Dictionary]:
+	var hints: Array[Dictionary] = []
+	if _snap_time < player.hang_snap_time or _turning:
+		return hints
+	var now := Time.get_ticks_msec()
+	if now - _hint_probe_at >= 200:
+		_hint_probe_at = now
+		var probe := player.ledge_sensor.probe_hang_ledge(player.global_position, _normal)
+		_hint_climb = not probe.is_empty() and probe["fits"]
+	if _hint_climb:
+		hints.append({"action": Actions.INTERACT, "text": "Climb"})
+	hints.append({"action": Actions.JUMP, "text": "Leap"})
+	hints.append({"action": Actions.CROUCH, "text": "Drop down"})
+	return hints
 
 
 ## Called when something knocks the player off the ledge at once.

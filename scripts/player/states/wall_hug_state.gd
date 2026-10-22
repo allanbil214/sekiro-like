@@ -49,6 +49,10 @@ var _peek_side: float = 0.0
 ## Peek up (item 14c): the camera is raised over a low wall by `_peek_up_lift` metres.
 var _peek_up: bool = false
 var _peek_up_lift: float = 0.0
+## The hints' dry checks (a low wall ahead) are repeated at most every 0.2 s.
+var _hint_probe_at: int = 0
+var _hint_vault: bool = false
+var _hint_peek_up: bool = false
 
 # The corner turn (a curved path from the old spot to the one on the new wall).
 var _turning: bool = false
@@ -99,6 +103,9 @@ func enter(_previous: StringName) -> void:
 	_age = 0.0
 	_peek_side = 0.0
 	_peek_up = false
+	_hint_probe_at = 0
+	_hint_vault = false
+	_hint_peek_up = false
 	_turning = false
 	_vaulting = false
 	_landing_grace = 0.0
@@ -233,7 +240,7 @@ func is_peeking_up() -> bool:
 
 ## Item 14c: looks for a flat wall top in front no higher than wall_hug_peek_up_max_height and raises the
 ## camera over it. False (nothing changes) when there is no such wall.
-func _try_peek_up() -> bool:
+func _try_peek_up(dry: bool = false) -> bool:
 	var pos := player.global_position
 	var origin := _chest(pos)
 	var front := _ray(origin, origin - _normal * (player.get_body_radius() + player.wall_hug_edge_reach))
@@ -251,6 +258,8 @@ func _try_peek_up() -> bool:
 	var top_height: float = (top["position"] as Vector3).y - pos.y
 	if top_height > player.wall_hug_peek_up_max_height:
 		return false
+	if dry:
+		return true
 	# The camera pivot's resting height (the rig's follow height, lower when crouched); lift it so it
 	# clears the top.
 	var base := 1.5
@@ -265,7 +274,7 @@ func _try_peek_up() -> bool:
 
 ## Looks for a low wall in front (a flat top no higher than wall_hug_vault_max_height, no thicker than
 ## wall_hug_vault_max_thickness) and a spot on its far side that has the wall, floor and room; starts the hop.
-func _try_vault() -> bool:
+func _try_vault(dry: bool = false) -> bool:
 	var pos := player.global_position
 	var origin := _chest(pos)
 	var front := _ray(origin, origin - _normal * (player.get_body_radius() + player.wall_hug_edge_reach))
@@ -298,6 +307,8 @@ func _try_vault() -> bool:
 	goal.y = pos.y
 	if not _spot_ok(goal, -_normal):
 		return false
+	if dry:
+		return true
 	player.input_buffer.consume(Actions.JUMP)
 	_peek_up = false
 	_set_peek(Vector3.ZERO)
@@ -475,6 +486,31 @@ func _set_peek(offset: Vector3) -> void:
 	var rig := player.camera_rig as CameraRig
 	if rig != null:
 		rig.set_peek(offset + (Vector3.UP * _peek_up_lift if _peek_up else Vector3.ZERO))
+
+
+## Item 16: Vault and Peek up when a low wall is ahead, Turn corner while peeking past one, Leave; with the head
+## raised, Head down.
+func get_hints() -> Array[Dictionary]:
+	var hints: Array[Dictionary] = []
+	if _turning or _vaulting or _snap_time < player.wall_hug_snap_time:
+		return hints
+	if _peek_up:
+		hints.append({"action": Actions.INTERACT, "text": "Head down"})
+		return hints
+	var now := Time.get_ticks_msec()
+	if now - _hint_probe_at >= 200:
+		_hint_probe_at = now
+		_hint_vault = _try_vault(true)
+		_hint_peek_up = _try_peek_up(true)
+	if _hint_vault:
+		hints.append({"action": Actions.JUMP, "text": "Vault", "toward": -_normal})
+	if _hint_peek_up:
+		hints.append({"action": Actions.INTERACT, "text": "Peek up", "toward": -_normal})
+	if _peek_side != 0.0:
+		hints.append({"action": Actions.INTERACT, "text": "Turn corner",
+				"toward": _normal.cross(Vector3.UP).normalized() * _peek_side})
+	hints.append({"action": Actions.INTERACT, "text": "Leave"})
+	return hints
 
 
 func _leave() -> void:

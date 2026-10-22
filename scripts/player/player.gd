@@ -497,6 +497,7 @@ var sword_visual: SwordVisual
 @onready var heal_arm: HealArm = $Visual/HealArm
 @onready var screen_fade: ScreenFade = $ScreenFade
 @onready var _interact_prompt: InteractPrompt = $InteractPrompt
+@onready var _traversal_hint: TraversalHint = $TraversalHint
 
 
 func _ready() -> void:
@@ -570,6 +571,7 @@ func _physics_process(delta: float) -> void:
 	_try_use_item(delta)
 	_try_taunt(delta)
 	_update_interact_target()
+	_update_traversal_hints()
 	_try_carry_interact(delta)
 	state_machine.physics_update(delta)
 	# DeadState can reload the scene during the update; this node is out of the tree then.
@@ -652,6 +654,17 @@ func get_crouch_speed() -> float:
 
 ## Picks the interactable in reach and in front (item 8) and feeds the prompt. Only on the ground in
 ## Locomotion or Crouch; everywhere else there is none.
+## Item 16: the hint row shows what the current state offers (a ledge hang, a wall hug), if the Options toggle is on.
+func _update_traversal_hints() -> void:
+	var hints: Array[Dictionary] = []
+	if Settings.traversal_hints and not combatant.dead and state_machine.current != null:
+		hints = state_machine.current.get_hints()
+		for hint in hints:
+			if hint.has("toward"):
+				hint["move_dir"] = ButtonPrompts.screen_direction(hint["toward"], camera_rig.global_rotation.y)
+	_traversal_hint.set_hints(hints)
+
+
 func _update_interact_target() -> void:
 	var current := state_machine.current
 	interact_target = null

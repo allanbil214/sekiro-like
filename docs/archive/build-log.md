@@ -1490,3 +1490,12 @@ Done and tested by the user. Two parts: the hug can now start on low walls, and 
 - Interact reach (same day): the prompt shows if the target is within the facing cone of the character OR of the camera (`Player.get_camera_forward`); a press turns the player to face the target (`_face_interact_target`, `Interactable.faces_on_press`; not for the carried body's put-down). `BodyPickup.reach_point` is the nearest point along the lying body, so beside it or on it works.
 - Fixed: `SHADOWED_VARIABLE_BASE_CLASS` for a parameter named `velocity` (renamed `throw_velocity` in `throw_carried_body` and `launch_body`; do not name parameters `velocity` or `basis` on node scripts).
 - Not done: carry and throw animations, taking a body out of a container by a prompt, the guard reactions (15d).
+
+### Step 15d: guard reactions to bodies (2026-10-22)
+- Tallies: each dead body keeps `Enemy.times_found` (reset when it becomes a corpse); each guard keeps the set of different dead bodies it found (`_found_bodies`, never cleared). `EnemyAIData.corpse_finds_to_alarm` 3 (the same body, all guards together) and `bodies_found_to_alarm` 3 (one guard); 0 turns a rule off. Only dead bodies count; a hidden body is never found.
+- The alarm (`_raise_alarm`): the guard drops any carry and searches the spot (`begin_search`); calm allies inside `shout_radius` get `hear_shout(position, true)`. Finds 1 and 2 keep the normal reaction and routine.
+- Picking a body up clears `corpse_discovered` (`Player.pick_up_body`), so putting it down in view is a fresh find.
+- Seeing the player carry a dead body (`_check_seen_carry`): one find per carry per guard, a suspicious reaction at the player; `carry_sight_multiplier` 1.5 speeds the sight fill while carrying anything.
+- A body that wakes by its timer wakes where it lay, suspicious about the spot, no alarm; from a cover volume it steps out first (`CoverVolume.exit_point_for`).
+- Fix 12: a body a guard was tending that vanishes (picked up) makes the guard search the spot if it sees the spot, else turn suspicious about it (`_on_body_gone`, `_tend_spot`); no alarm or find.
+- Not done: carry and wake animations, taking a body out of a container by a prompt, a guard seeing a thrown body in flight.
