@@ -37,7 +37,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	var aiming := _player.state_machine.current is AimState
 	if aiming:
-		var item := _player.item_belt.selected() as ThrowableData
+		var item := _player.get_aim_item()
 		_straight = item == null or item.gravity <= 0.0
 	_alpha = move_toward(_alpha, 1.0 if aiming else 0.0, fade_speed * delta)
 	_canvas.visible = _alpha > 0.0

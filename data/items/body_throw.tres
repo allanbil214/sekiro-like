@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ThrowableData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/throwable_data.gd" id="1_throwable"]
+
+[resource]
+script = ExtResource("1_throwable")
+damage = 5.0
+posture_damage = 40.0
+lethal = false
+speed = 8.4
+gravity = 14.0
+launch_angle_degrees = 20.0
+noise = 8.0
+display_name = "Body"
+icon_color = Color(0.35, 0.42, 0.62, 1)

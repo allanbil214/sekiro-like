@@ -159,6 +159,11 @@ var _carried: bool = false
 var held_by_guard: bool = false
 var _body_falling: bool = false
 var _body_fall_speed: float = 0.0
+## Item 15c: the body is flying (thrown by the player).
+var _body_flying: bool = false
+var _flight_velocity: Vector3 = Vector3.ZERO
+var _flight_thrower: Player
+var _flight_data: ThrowableData
 var _corpse_material: StandardMaterial3D
 ## Awareness enemies only: it was in combat when it stood down, so it yields when the player is back (an unaware one
 ## just carries on).
@@ -301,6 +306,9 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _body_flying:
+		_fly_body(delta)
+		return
 	if _body_falling:
 		_fall_body(delta)
 		return
@@ -1108,7 +1116,7 @@ func is_unconscious() -> bool:
 
 ## A body (dead or unconscious) no guard has seen yet.
 func is_undiscovered_body() -> bool:
-	return (_is_corpse or _unconscious) and not corpse_discovered and not _carried
+	return (_is_corpse or _unconscious) and not corpse_discovered and not _carried and not _body_flying
 
 
 ## Item 15a: the player is carrying this body.
@@ -1152,7 +1160,7 @@ func get_lying_middle() -> Vector3:
 ## Item 15b: a body (dead or unconscious) lying mostly inside a `CoverVolume` (most of its points along its
 ## length): guards cannot discover it by sight.
 func is_hidden_in_cover() -> bool:
-	if _carried or not (_is_corpse or _unconscious):
+	if _carried or _body_flying or not (_is_corpse or _unconscious):
 		return false
 	var middle := get_lying_middle()
 	var along := global_basis * Vector3(0.0, 0.0, 1.0)
@@ -1160,6 +1168,69 @@ func is_hidden_in_cover() -> bool:
 	for t in CoverVolume.POINT_OFFSETS:
 		points.append(middle + along * t)
 	return CoverVolume.count_inside(get_tree(), points) >= CoverVolume.MIN_POINTS
+
+
+## Item 15c: the player throws the body: its middle starts at `middle`, head first along the throw, flying with
+## `velocity` and `data`'s gravity until the first world surface or guard (`_fly_body`), then it settles on the floor.
+func launch_body(thrower: Player, data: ThrowableData, middle: Vector3, throw_velocity: Vector3) -> void:
+	_carried = false
+	_body_falling = false
+	scale = Vector3.ONE
+	_flight_thrower = thrower
+	_flight_data = data
+	_flight_velocity = throw_velocity
+	var flat := Vector3(throw_velocity.x, 0.0, throw_velocity.z)
+	var yaw := atan2(flat.x, flat.z) if flat.length_squared() > 0.0001 else global_rotation.y
+	global_rotation = Vector3(0.0, yaw, 0.0)
+	global_position = lying_root_for(middle, Basis(Vector3.UP, yaw))
+	_body_flying = true
+
+
+## One physics step of a thrown body. Points on the body (its underside for the floor, its axis for walls and
+## guards) are traced with the same ray a thrown item uses; the first thing met stops the body: a guard's
+## hurtbox takes the hit (the same numbers as a thrown item, `ThrowableData`), the landing is heard, and the body
+## then settles on the floor (`_body_falling`).
+func _fly_body(delta: float) -> void:
+	_flight_velocity.y -= _flight_data.gravity * delta
+	var step := _flight_velocity * delta
+	var body_basis := Basis(Vector3.UP, global_rotation.y)
+	var middle := get_lying_middle()
+	var exclude := Throwable.make_exclude(_flight_thrower)
+	var own_hurtbox := get_node_or_null("Hurtbox") as Hurtbox
+	if own_hurtbox != null:
+		exclude.append(own_hurtbox.get_rid())
+	var best: Dictionary = {}
+	var best_distance := INF
+	var best_from := Vector3.ZERO
+	for sample: Vector3 in [Vector3(0.0, -0.4, 0.0), Vector3(0.0, -0.4, 0.8), Vector3(0.0, -0.4, -0.8),
+			Vector3(0.0, 0.0, 0.8), Vector3(0.0, 0.0, -0.8), Vector3.ZERO]:
+		var from := middle + body_basis * sample
+		var result := Throwable.trace(_flight_thrower, from, from + step, exclude.duplicate())
+		if result.is_empty():
+			continue
+		var distance := from.distance_to(result["position"] as Vector3)
+		if distance < best_distance:
+			best = result
+			best_distance = distance
+			best_from = from
+	if best.is_empty():
+		global_position += step
+		if global_position.y < -30.0:
+			queue_free()
+		return
+	var point: Vector3 = best["position"]
+	global_position += (point - best_from) + (best["normal"] as Vector3) * 0.02
+	var hurtbox := best.get("collider") as Hurtbox
+	var tree := get_tree()
+	if hurtbox != null:
+		Throwable.apply_hit(_flight_thrower, _flight_data, hurtbox, point, _flight_velocity)
+	else:
+		Fx.play(tree, Fx.Kind.LAND_DUST, point)
+		Sfx.play_at(tree, Sfx.Id.LAND_HARD, point)
+	Throwable.broadcast_noise(point, _flight_data.noise)
+	_body_flying = false
+	_body_falling = true
+	_body_fall_speed = 0.0
 
 
 func _fall_body(delta: float) -> void:
@@ -1206,7 +1277,7 @@ func _update_held_pose(delta: float) -> void:
 
 ## A body no guard has seen yet.
 func is_undiscovered_corpse() -> bool:
-	return _is_corpse and not corpse_discovered and not _carried
+	return _is_corpse and not corpse_discovered and not _carried and not _body_flying
 
 
 func mark_corpse_discovered() -> void:

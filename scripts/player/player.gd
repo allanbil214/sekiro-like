@@ -212,6 +212,8 @@ const HEADROOM_RADIUS: float = 0.38
 @export var debug_carry: bool = false
 @export var carry_blocked_dip: float = 0.15
 @export var carry_blocked_time: float = 0.2
+## Throwing a body (item 15c): the numbers of the throw (speed, gravity, the hit and the noise of the landing).
+@export var body_throw: ThrowableData = preload("res://data/items/body_throw.tres")
 ## Cover volumes (item 15b): how far (m) from the player the volume and the spot may be, the seconds the glide to
 ## the spot takes, and the grid step (m) the best spot is searched on.
 @export var cover_snap_reach: float = 1.5
@@ -399,6 +401,10 @@ var _put_from_rot: Vector3 = Vector3.ZERO
 ## body stays where it lies; after PICKUP_SHEATHE_LIMIT seconds the lift starts anyway.
 const PICKUP_SHEATHE_LIMIT: float = 1.0
 var _pickup_waiting: bool = false
+## Item 15c: with a body on the shoulder `interact` acts on release (a tap) or starts the body aim (a hold).
+var _carry_interact_pending: bool = false
+var _carry_interact_held: float = 0.0
+var _carry_interact_firing: bool = false
 var _pickup_wait_left: float = 0.0
 var _put_scale: float = 1.0
 var _put_from_scale: float = 1.0
@@ -564,6 +570,7 @@ func _physics_process(delta: float) -> void:
 	_try_use_item(delta)
 	_try_taunt(delta)
 	_update_interact_target()
+	_try_carry_interact(delta)
 	state_machine.physics_update(delta)
 	# DeadState can reload the scene during the update; this node is out of the tree then.
 	if not is_inside_tree():
@@ -656,6 +663,10 @@ func _update_interact_target() -> void:
 ## Called by Locomotion and Crouch on a fresh `interact` press: uses the picked interactable.
 ## Returns true if one was used (the press is then used up so it can't also grab a ledge).
 func try_interact() -> bool:
+	if carried_body != null and not _carry_interact_firing:
+		# Carrying: the press is used up here and acts on release (`_try_carry_interact`).
+		input_buffer.consume(Actions.INTERACT)
+		return true
 	if _put_left > 0.0:
 		input_buffer.consume(Actions.INTERACT)
 		return true
@@ -673,6 +684,62 @@ func try_interact() -> bool:
 		return hug.try_begin()
 	input_buffer.consume(Actions.INTERACT)
 	interact_target.interact(self)
+	return true
+
+
+## Item 15c: while carrying, `interact` tapped (released within `hold_to_aim_time`) acts on release (put down, hide,
+## a door, a chest kick), and held starts the body aim.
+func _try_carry_interact(delta: float) -> void:
+	if carried_body == null or combatant.dead:
+		_carry_interact_pending = false
+		return
+	if Input.is_action_just_pressed(Actions.INTERACT):
+		_carry_interact_pending = _put_left <= 0.0 and not _pickup_waiting and can_start_throw()
+		_carry_interact_held = 0.0
+		return
+	if not _carry_interact_pending:
+		return
+	if Input.is_action_pressed(Actions.INTERACT):
+		_carry_interact_held += delta
+		if _carry_interact_held >= hold_to_aim_time:
+			_carry_interact_pending = false
+			_try_aim()
+		return
+	_carry_interact_pending = false
+	_carry_interact_firing = true
+	try_interact()
+	_carry_interact_firing = false
+
+
+## Item 15c: the throwable the aim uses: the body throw while carrying, else the selected item.
+func get_aim_item() -> ThrowableData:
+	if carried_body != null:
+		return body_throw
+	return item_belt.selected() as ThrowableData
+
+
+## Item 15c: throws the carried body from `origin` with `velocity`. False (nothing happens) when there is no
+## body, or a wall is between the player and where the body would start.
+func throw_carried_body(origin: Vector3, throw_velocity: Vector3) -> bool:
+	if carried_body == null or body_throw == null or _pickup_waiting:
+		return false
+	var flat := Vector3(throw_velocity.x, 0.0, throw_velocity.z)
+	var along := flat.normalized() if flat.length_squared() > 0.0001 else get_facing_direction()
+	var mask := collision_mask & ~Layers.INVISIBLE_WALL
+	var space := get_world_3d().direct_space_state
+	for offset: float in [0.0, 0.9, -0.9]:
+		var target := origin + along * offset
+		var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 1.0, target, mask, [get_rid()])
+		if not space.intersect_ray(query).is_empty():
+			_carry_dip_left = carry_blocked_time
+			return false
+	var body := carried_body
+	carried_body = null
+	_put_left = 0.0
+	_carry_dip_left = 0.0
+	body.visible = true
+	body.launch_body(self, body_throw, origin, throw_velocity)
+	Sfx.play(get_tree(), Sfx.Id.SWING_ALT)
 	return true
 
 
@@ -1811,6 +1878,10 @@ func _try_taunt(delta: float) -> void:
 
 ## Starts the aim (a hold), if the item is still a throwable with some left.
 func _try_aim() -> void:
+	if carried_body != null:
+		if body_throw != null and not _pickup_waiting and _put_left <= 0.0 and can_start_throw():
+			state_machine.transition_to(StateName.AIM)
+		return
 	var item := item_belt.selected()
 	if item == null or item_belt.selected_count() <= 0 or item.get_kind() != ItemData.Kind.THROWABLE:
 		return

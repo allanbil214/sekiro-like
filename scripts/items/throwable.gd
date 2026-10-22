@@ -111,29 +111,39 @@ func _impact(result: Dictionary) -> void:
 
 
 func _hit_target(hurtbox: Hurtbox, point: Vector3) -> void:
+	apply_hit(_thrower, _data, hurtbox, point, _velocity)
+
+
+## A thrown thing (an item, or a body: Phase 2 item 15c) hits `hurtbox` at `point`, flying with `velocity`; the numbers
+## are `data`'s.
+static func apply_hit(thrower: Player, data: ThrowableData, hurtbox: Hurtbox, point: Vector3, velocity: Vector3) -> void:
 	var hit := HitData.new()
-	hit.attacker = _thrower
-	hit.damage = _data.damage
-	hit.posture_damage = _data.posture_damage
+	hit.attacker = thrower
+	hit.damage = data.damage
+	hit.posture_damage = data.posture_damage
 	hit.hitstop = 0.0
-	hit.lethal = _data.lethal
+	hit.lethal = data.lethal
 	# A thrown item can be blocked but not deflected (a deflect would punish the thrower's posture).
 	hit.deflectable = false
 	hit.point = point
-	var flat := Vector3(_velocity.x, 0.0, _velocity.z)
+	var flat := Vector3(velocity.x, 0.0, velocity.z)
 	if flat.length_squared() > 0.0001:
 		hit.direction = flat.normalized()
 	hurtbox.receive_hit(hit)
 	var fx_kind := Fx.Kind.GUARD if hit.outcome == HitData.Outcome.GUARD else Fx.Kind.HIT_LANDED
-	Fx.play(get_tree(), fx_kind, point, hit.direction)
+	Fx.play(thrower.get_tree(), fx_kind, point, hit.direction)
 
 
 ## Tells every enemy with awareness that something landed at `point`.
 func _make_noise(point: Vector3) -> void:
+	broadcast_noise(point, _data.noise)
+
+
+static func broadcast_noise(point: Vector3, radius: float) -> void:
 	for node: Node3D in Enemies.all():
 		var enemy := node as Enemy
 		if enemy != null:
-			enemy.hear_noise_at(point, _data.noise)
+			enemy.hear_noise_at(point, radius)
 
 
 func _point_along_velocity() -> void:

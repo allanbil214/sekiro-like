@@ -1476,3 +1476,10 @@ Done and tested by the user. Two parts: the hug can now start on low walls, and 
 - **Fit tweak (after the first test):** `shrink_body` on a volume scales the body to fit (a placeholder for folding it into the container); on for the crate and closet, off for the bush.
 - **Noticed, not fixed (planned for 15d):** `corpse_discovered` never resets, so a guard that has found a body ignores it for good, even if the player moves it away and back; the alarm rules and the carry reactions are written in `docs/phase-2-plan.md`, item 15.
 - **Not done:** the player hiding in a volume, taking a body out of a closed container by a prompt, a real fold or carry animation, wake-up inside cover (15d).
+
+### Follow-ups to 15a and 15b (2026-10-21)
+
+- **Container shrink fit:** `shrink_body` on a `CoverVolume` (on for the crate and closet, off for the bush) scales the `Enemy` root to `get_fit_scale()` (95 percent of the volume's longest side, 0.5 to 1) as the body goes in; `place_body(..., body_scale)` sets it, `set_carried(true)` and `wake_up()` restore it. The scale is on the root, so `get_lying_middle()`, the hidden test and the spot search follow it with no extra maths (`CoverPlacement._count` takes the scale).
+- **Pick-up sequence:** sheathe first (the sword's own animation), then the lift; split into `_begin_pickup_sheathe` and `_begin_pickup_lift` so a real animation can replace the lift. A dodge or attack cancels it in the first step.
+- **Warning fix:** `Enemy.lying_root_for()` had a parameter named `basis` that shadowed `Node3D.basis` (`SHADOWED_VARIABLE_BASE_CLASS`); it is `body_basis` now. Parameters and locals named `basis` on a node script cause this warning; use `box_basis`, `body_basis` and the like.
+- **Not done:** the 15d rules written in `docs/phase-2-plan.md` item 15 (finding a body again, the alarm after 3 finds or 3 different bodies, the carry reactions, waking suspicious).

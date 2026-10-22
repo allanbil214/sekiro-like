@@ -23,13 +23,21 @@ extends State
 @export var throw_recovery: float = 0.3
 
 var _item: ThrowableData
+## Item 15c: with a body on the shoulder the aim is a body throw, held and ended with `interact` (not `use_item`).
+var _body_mode: bool = false
+var _aim_action: StringName = Actions.USE_ITEM
 var _relock: Node3D
 var _was_locked_out: bool = false
 var _recovery_left: float = 0.0
 
 
 func enter(_previous: StringName) -> void:
-	_item = player.item_belt.selected() as ThrowableData
+	_body_mode = player.is_carrying()
+	_aim_action = Actions.INTERACT if _body_mode else Actions.USE_ITEM
+	_item = player.get_aim_item()
+	if _body_mode:
+		# The carried body would fill the head-height camera: hidden while aiming.
+		player.carried_body.visible = false
 	_recovery_left = 0.0
 	player.walk_only = true
 	if player.is_crouched:
@@ -51,6 +59,8 @@ func enter(_previous: StringName) -> void:
 
 
 func exit(_next: StringName) -> void:
+	if player.carried_body != null:
+		player.carried_body.visible = true
 	player.walk_only = false
 	player.visual.visible = true
 	(player.camera_rig as CameraRig).end_aim()
@@ -71,7 +81,7 @@ func physics_update(delta: float) -> void:
 		machine.transition_to(StateName.GUARD)
 		return
 	if player.sticky_aim:
-		if Input.is_action_just_pressed(Actions.USE_ITEM):
+		if Input.is_action_just_pressed(_aim_action):
 			machine.transition_to(StateName.LOCOMOTION)
 			return
 		if player.input_buffer.consume(Actions.JUMP):
@@ -82,13 +92,14 @@ func physics_update(delta: float) -> void:
 			machine.transition_to(StateName.DODGE)
 			return
 	else:
-		if not Input.is_action_pressed(Actions.USE_ITEM):
+		if not Input.is_action_pressed(_aim_action):
 			machine.transition_to(StateName.LOCOMOTION)
 			return
 		for ignored: StringName in [Actions.DODGE, Actions.JUMP]:
 			player.input_buffer.clear(ignored)
-	_item = player.item_belt.selected() as ThrowableData
-	if _item == null or player.item_belt.selected_count() <= 0:
+	_item = player.get_aim_item()
+	if _item == null or (_body_mode and not player.is_carrying()) \
+			or (not _body_mode and (player.is_carrying() or player.item_belt.selected_count() <= 0)):
 		machine.transition_to(StateName.LOCOMOTION)
 		return
 	_recovery_left = maxf(_recovery_left - delta, 0.0)
@@ -99,6 +110,11 @@ func physics_update(delta: float) -> void:
 	var origin := player.global_position + Vector3.UP * throw_state.release_height + flat * throw_state.release_forward
 	player.aim_preview.update(origin, _item)
 	if _recovery_left <= 0.0 and player.input_buffer.consume(Actions.ATTACK):
+		if _body_mode:
+			# One body: the throw ends the aim.
+			if player.throw_carried_body(origin, player.aim_preview.velocity):
+				machine.transition_to(StateName.LOCOMOTION)
+			return
 		if ThrowState.fire(player, _item, origin, player.aim_preview.velocity):
 			_recovery_left = throw_recovery
 
