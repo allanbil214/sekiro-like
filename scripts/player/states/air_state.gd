@@ -2,6 +2,19 @@ class_name AirState
 extends State
 ## In the air: gravity, air control, coyote jump, and landing.
 
+## Item 16: how often the hint probes (the rays are cheap but not free), in milliseconds.
+const HINT_PROBE_MS: int = 100
+
+var _hint_probe_at: int = 0
+var _hint_wall_jump: bool = false
+var _hint_hang: bool = false
+
+
+func enter(_previous: StringName) -> void:
+	_hint_probe_at = 0
+	_hint_wall_jump = false
+	_hint_hang = false
+
 
 func physics_update(delta: float) -> void:
 	player.coyote_timer = maxf(player.coyote_timer - delta, 0.0)
@@ -37,3 +50,19 @@ func physics_update(delta: float) -> void:
 	if player.is_on_floor() and player.velocity.y <= 0.0:
 		player.reset_air_actions()
 		machine.transition_to(StateName.LOCOMOTION)
+
+
+## Item 16: Wall jump (a wall in reach and a wall jump left) and Hang (a ledge top in reach that is not grabbed yet,
+## for instance while still rising fast; `interact` makes the grab a hang instead of the auto-climb).
+func get_hints() -> Array[Dictionary]:
+	var hints: Array[Dictionary] = []
+	var now := Time.get_ticks_msec()
+	if now - _hint_probe_at >= HINT_PROBE_MS:
+		_hint_probe_at = now
+		_hint_wall_jump = player.can_wall_jump_now()
+		_hint_hang = player.ledge_sensor.ledge_in_reach()
+	if _hint_wall_jump:
+		hints.append({"action": Actions.JUMP, "text": "Wall jump"})
+	if _hint_hang:
+		hints.append({"action": Actions.INTERACT, "text": "Hang"})
+	return hints

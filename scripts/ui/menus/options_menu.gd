@@ -245,9 +245,13 @@ func _build_gameplay_page() -> void:
 	controls.append(_add_toggle(_gameplay_page, "INVERT Y", "ON", "OFF",
 		func() -> bool: return Settings.invert_y,
 		func(value: bool) -> void: Settings.invert_y = value))
-	controls.append(_add_toggle(_gameplay_page, "TRAVERSAL HINTS", "ON", "OFF",
-		func() -> bool: return Settings.traversal_hints,
-		func(value: bool) -> void: Settings.traversal_hints = value))
+	controls.append(_add_choice(_gameplay_page, "TRAVERSAL HINTS", PackedStringArray(["ALWAYS", "FIRST TIMES", "OFF"]),
+		func() -> int: return Settings.traversal_hints_mode,
+		func(value: int) -> void: Settings.traversal_hints_mode = value))
+	# A one-choice row works as a button: a press "cycles" to the same choice and calls the setter.
+	controls.append(_add_choice(_gameplay_page, "RESET HINTS", PackedStringArray(["PRESS"]),
+		func() -> int: return 0,
+		func(_value: int) -> void: HintMemory.reset()))
 	controls.append(_add_choice(_gameplay_page, "BUTTON PROMPTS", PackedStringArray(["AUTO", "KEYBOARD", "XBOX", "PLAYSTATION"]),
 		func() -> int: return Settings.button_prompts,
 		func(value: int) -> void: Settings.button_prompts = value))

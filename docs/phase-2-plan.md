@@ -36,7 +36,8 @@
 | 13 | Ledge enhancements: 13a corner shimmy, 13b the low-ceiling climb, 13c hang hit reactions, 13d thin ledges (section 3, item 13) | feature | [x] done and tested 2026-10-20 (13a, 13b, 13c and 13d) |
 | 14 | Wall hug extras: 14a corner-to-corner, 14b low-wall vault, 14c peek up (section 3, item 14) | feature | [x] done and tested 2026-10-21 (14a and 14b 2026-10-20, 14c 2026-10-21; built and tested separately) |
 | 15 | Carrying bodies: 15a carry, 15b cover volumes (hiding spots), 15c throwing, 15d guard reactions (section 3, item 15) | feature | [ ] picked 2026-10-20, scope widened and agreed 2026-10-21; 15a and 15b [x] done and tested 2026-10-21 (including the 15b container shrink fit and the pick-up sequence); 15c and 15d [x] done and tested 2026-10-22 (built and tested one sub-item at a time) |
-| 16 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 16 | Traversal hints and button prompts, with the extras (section 3, item 16) | feature | [x] done and tested 2026-10-22 (the base, then the extras: aim, carry and air hints and the FIRST TIMES mode) |
+| 17 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
 
@@ -159,7 +160,14 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **15d, agreed additions (2026-10-21, user; to build in 15d):** (1) picking a body up clears its "found" mark, so putting it down in view of a guard is a fresh find (today `corpse_discovered` stays true forever and guards ignore the body afterwards); (2) each dead body keeps `times_found`; (3) each guard keeps the set of different dead bodies it has found; (4) finds 1 and 2 get the normal reaction and routine, and on the same body's 3rd find (`corpse_finds_to_alarm`, default 3) or the guard's 3rd different body (`bodies_found_to_alarm`, default 3) that guard goes to full alert and alerts allies within the alarm radius; (5) the tallies are per guard and per body, kept for the rest of the level with no decay; (6) only dead bodies count (a guard that wakes an unconscious one adds nothing: proposed, to confirm at the 15d check); a hidden body is never found, so it adds nothing. Also in 15d (from the 15a talk): a guard that sees the player carrying a body counts as finding it, the player's sight fill is faster while carrying (proposed 1.5 times), and a body that wakes by its timer wakes suspicious (a "?" and a search around where it lay or was hidden, no alarm), climbing out of a cover volume first.
 - **Not included (item 15):** a real carry animation, the player hiding in cover, carrying bosses, damage from throws, other body-moving moves (dragging).
 
-## 4. Backlog carried over (16 and later)
+### 16. Traversal hints and button prompts (done and tested 2026-10-22)
+
+- **Source:** the "Traversal hints" backlog entry (noted 2026-10-20), widened with the "button icons on the prompts" idea.
+- **As built:** a bottom-centre row `[button] : Verb` that follows the movement state: ledge hang (Climb when the top has room, Leap, Drop down) and wall hug (Vault and Peek up at a low wall, Turn corner while peeking past an outside corner, Leave, Head down while the head is raised). A hint may show the move key first (`[W] + [Space] : Vault`). Glyphs are drawn in code (keyboard, Xbox, PlayStation) from the Input Map, so a rebind shows correctly. Options > Gameplay: TRAVERSAL HINTS (ON/OFF) and BUTTON PROMPTS (AUTO, KEYBOARD, XBOX, PLAYSTATION).
+- **Extras (agreed and done 2026-10-22):** hints for aiming (Throw, Cancel), carrying (Hold to throw body) and the air (Wall jump, Hang); the TRAVERSAL HINTS option is ALWAYS, FIRST TIMES or OFF (a hint stops after 3 stays of 1 s or more, saved in `user://settings.cfg`), and RESET HINTS clears it.
+- **Not included:** hints for crouch (the user's choice), cover placement and the stealth kill and deathblow prompts, image icons. Details: `docs/built-reference.md`, build log.
+
+## 4. Backlog carried over (17 and later)
 
 Items 8 to 12 above were picked on 2026-10-16 (the interact system and four ideas from the same talk). The other open entries stay in section 13 of `docs/handoff.md`, which remains the single list: (the ledge enhancements became item 13), heal and death extras, lock-on extras, the sweep duck, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 

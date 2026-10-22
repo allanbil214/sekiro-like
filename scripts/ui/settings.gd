@@ -32,7 +32,10 @@ static var lock_next: bool = true
 static var mouse_sensitivity: float = 1.0
 static var stick_sensitivity: float = 1.0
 static var invert_y: bool = false
-static var traversal_hints: bool = true
+## Item 16: when the traversal hints show (Options > Gameplay > TRAVERSAL HINTS). FIRST_TIMES hides a hint once it
+## has been seen `HintMemory.SHOWS_BEFORE_HIDDEN` times.
+enum HintMode { ALWAYS, FIRST_TIMES, OFF }
+static var traversal_hints_mode: int = HintMode.ALWAYS
 ## 0 AUTO, 1 KEYBOARD, 2 XBOX, 3 PLAYSTATION (`ButtonPrompts.Style`).
 static var button_prompts: int = 0
 
@@ -60,9 +63,15 @@ static func ensure_loaded() -> void:
 		mouse_sensitivity = _fraction(config, "gameplay", "mouse_sensitivity", mouse_sensitivity, 0.25, 2.0)
 		stick_sensitivity = _fraction(config, "gameplay", "stick_sensitivity", stick_sensitivity, 0.25, 2.0)
 		invert_y = bool(config.get_value("gameplay", "invert_y", invert_y))
-		traversal_hints = bool(config.get_value("gameplay", "traversal_hints", traversal_hints))
+		# Older files hold a bool here (true = always, false = off).
+		var hints_value: Variant = config.get_value("gameplay", "traversal_hints", traversal_hints_mode)
+		if hints_value is bool:
+			traversal_hints_mode = HintMode.ALWAYS if bool(hints_value) else HintMode.OFF
+		else:
+			traversal_hints_mode = clampi(int(hints_value), 0, 2)
 		button_prompts = clampi(int(config.get_value("gameplay", "button_prompts", button_prompts)), 0, 3)
 		ControlsBindings.load_from(config)
+		HintMemory.load_from(config)
 	elif error != ERR_FILE_NOT_FOUND:
 		push_warning("Settings: could not read %s (error %d); using the defaults." % [PATH, error])
 	apply_audio()
@@ -82,9 +91,10 @@ static func save() -> void:
 	config.set_value("gameplay", "mouse_sensitivity", mouse_sensitivity)
 	config.set_value("gameplay", "stick_sensitivity", stick_sensitivity)
 	config.set_value("gameplay", "invert_y", invert_y)
-	config.set_value("gameplay", "traversal_hints", traversal_hints)
+	config.set_value("gameplay", "traversal_hints", traversal_hints_mode)
 	config.set_value("gameplay", "button_prompts", button_prompts)
 	ControlsBindings.save_to(config)
+	HintMemory.save_to(config)
 	var error := config.save(PATH)
 	if error != OK:
 		push_error("Settings: could not write %s (error %d)." % [PATH, error])

@@ -38,3 +38,11 @@ func physics_update(delta: float) -> void:
 		player.toggle_reverse_blade()
 	player.apply_horizontal_movement(delta, player.get_move_speed())
 	player.face_input(delta)
+
+
+## Item 16: carrying a body, a held `interact` aims a throw (not found by chance, so it is hinted).
+func get_hints() -> Array[Dictionary]:
+	var hints: Array[Dictionary] = []
+	if player.can_aim_body():
+		hints.append({"action": Actions.INTERACT, "text": "Hold to throw body"})
+	return hints

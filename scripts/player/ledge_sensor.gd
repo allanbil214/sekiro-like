@@ -135,6 +135,34 @@ func find_ledge() -> Dictionary:
 	}
 
 
+## Item 16 (hints): true when a wall is in reach and a flat ledge top lies in the hand zone ahead, whatever the
+## input, the rise speed or the grab block say (those only decide whether the grab happens right now). Lighter than
+## `find_ledge()`: no checks for standing room.
+func ledge_in_reach() -> bool:
+	if player.is_on_floor():
+		return false
+	var wall := find_wall()
+	if wall.is_empty():
+		return false
+	var normal: Vector3 = wall["normal"]
+	var hit_pos: Vector3 = wall["position"]
+	var to_face := Vector3(hit_pos.x - player.global_position.x, 0.0, hit_pos.z - player.global_position.z)
+	var face_distance := to_face.dot(-normal)
+	var feet_y := player.global_position.y
+	var base := Vector3(player.global_position.x, 0.0, player.global_position.z)
+	var probe := base - normal * (face_distance + player.hang_min_depth)
+	var query := PhysicsRayQueryParameters3D.create(
+			Vector3(probe.x, feet_y + player.ledge_zone_max + 0.2, probe.z),
+			Vector3(probe.x, feet_y + player.ledge_zone_min - 0.05, probe.z),
+			_world_mask(), [player.get_rid()])
+	var top := player.get_world_3d().direct_space_state.intersect_ray(query)
+	if top.is_empty():
+		return false
+	var top_normal: Vector3 = top["normal"]
+	var top_pos: Vector3 = top["position"]
+	return top_normal.y >= 0.9 and top_pos.y >= feet_y + player.ledge_zone_min and top_pos.y <= feet_y + player.ledge_zone_max
+
+
 ## If a ledge can be grabbed, stores it for the LedgeClimb state and returns true
 ## (the caller transitions to LedgeClimb).
 func try_ledge_grab() -> bool:

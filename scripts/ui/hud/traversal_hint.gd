@@ -4,7 +4,9 @@ extends CanvasLayer
 ## movement state can do, as "[button] : Verb" (a ledge hang: Climb, Leap, Drop down; a wall hug: Leave, ...).
 ## Drawn in code like `InteractPrompt`; the glyphs come from `ButtonPrompts` (keyboard, Xbox or PlayStation, from
 ## the Options setting), so a rebind shows correctly. The row fades in and out. The Player feeds it every frame
-## (`set_hints`) from `State.get_hints()`; the Options toggle `Settings.traversal_hints` turns it off.
+## (`set_hints`) from `State.get_hints()`; the Options choice `Settings.traversal_hints_mode` (ALWAYS, FIRST TIMES,
+## OFF) decides when it shows. In FIRST TIMES mode a hint that has been seen enough (`HintMemory`) is left out; a hint
+## that is on screen when it becomes known stays until the player leaves it.
 ## A hint may carry "move_dir" (0 up, 1 right, 2 down, 3 left): then the move key or stick is shown first
 ## ("[W] + [Space] : Vault"). Sits under the Player.
 
@@ -28,6 +30,9 @@ var _entries: Array[Dictionary] = []
 var _signature: String = ""
 var _alpha: float = 0.0
 var _target: float = 0.0
+## The hints on screen in this stay: key to seconds shown, and the keys already counted as seen (`HintMemory`).
+var _stay_time: Dictionary = {}
+var _stay_counted: Dictionary = {}
 
 
 func _ready() -> void:
@@ -46,15 +51,26 @@ func _input(event: InputEvent) -> void:
 
 
 ## `hints` is a list of {"action": StringName, "text": String, optional "move_dir": int}; an empty list fades the
-## row out (it keeps showing the last hints while it fades).
-func set_hints(hints: Array[Dictionary]) -> void:
-	if hints.is_empty():
+## row out (it keeps showing the last hints while it fades). `context` is the name of the state they come from
+## (it makes the memory keys in FIRST TIMES mode).
+func set_hints(hints: Array[Dictionary], context: StringName = &"") -> void:
+	var first_times := Settings.traversal_hints_mode == Settings.HintMode.FIRST_TIMES
+	var shown: Array[Dictionary] = []
+	var keys: Array[String] = []
+	for hint in hints:
+		var key := HintMemory.key_for(context, str(hint["text"]))
+		if first_times and HintMemory.is_learned(key) and not _stay_time.has(key):
+			continue
+		shown.append(hint)
+		keys.append(key)
+	_track_stay(keys)
+	if shown.is_empty():
 		_target = 0.0
 		return
 	_target = 1.0
 	var entries: Array[Dictionary] = []
 	var signature := ""
-	for hint in hints:
+	for hint in shown:
 		var glyphs: Array[Dictionary] = []
 		if hint.has("move_dir"):
 			glyphs.append(ButtonPrompts.move_glyph(int(hint["move_dir"])))
@@ -68,6 +84,22 @@ func set_hints(hints: Array[Dictionary]) -> void:
 	_signature = signature
 	_entries = entries
 	_canvas.queue_redraw()
+
+
+## Adds this frame to the time each shown hint has been on screen, and counts one more time in `HintMemory` for a
+## hint that has been there `HintMemory.MIN_VISIBLE_TIME` seconds (once per stay). A hint that is no longer shown ends its stay.
+func _track_stay(keys: Array[String]) -> void:
+	for key: String in _stay_time.keys():
+		if not keys.has(key):
+			_stay_time.erase(key)
+			_stay_counted.erase(key)
+	var dt := get_physics_process_delta_time()
+	for key in keys:
+		var time := float(_stay_time.get(key, 0.0)) + dt
+		_stay_time[key] = time
+		if time >= HintMemory.MIN_VISIBLE_TIME and not _stay_counted.has(key):
+			_stay_counted[key] = true
+			HintMemory.note_seen(key)
 
 
 func _process(delta: float) -> void:

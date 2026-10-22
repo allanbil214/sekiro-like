@@ -654,15 +654,18 @@ func get_crouch_speed() -> float:
 
 ## Picks the interactable in reach and in front (item 8) and feeds the prompt. Only on the ground in
 ## Locomotion or Crouch; everywhere else there is none.
-## Item 16: the hint row shows what the current state offers (a ledge hang, a wall hug), if the Options toggle is on.
+## Item 16: the hint row shows what the current state offers (a ledge hang, a wall hug, the air, an aim, carrying a
+## body), if the Options choice is not OFF.
 func _update_traversal_hints() -> void:
 	var hints: Array[Dictionary] = []
-	if Settings.traversal_hints and not combatant.dead and state_machine.current != null:
+	var context: StringName = &""
+	if Settings.traversal_hints_mode != Settings.HintMode.OFF and not combatant.dead and state_machine.current != null:
 		hints = state_machine.current.get_hints()
+		context = state_machine.current.name
 		for hint in hints:
 			if hint.has("toward"):
 				hint["move_dir"] = ButtonPrompts.screen_direction(hint["toward"], camera_rig.global_rotation.y)
-	_traversal_hint.set_hints(hints)
+	_traversal_hint.set_hints(hints, context)
 
 
 func _update_interact_target() -> void:
@@ -1885,6 +1888,18 @@ func can_start_throw() -> bool:
 	return not is_crouched or can_stand()
 
 
+## Item 16: can a held `interact` start a body throw now? (The checks `_try_aim()` makes for a carried body.)
+func can_aim_body() -> bool:
+	return carried_body != null and body_throw != null and not _pickup_waiting and _put_left <= 0.0 and can_start_throw()
+
+
+## Item 16 (hints): would a jump press in mid-air be a wall jump right now? The checks of `try_air_jump()`, nothing used up.
+func can_wall_jump_now() -> bool:
+	if coyote_timer > 0.0 or is_near_ground() or wall_jumps_used >= max_wall_jumps:
+		return false
+	return not ledge_sensor.find_wall().is_empty()
+
+
 ## Starts the throw (a tap).
 func _try_throw() -> void:
 	if can_start_throw():
@@ -1913,7 +1928,7 @@ func _try_taunt(delta: float) -> void:
 ## Starts the aim (a hold), if the item is still a throwable with some left.
 func _try_aim() -> void:
 	if carried_body != null:
-		if body_throw != null and not _pickup_waiting and _put_left <= 0.0 and can_start_throw():
+		if can_aim_body():
 			state_machine.transition_to(StateName.AIM)
 		return
 	var item := item_belt.selected()

@@ -127,3 +127,11 @@ func _camera_flat() -> Vector3:
 	if forward.length_squared() < 0.0001:
 		return Basis(Vector3.UP, player.camera_rig.global_rotation.y) * Vector3.FORWARD
 	return forward.normalized()
+
+
+## Item 16: Throw (a click) and Cancel (guard), for an item and for a carried body alike.
+func get_hints() -> Array[Dictionary]:
+	var hints: Array[Dictionary] = []
+	hints.append({"action": Actions.ATTACK, "text": "Throw"})
+	hints.append({"action": Actions.GUARD, "text": "Cancel"})
+	return hints
