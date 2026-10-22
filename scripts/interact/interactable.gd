@@ -49,6 +49,11 @@ func reach_point(_player: Player) -> Vector3:
 	return global_position
 
 
+## True: a press turns the player to face it first (when not already facing it). Behaviors may override.
+func faces_on_press(_player: Player) -> bool:
+	return needs_facing
+
+
 ## Called by the player on a press. Behaviors override `_on_interact`.
 func interact(player: Player) -> void:
 	_on_interact(player)

@@ -683,8 +683,23 @@ func try_interact() -> bool:
 			return false
 		return hug.try_begin()
 	input_buffer.consume(Actions.INTERACT)
+	_face_interact_target(interact_target)
 	interact_target.interact(self)
 	return true
+
+
+## Turns the player to the target on a press when it is not in front of the character (the camera may be the one
+## looking at it). Instant, like an action start.
+func _face_interact_target(target: Interactable) -> void:
+	if not target.faces_on_press(self):
+		return
+	var offset := target.reach_point(self) - global_position
+	offset.y = 0.0
+	if offset.length() <= 0.3:
+		return
+	var dir := offset.normalized()
+	if get_facing_direction().dot(dir) < interact_min_dot:
+		snap_facing(dir)
 
 
 ## Item 15c: while carrying, `interact` tapped (released within `hold_to_aim_time`) acts on release (put down, hide,
@@ -1081,6 +1096,11 @@ func is_peeking_up() -> bool:
 ## A line of text near the bottom of the screen (an NPC's line, "It is empty.").
 func show_interact_line(text: String) -> void:
 	_interact_prompt.show_line(text)
+
+
+## The way the camera looks, flat (yaw only).
+func get_camera_forward() -> Vector3:
+	return Basis(Vector3.UP, camera_rig.global_rotation.y) * Vector3.FORWARD
 
 
 func get_facing_direction() -> Vector3:

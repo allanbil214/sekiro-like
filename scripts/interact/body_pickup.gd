@@ -42,6 +42,23 @@ func get_prompt_text(player: Player) -> String:
 	return prompt_text
 
 
+## Not turned toward while carrying (the put-down uses the way the player faces).
+func faces_on_press(_player: Player) -> bool:
+	return needs_facing and not _enemy.is_carried()
+
+
+## A lying body: the nearest point along its length, so beside it, at its head or standing on it all count.
+func reach_point(player: Player) -> Vector3:
+	if _enemy == null or _enemy.is_carried():
+		return global_position
+	var basis_now := _enemy.global_basis
+	var from := _enemy.global_position + basis_now * Vector3(0.0, 0.4, 0.0)
+	var to := _enemy.global_position + basis_now * Vector3(0.0, 0.4, 1.8)
+	var axis := to - from
+	var t := clampf((player.global_position - from).dot(axis) / maxf(axis.length_squared(), 0.0001), 0.0, 1.0)
+	return from + axis * t
+
+
 func _on_interact(player: Player) -> void:
 	if _enemy == null:
 		return

@@ -13,6 +13,7 @@ func _init(player: Player) -> void:
 ## Returns the best usable Interactable, or null.
 func pick() -> Interactable:
 	var forward := _player.get_facing_direction()
+	var cam_forward := _player.get_camera_forward()
 	var best: Interactable = null
 	var best_distance := 0.0
 	for item: Interactable in Interactable.all():
@@ -28,8 +29,11 @@ func pick() -> Interactable:
 		if distance > _player.interact_range:
 			continue
 		# Very close is always "in front" (no angle for a zero-length offset).
-		if item.needs_facing and distance > 0.3 and forward.dot(offset / distance) < _player.interact_min_dot:
-			continue
+		# In front of the character OR of the camera counts (the camera may look at it while the character looks away).
+		if item.needs_facing and distance > 0.3:
+			var dir := offset / distance
+			if forward.dot(dir) < _player.interact_min_dot and cam_forward.dot(dir) < _player.interact_min_dot:
+				continue
 		if best == null or item.priority > best.priority \
 				or (item.priority == best.priority and distance < best_distance):
 			best = item
