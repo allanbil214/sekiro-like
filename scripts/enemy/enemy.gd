@@ -153,6 +153,8 @@ var _held: bool = false
 var _held_amount: float = 0.0
 var _held_clock: float = 0.0
 var corpse_discovered: bool = false
+## Phase 2 item 15d: how many times guards have found this dead body (kept until it is a body again).
+var times_found: int = 0
 ## Phase 2 item 15a: the player carries this body (guards neither see nor lift it meanwhile; temporary until
 ## item 15d), a guard carries it (the player cannot pick it up), and a released body that is falling.
 var _carried: bool = false
@@ -1090,6 +1092,7 @@ func _player_undetectable() -> bool:
 func _become_corpse() -> void:
 	_is_corpse = true
 	corpse_discovered = false
+	times_found = 0
 	bar.visible = false
 	body_shape.set_deferred("disabled", true)
 	var hurtbox := get_node_or_null("Hurtbox") as Area3D
@@ -1168,6 +1171,18 @@ func is_hidden_in_cover() -> bool:
 	for t in CoverVolume.POINT_OFFSETS:
 		points.append(middle + along * t)
 	return CoverVolume.count_inside(get_tree(), points) >= CoverVolume.MIN_POINTS
+
+
+## Item 15d: the cover volume that holds this lying body (hidden), or null.
+func _cover_holding_body() -> CoverVolume:
+	if not is_hidden_in_cover():
+		return null
+	var middle := get_lying_middle()
+	for node in get_tree().get_nodes_in_group(Groups.COVER):
+		var cover := node as CoverVolume
+		if cover != null and cover.contains_point(middle):
+			return cover
+	return null
 
 
 ## Item 15c: the player throws the body: its middle starts at `middle`, head first along the throw, flying with
@@ -1645,7 +1660,12 @@ func _tick_wake(delta: float) -> void:
 		away.y = 0.0
 		if away.length() < wake_player_distance:
 			return
-	wake_up(Vector3.ZERO, true)
+	# Item 15d: it wakes where it lay (out of a cover volume first) and is suspicious about that spot, no alarm.
+	var lay_spot := global_position
+	var cover := _cover_holding_body()
+	if cover != null:
+		global_position = cover.exit_point_for(get_lying_middle(), 0.8)
+	wake_up(lay_spot, false)
 
 
 ## Wake up (item 10): upright, healthy, solid again. `at_post` puts it back at its post, unaware (the timer);

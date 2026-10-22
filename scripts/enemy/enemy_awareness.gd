@@ -89,10 +89,16 @@ var _stuck: float = 0.0
 var _tend: Tend = Tend.NONE
 var _tend_body: Enemy
 var _tend_timer: float = 0.0
+## Item 15d: where the tended body lay last (kept while the body is valid, used when it vanishes).
+var _tend_spot: Vector3 = Vector3.ZERO
 var _check_angle: float = 0.0
 var _check_dir: float = 1.0
 var _check_left: float = 0.0
 var _carrying: bool = false
+## Item 15d: the different dead bodies this guard has found (instance ids), kept for the rest of the level.
+var _found_bodies: Dictionary = {}
+## Item 15d: the body of the player's carry this guard already counted as a find (once per carry).
+var _carry_counted: Enemy
 var _has_wall: bool = false
 var _wall_spot: Vector3 = Vector3.ZERO
 var _wall_body: Vector3 = Vector3.ZERO
@@ -136,6 +142,7 @@ func update(delta: float, has_target: bool) -> bool:
 	if has_target and target != null and not _is_undetectable(target):
 		to_target = target.global_position - _enemy.global_position
 		_sense(delta, target, to_target)
+		_check_seen_carry(target)
 	else:
 		_can_see = false
 		_has_los = false
@@ -355,6 +362,9 @@ func _sight_rate(distance: float, target: Node3D) -> float:
 		# Item 9: pressed against a wall it is harder to see (on top of crouching).
 		if player.is_wall_hugging() and not player.is_peeking_up():
 			rate *= player.wall_hug_sight_multiplier
+		# Item 15d: carrying a body is easier to see.
+		if player.is_carrying():
+			rate *= _ai.carry_sight_multiplier
 	return rate
 
 
@@ -418,6 +428,54 @@ func _look_for_corpses(delta: float) -> void:
 		return
 
 
+## Item 15d: a guard that sees the player carry a dead body counts it as a find (once per carry): it turns
+## suspicious about the player, or raises the alarm when this is the body's or the guard's third.
+func _check_seen_carry(target: Node3D) -> void:
+	var player := target as Player
+	if player == null or not player.is_carrying():
+		_carry_counted = null
+		return
+	if not _can_see or level != Level.UNAWARE or _search_left > 0.0 or not _ai.notices_corpses:
+		return
+	var body := player.carried_body
+	if body == null or body == _carry_counted or not body.is_corpse():
+		return
+	_carry_counted = body
+	if _register_find(body):
+		_raise_alarm(player.global_position, body)
+	else:
+		hear_shout(player.global_position, false)
+
+
+## Item 15d: counts a find of a dead body; true when it reaches an alarm rule.
+func _register_find(body: Enemy) -> bool:
+	if not body.is_corpse():
+		return false
+	body.times_found += 1
+	_found_bodies[body.get_instance_id()] = true
+	if _ai.corpse_finds_to_alarm > 0 and body.times_found >= _ai.corpse_finds_to_alarm:
+		return true
+	return _ai.bodies_found_to_alarm > 0 and _found_bodies.size() >= _ai.bodies_found_to_alarm
+
+
+## Item 15d: full alert about `position`: this guard searches there and the calm allies in range go alert too.
+func _raise_alarm(position: Vector3, body: Enemy) -> void:
+	if _carrying:
+		_drop_body()
+	_tend_body = body
+	_set_tend(Tend.RESPECT_GO if _body_ok() else Tend.NONE, "alarm")
+	_stuck = 0.0
+	begin_search(position)
+	for node: Node3D in Enemies.all():
+		var other := node as Enemy
+		if other == null or other == _enemy or not other.use_awareness:
+			continue
+		if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
+			continue
+		if (other.global_position - _enemy.global_position).length() <= _ai.shout_radius:
+			other.hear_shout(position, true)
+
+
 func _react_to_corpse(body: Enemy) -> void:
 	var position := body.global_position
 	if body.is_unconscious():
@@ -427,6 +485,9 @@ func _react_to_corpse(body: Enemy) -> void:
 		_tend_body = body
 		_set_tend(Tend.WAKE_GO, "found an unconscious body")
 		_stuck = 0.0
+		return
+	if _register_find(body):
+		_raise_alarm(position, body)
 		return
 	if _ai.tends_corpses:
 		# Item 7e: the whole routine, in the style of `corpse_reaction`.
@@ -487,6 +548,27 @@ func _set_tend(stage: Tend, why: String = "") -> void:
 	_tend = stage
 
 
+## Item 15d: the body this guard was tending is gone (the player picked it up). A guard that sees the spot
+## empty searches it; one that does not stays suspicious about the spot and looks around. No alarm either way.
+func _on_body_gone() -> void:
+	var spot := _tend_spot
+	_tend_body = null
+	_set_tend(Tend.NONE, "body gone")
+	if _can_see_spot(spot):
+		begin_search(spot)
+	else:
+		hear_shout(spot, false)
+
+
+## True when `point` is in this guard's view: in range, in the cone and with a clear line.
+func _can_see_spot(point: Vector3) -> bool:
+	var flat := point - _enemy.global_position
+	flat.y = 0.0
+	if flat.length() > _ai.corpse_sight_range or not _in_cone(flat):
+		return false
+	return _line_to_point_is_clear(point + Vector3.UP * 0.4)
+
+
 func _investigating() -> bool:
 	return _tend >= Tend.GO and _tend <= Tend.RETURN
 
@@ -528,9 +610,10 @@ func drop_carried() -> void:
 
 func _run_investigation(delta: float) -> void:
 	if not _body_ok():
-		_set_tend(Tend.NONE, "body gone")
+		_on_body_gone()
 		return
 	var body_pos := _tend_body.global_position
+	_tend_spot = body_pos
 	match _tend:
 		Tend.GO:
 			if _flat_distance_to(body_pos) <= _ai.corpse_check_radius + 0.3 \
@@ -576,9 +659,10 @@ func _run_wake(delta: float) -> void:
 ## Calm again: walk to the body (when it was interrupted), lift it, carry it to the wall, lay it down.
 func _run_respect(delta: float) -> void:
 	if not _body_ok():
-		_set_tend(Tend.NONE, "body gone")
+		_on_body_gone()
 		return
 	var body_pos := _tend_body.global_position
+	_tend_spot = body_pos
 	match _tend:
 		Tend.RESPECT_GO:
 			if _flat_distance_to(body_pos) <= _ai.corpse_pickup_distance \

@@ -89,6 +89,22 @@ func nearest_point_to(point: Vector3) -> Vector3:
 	return _shape_node.global_transform * local
 
 
+## Item 15d: a spot on the floor just outside the box, on the side `point` is nearest to (a body waking up inside).
+func exit_point_for(point: Vector3, margin: float) -> Vector3:
+	if _shape_node == null:
+		return point
+	var local := _shape_node.global_transform.affine_inverse() * point
+	var out := Vector3(local.x, 0.0, local.z)
+	var room_x := _half.x - absf(local.x)
+	var room_z := _half.z - absf(local.z)
+	if room_x <= room_z:
+		out.x = signf(local.x if local.x != 0.0 else 1.0) * (_half.x + margin)
+	else:
+		out.z = signf(local.z if local.z != 0.0 else 1.0) * (_half.z + margin)
+	out.y = -_half.y
+	return _shape_node.global_transform * out
+
+
 ## How many bodies lie in the volume now (a carried body does not count).
 func bodies_inside() -> int:
 	var count := 0

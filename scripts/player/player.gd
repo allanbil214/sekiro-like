@@ -794,6 +794,7 @@ func pick_up_body(body: Enemy) -> void:
 		return
 	carried_body = body
 	body.set_carried(true)
+	body.corpse_discovered = false
 	_carry_dip_left = 0.0
 	_put_left = 0.0
 	_pickup_waiting = false

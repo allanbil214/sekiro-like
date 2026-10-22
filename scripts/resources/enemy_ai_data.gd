@@ -266,6 +266,12 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var notices_corpses: bool = true
 @export var corpse_sight_range: float = 10.0
 @export var corpse_reaction: CorpseReaction = CorpseReaction.SUSPICIOUS
+## Phase 2 item 15d: the alarm. A guard that finds the same dead body this many times (all guards together), or this
+## many different dead bodies itself, goes alert and alerts the allies inside `shout_radius`. 0 turns a rule off.
+@export var corpse_finds_to_alarm: int = 3
+@export var bodies_found_to_alarm: int = 3
+## Seeing the player carry a body: the sight fill is this many times faster (1 = no change).
+@export var carry_sight_multiplier: float = 1.5
 ## Body routine (item 7e): the guard that found a body goes to it, checks it on an arc, roams around for the
 ## culprit, comes back and respects it (carries it to the nearest wall and lays it down). Off: it only reacts.
 @export var tends_corpses: bool = true
