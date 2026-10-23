@@ -36,6 +36,10 @@ var lethal: bool = true
 var outcome: int = Outcome.HIT
 ## Where it connected (the middle of the hitbox), for sparks and sounds later.
 var point: Vector3 = Vector3.ZERO
+## Phase 2 item 20: true for a thrown item or a thrown body, and `origin` is where the thrower stood when it was
+## thrown. An enemy that had not noticed the player investigates `origin` instead of spotting the player.
+var thrown: bool = false
+var origin: Vector3 = Vector3.ZERO
 
 
 func copy() -> HitData:
@@ -56,4 +60,6 @@ func copy() -> HitData:
 	other.outcome = outcome
 	other.direction = direction
 	other.point = point
+	other.thrown = thrown
+	other.origin = origin
 	return other

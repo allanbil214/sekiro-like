@@ -313,6 +313,9 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 ## This many noises (thrown items) during one check make it furious: it goes ALERT and searches the last spot
 ## (the roaming search), without knowing where the player is. 0 = never.
 @export var spot_alert_count: int = 3
+## Phase 2 item 20: an unaware enemy hit by a thrown item goes to look at where the shot came from, off by up to this
+## many meters (so it does not pinpoint a player who moved). 0 = exactly the thrower's spot.
+@export var shot_guess_error: float = 1.5
 ## It has no pathfinding: it only walks, chases and searches toward a spot within this height difference (m);
 ## from another level it stands and watches. Chasing gives up past this + 1 m.
 @export var max_vertical_reach: float = 3.0

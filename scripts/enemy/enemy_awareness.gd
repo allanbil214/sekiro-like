@@ -250,6 +250,29 @@ func hear_noise_at(point: Vector3, radius: float) -> void:
 	_pause_left = 0.0
 
 
+## Phase 2 item 20: a thrown item (or body) hit this enemy while it had not noticed the player. It spots no one and no
+## shout goes out: it turns toward where the shot came from (the usual suspicious pause) and goes to look at a guess
+## of that place: `origin`, where the thrower stood, off by up to `EnemyAIData.shot_guess_error` m. Repeated hits
+## count like repeated noises: `spot_alert_count` of them make it furious (an alert search at the guess), still
+## without knowing where the player is. If it sees the player on the way, the normal sight rules apply.
+func investigate_shot(origin: Vector3) -> void:
+	var guess := origin
+	if _ai.shot_guess_error > 0.0:
+		var angle := randf() * TAU
+		var distance := _ai.shot_guess_error * sqrt(randf())
+		guess += Vector3(cos(angle), 0.0, sin(angle)) * distance
+	_spot_noises += 1
+	if _ai.spot_alert_count > 0 and _spot_noises >= _ai.spot_alert_count:
+		begin_search(guess)
+		return
+	_last_known = guess
+	_has_last_known = true
+	_investigate = guess
+	meter = maxf(meter, _ai.suspicious_at)
+	_since_sensed = 0.0
+	_pause_left = 0.0
+
+
 ## Back to the start (respawn, the player died): unaware, nothing remembered, the symbol hidden.
 func reset() -> void:
 	_set_tend(Tend.NONE, "reset")

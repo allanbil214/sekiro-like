@@ -165,6 +165,8 @@ var _body_fall_speed: float = 0.0
 var _body_flying: bool = false
 var _flight_velocity: Vector3 = Vector3.ZERO
 var _flight_thrower: Player
+## Item 20: where the player stood when it threw this body.
+var _flight_origin: Vector3 = Vector3.ZERO
 var _flight_data: ThrowableData
 var _corpse_material: StandardMaterial3D
 ## Awareness enemies only: it was in combat when it stood down, so it yields when the player is back (an unaware one
@@ -1192,6 +1194,7 @@ func launch_body(thrower: Player, data: ThrowableData, middle: Vector3, throw_ve
 	_body_falling = false
 	scale = Vector3.ONE
 	_flight_thrower = thrower
+	_flight_origin = thrower.global_position
 	_flight_data = data
 	_flight_velocity = throw_velocity
 	var flat := Vector3(throw_velocity.x, 0.0, throw_velocity.z)
@@ -1238,7 +1241,7 @@ func _fly_body(delta: float) -> void:
 	var hurtbox := best.get("collider") as Hurtbox
 	var tree := get_tree()
 	if hurtbox != null:
-		Throwable.apply_hit(_flight_thrower, _flight_data, hurtbox, point, _flight_velocity)
+		Throwable.apply_hit(_flight_thrower, _flight_data, hurtbox, point, _flight_velocity, _flight_origin)
 	else:
 		Fx.play(tree, Fx.Kind.LAND_DUST, point)
 		Sfx.play_at(tree, Sfx.Id.LAND_HARD, point)
@@ -1537,7 +1540,11 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	# A hit on an enemy that had not noticed the player: it notices at once (item 7a).
 	_stealth_grace_left = 0.0
 	if _awareness != null and phase == Phase.IDLE and not combatant.dead:
-		_enter_combat(true)
+		if hit.thrown:
+			# Item 20: a thrown item does not show where the player is: look toward the shot and go and see.
+			_awareness.investigate_shot(hit.origin)
+		else:
+			_enter_combat(true)
 	_defense.on_unguarded_hit()
 	_recoil = 1.0
 	_recoil_scale = 1.0

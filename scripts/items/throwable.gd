@@ -17,6 +17,8 @@ const SPIN_SPEED: float = 18.0
 
 var _data: ThrowableData
 var _thrower: Player
+## Item 20: where the thrower stood when it threw this (an unaware enemy it hits investigates there).
+var _shot_from: Vector3 = Vector3.ZERO
 var _velocity: Vector3 = Vector3.ZERO
 var _life: float = 0.0
 var _mesh: MeshInstance3D
@@ -26,6 +28,7 @@ var _mesh: MeshInstance3D
 static func launch(thrower: Player, data: ThrowableData, origin: Vector3, velocity: Vector3) -> Throwable:
 	var projectile := Throwable.new()
 	projectile._thrower = thrower
+	projectile._shot_from = thrower.global_position
 	projectile._data = data
 	projectile._velocity = velocity
 	thrower.get_tree().current_scene.add_child(projectile)
@@ -111,12 +114,12 @@ func _impact(result: Dictionary) -> void:
 
 
 func _hit_target(hurtbox: Hurtbox, point: Vector3) -> void:
-	apply_hit(_thrower, _data, hurtbox, point, _velocity)
+	apply_hit(_thrower, _data, hurtbox, point, _velocity, _shot_from)
 
 
 ## A thrown thing (an item, or a body: Phase 2 item 15c) hits `hurtbox` at `point`, flying with `velocity`; the numbers
-## are `data`'s.
-static func apply_hit(thrower: Player, data: ThrowableData, hurtbox: Hurtbox, point: Vector3, velocity: Vector3) -> void:
+## are `data`'s. `shot_from` is where the thrower stood when throwing (item 20: the hit carries it as `HitData.origin`).
+static func apply_hit(thrower: Player, data: ThrowableData, hurtbox: Hurtbox, point: Vector3, velocity: Vector3, shot_from: Vector3) -> void:
 	var hit := HitData.new()
 	hit.attacker = thrower
 	hit.damage = data.damage
@@ -126,6 +129,8 @@ static func apply_hit(thrower: Player, data: ThrowableData, hurtbox: Hurtbox, po
 	# A thrown item can be blocked but not deflected (a deflect would punish the thrower's posture).
 	hit.deflectable = false
 	hit.point = point
+	hit.thrown = true
+	hit.origin = shot_from
 	var flat := Vector3(velocity.x, 0.0, velocity.z)
 	if flat.length_squared() > 0.0001:
 		hit.direction = flat.normalized()

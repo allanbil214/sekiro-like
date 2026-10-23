@@ -40,9 +40,10 @@
 | 17 | Low-HP vignette (section 3, item 17) | feature | [x] done and tested 2026-10-23 |
 | 18 | Rest points, the Inari shrine (section 3, item 18) | feature | [x] done and tested 2026-10-23 |
 | 19 | Item HUD row (section 3, item 19) | feature | [x] done and tested 2026-10-23 |
-| 20 | A thrown item that hits an unaware enemy makes it look toward the shot and investigate, not spot the player (section 3, item 20) | feature | [ ] agreed 2026-10-23, not started |
+| 20 | A thrown item that hits an unaware enemy makes it look toward the shot and investigate, not spot the player (section 3, item 20) | feature | [x] done and tested 2026-10-23 |
 | 21 | Enemies that cannot reach the player (too high, no nav link) throw items at the player, per-enemy item and numbers in `EnemyAIData` (section 3, item 21) | feature | [ ] agreed 2026-10-23, not started; its full check comes after item 20 |
-| 22 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 22 | Guards look up and down: a vertical sight angle, a head pitch, awareness of the player's height (section 3, item 22) | feature | [ ] agreed 2026-10-23, not started; best after or just before item 21 |
+| 23 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
 
@@ -190,10 +191,11 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **As built:** the selected item and the next two as squares that get smaller, reading left to right at the bottom right; a change shifts them like a conveyor (the old item fades out at the front, no trip to the back); the selected item's name shows only for a moment after a change; no button hints. Details: `docs/built-reference.md`, build log.
 - **Not included:** real item icons, a previous-item button.
 
-### 20. A thrown item makes an unaware enemy investigate (agreed 2026-10-23, not started)
+### 20. A thrown item makes an unaware enemy investigate (done and tested 2026-10-23)
 
-- **Source (user, 2026-10-23):** today a rock, kunai or other thrown item that hits an unaware enemy makes it notice the player at once (`Enemy._on_damaged` enters combat, the "!" and the shout), so it knows where the player is. The user wants it to look toward where the shot came from and go to the place it guesses it came from, so the player can shoot and then hide.
-- **Plan (proposed, to be confirmed in the full check):** `HitData` gets `thrown` and `origin` (the launch point); an unaware enemy hit by a thrown item takes the damage, turns toward the origin, and goes to investigate it (suspicious "?", not combat, no shout to the allies), with a small error on the guessed spot; repeated hits make it furious as repeated noises do. Enemies already in combat are not changed.
+- **Source (user, 2026-10-23):** a rock, kunai or other thrown item that hit an unaware enemy made it notice the player at once (the "!", the shout, the player's position known). The user wanted it to look toward where the shot came from and go to the place it guesses it came from, so the player can shoot and hide.
+- **As built:** a thrown hit (item or body) carries `thrown` and `origin` (where the thrower stood); an unaware enemy with awareness turns toward the guess (the origin off by up to 1.5 m, `shot_guess_error`), shows the "?", walks there and checks, with no shout and no "!"; 3 shots make it furious (an alert search at the guess). Enemies in combat and enemies without awareness are unchanged. Details: `docs/built-reference.md`, build log.
+- **Not included:** guards looking up and down (item 22), enemies throwing items back (item 21).
 
 ### 21. Enemies throw items at a player they cannot reach (agreed 2026-10-23, not started)
 
@@ -201,7 +203,13 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Plan (proposed, full check after item 20):** per-enemy throw settings in `EnemyAIData` (the item, range, wind-up, cooldown, accuracy), the throw only when the enemy sees the player and cannot reach; `Throwable` learns to be thrown by an enemy and to hit the player (guardable); rock as the default, other items for variety.
 
 
-## 4. Backlog carried over (22 and later)
+### 22. Guards look up and down (agreed 2026-10-23, not started)
+
+- **Source (user, 2026-10-23):** asked whether guards can look up and down. They cannot: a guard only turns around its vertical axis (yaw), the vision cone (`sight_degrees`, 110) is measured flat and ignores height, and only the line-of-sight ray (eye 1.6 m, target 1.0 m) and `max_vertical_reach` (3 m, for reaching, not seeing) involve height.
+- **Plan (proposed, full check later):** a vertical sight angle (a narrower up-and-down cone, so a player right above or below a guard is harder to see); a head pitch on the guard's visual so it looks toward a sound or a shot above or below it, and up at a player it cannot reach; awareness of the player's height, so a hiding spot above a guard's line of sight works. It fits with item 21 (a guard that cannot reach the player looks up before it throws), so it is best done just before or after item 21.
+
+
+## 4. Backlog carried over (23 and later)
 
 Items 8 to 12 above were picked on 2026-10-16 (the interact system and four ideas from the same talk). The other open entries stay in section 13 of `docs/handoff.md`, which remains the single list: (the ledge enhancements became item 13), heal and death extras, lock-on extras, the sweep duck, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 
