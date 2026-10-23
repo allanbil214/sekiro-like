@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://scenes/props/hiding_bush.tscn" id="10_326nk"]
 [ext_resource type="PackedScene" path="res://scenes/props/hiding_closet.tscn" id="11_0y1n4"]
 [ext_resource type="PackedScene" path="res://scenes/props/hiding_crate.tscn" id="12_7fjxf"]
+[ext_resource type="PackedScene" path="res://scenes/interact/rest_point_inari.tscn" id="13_0y1n4"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_btlyn"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -224,3 +225,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.3315873, 0.25000024, -21.08
 
 [node name="HidingCrate" parent="." unique_id=452421569 instance=ExtResource("12_7fjxf")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.32395, 0.25000012, -15.306506)
+
+[node name="InariShrine" parent="." unique_id=1511566821 instance=ExtResource("13_0y1n4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2200146, 0.18968534, -3.2937875)

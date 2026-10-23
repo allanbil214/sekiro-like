@@ -505,6 +505,7 @@ func _ready() -> void:
 	item_belt = ItemBelt.new(starting_items)
 	_spawn_position = global_position
 	_spawn_yaw = visual.rotation.y
+	_place_at_last_rest_point()
 	ledge_sensor = LedgeSensor.new(self)
 	_interact_picker = InteractPicker.new(self)
 	_cover_placement = CoverPlacement.new(self)
@@ -1809,6 +1810,41 @@ func _teleport_to_spawn() -> void:
 		input_buffer.clear(action)
 	state_machine.transition_to(StateName.LOCOMOTION)
 	(camera_rig as CameraRig).snap_to_target()
+
+
+## Item 18: after a death reload, start at the last rest point of this scene (if there is one), also for the
+## fall respawn. The camera is put straight behind. Nothing happens before the first rest.
+func _place_at_last_rest_point() -> void:
+	if not RestPoints.has_last_in(RestPoints.scene_key(self)):
+		return
+	global_position = RestPoints.last_position
+	visual.rotation.y = RestPoints.last_yaw
+	_spawn_position = global_position
+	_spawn_yaw = visual.rotation.y
+	(camera_rig as CameraRig).snap_to_target()
+
+
+## Item 18: starts the Rest state at a rest point (`RestPoint` calls this on a press).
+func begin_rest(point: RestPoint) -> void:
+	var rest_state := state_machine.get_state(StateName.REST) as RestState
+	if rest_state == null:
+		push_warning("Player: no Rest state under StateMachine; add a node named Rest and attach rest_state.gd.")
+		return
+	rest_state.point = point
+	state_machine.transition_to(StateName.REST)
+
+
+## Item 18: a rest. Full health and posture, the gourd and the resurrections back (what the arena reload gives).
+func rest_refill() -> void:
+	combatant.reset()
+	heal_charges = max_heal_charges
+	resurrections_left = max_resurrections
+
+
+## Item 18: where the player starts after a death reload or a fall respawn.
+func set_restart_point(position: Vector3, yaw: float) -> void:
+	_spawn_position = position
+	_spawn_yaw = yaw
 
 
 ## Called by DeadState when the player chooses to resurrect: spends one, comes back at a share of the

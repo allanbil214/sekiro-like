@@ -38,7 +38,11 @@
 | 15 | Carrying bodies: 15a carry, 15b cover volumes (hiding spots), 15c throwing, 15d guard reactions (section 3, item 15) | feature | [ ] picked 2026-10-20, scope widened and agreed 2026-10-21; 15a and 15b [x] done and tested 2026-10-21 (including the 15b container shrink fit and the pick-up sequence); 15c and 15d [x] done and tested 2026-10-22 (built and tested one sub-item at a time) |
 | 16 | Traversal hints and button prompts, with the extras (section 3, item 16) | feature | [x] done and tested 2026-10-22 (the base, then the extras: aim, carry and air hints and the FIRST TIMES mode) |
 | 17 | Low-HP vignette (section 3, item 17) | feature | [x] done and tested 2026-10-23 |
-| 18 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 18 | Rest points, the Inari shrine (section 3, item 18) | feature | [x] done and tested 2026-10-23 |
+| 19 | Item HUD row (section 3, item 19) | feature | [x] done and tested 2026-10-23 |
+| 20 | A thrown item that hits an unaware enemy makes it look toward the shot and investigate, not spot the player (section 3, item 20) | feature | [ ] agreed 2026-10-23, not started |
+| 21 | Enemies that cannot reach the player (too high, no nav link) throw items at the player, per-enemy item and numbers in `EnemyAIData` (section 3, item 21) | feature | [ ] agreed 2026-10-23, not started; its full check comes after item 20 |
+| 22 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
 
@@ -174,7 +178,30 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **As built:** a red edge vignette with a slow pulse that fades in from 30% health to full strength at 10%, fades out when health returns, and is hidden while dead or knocked out. Options > Gameplay > LOW HEALTH WARNING (ON by default). Details: `docs/built-reference.md`, build log.
 - **Not included:** a heartbeat sound, screen desaturation, a hit flash, low-HP warnings for enemies. The rest of the heal and death extras stay in the backlog.
 
-## 4. Backlog carried over (18 and later)
+### 18. Rest points, the Inari shrine (done and tested 2026-10-23)
+
+- **Source:** the "checkpoints" part of the "heal and death extras" backlog entry, designed with the user on 2026-10-23 (`docs/phase-4-6-notes.md`, section 13).
+- **As built:** one rest point system with many kinds (`RestPointKind`: name, prompt verb, flavor line), the Inari shrine as the first kind. A rest is a kneel, a fade and a full refill (health, posture, gourd, resurrections); it makes that place the restart point after a final death and a fall. Hidden while in combat. `RestPoints.bus.rested` announces each rest for later zones. In memory only. Details: `docs/built-reference.md`, build log.
+- **Not included:** saving, enemy regeneration or respawn on a rest, costs, other kinds and their art, new sounds.
+
+### 19. Item HUD row (done and tested 2026-10-23)
+
+- **Source:** the item part of the "heal and death extras" backlog entry; designed with the user on 2026-10-23.
+- **As built:** the selected item and the next two as squares that get smaller, reading left to right at the bottom right; a change shifts them like a conveyor (the old item fades out at the front, no trip to the back); the selected item's name shows only for a moment after a change; no button hints. Details: `docs/built-reference.md`, build log.
+- **Not included:** real item icons, a previous-item button.
+
+### 20. A thrown item makes an unaware enemy investigate (agreed 2026-10-23, not started)
+
+- **Source (user, 2026-10-23):** today a rock, kunai or other thrown item that hits an unaware enemy makes it notice the player at once (`Enemy._on_damaged` enters combat, the "!" and the shout), so it knows where the player is. The user wants it to look toward where the shot came from and go to the place it guesses it came from, so the player can shoot and then hide.
+- **Plan (proposed, to be confirmed in the full check):** `HitData` gets `thrown` and `origin` (the launch point); an unaware enemy hit by a thrown item takes the damage, turns toward the origin, and goes to investigate it (suspicious "?", not combat, no shout to the allies), with a small error on the guessed spot; repeated hits make it furious as repeated noises do. Enemies already in combat are not changed.
+
+### 21. Enemies throw items at a player they cannot reach (agreed 2026-10-23, not started)
+
+- **Source (user, 2026-10-23):** when an enemy cannot get to the player (the player is on a roof or ledge that is too tall for `max_vertical_reach` and no nav link reaches it, `Enemy._is_out_of_reach()`), most enemies should throw a rock at the player, and some enemy types other items, for enemy variety. This is the "ranged rock throwers" part of the enemy variety backlog entry.
+- **Plan (proposed, full check after item 20):** per-enemy throw settings in `EnemyAIData` (the item, range, wind-up, cooldown, accuracy), the throw only when the enemy sees the player and cannot reach; `Throwable` learns to be thrown by an enemy and to hit the player (guardable); rock as the default, other items for variety.
+
+
+## 4. Backlog carried over (22 and later)
 
 Items 8 to 12 above were picked on 2026-10-16 (the interact system and four ideas from the same talk). The other open entries stay in section 13 of `docs/handoff.md`, which remains the single list: (the ledge enhancements became item 13), heal and death extras, lock-on extras, the sweep duck, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 

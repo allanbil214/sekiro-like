@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RestPointKind" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/rest_point_kind.gd" id="1_kind"]
+
+[resource]
+script = ExtResource("1_kind")
+kind_name = "Inari shrine"
+prompt_verb = "Pray"
+flavor_line = "The stone foxes watch over you. You feel rested."

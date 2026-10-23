@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/interact/rest_point.gd" id="1_rest"]
+[ext_resource type="Resource" path="res://data/rest/inari_shrine.tres" id="2_kind"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_red"]
+albedo_color = Color(0.75, 0.12, 0.08, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_stone"]
+albedo_color = Color(0.55, 0.55, 0.52, 1)
+
+[node name="InariShrine" type="Node3D"]
+script = ExtResource("1_rest")
+kind = ExtResource("2_kind")
+
+[node name="StoneBase" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+use_collision = true
+size = Vector3(1.6, 0.3, 1.0)
+material = SubResource("Mat_stone")
+
+[node name="PostLeft" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 1.1, 0)
+use_collision = true
+size = Vector3(0.14, 1.6, 0.14)
+material = SubResource("Mat_red")
+
+[node name="PostRight" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 1.1, 0)
+use_collision = true
+size = Vector3(0.14, 1.6, 0.14)
+material = SubResource("Mat_red")
+
+[node name="CrossBeam" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.65, 0)
+use_collision = true
+size = Vector3(1.3, 0.09, 0.12)
+material = SubResource("Mat_red")
+
+[node name="TopBeam" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0)
+use_collision = true
+size = Vector3(1.7, 0.14, 0.2)
+material = SubResource("Mat_red")
+
+[node name="FoxLeftBase" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 0.2, 0)
+use_collision = true
+size = Vector3(0.35, 0.4, 0.35)
+material = SubResource("Mat_stone")
+
+[node name="FoxLeft" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 0.55, 0)
+use_collision = true
+size = Vector3(0.2, 0.3, 0.28)
+material = SubResource("Mat_stone")
+
+[node name="FoxRightBase" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.2, 0)
+use_collision = true
+size = Vector3(0.35, 0.4, 0.35)
+material = SubResource("Mat_stone")
+
+[node name="FoxRight" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.55, 0)
+use_collision = true
+size = Vector3(0.2, 0.3, 0.28)
+material = SubResource("Mat_stone")
+
+[node name="Glow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0.6)
+light_color = Color(1, 0.7, 0.4, 1)
+light_energy = 0.8
+omni_range = 5.0

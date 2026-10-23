@@ -147,7 +147,7 @@
 6. **Throwables and items:** the exact damage and stun numbers (placeholders to tune by playing); whether more ammo types are wanted; a single item list (default) or categories on separate buttons later.
 7. **Fallback fights** (a fighting arena loaded from the hub) or only fights in the street.
 8. How mission scenes are named and listed (an `ArenaData`-like resource per mission?) when the mission framework is designed.
-9. **Rest points (section 13):** do enemies respawn when the player rests (Sekiro and Souls: yes; a stealth or mission game may want no)? And what happens after the 2 resurrections are used: respawn at the last rest point, or still reload the arena?
+9. **Rest points (section 13), answered 2026-10-23:** a rest does not respawn enemies (the "regenerated zones" idea is for later); after a final death the arena reloads and the player starts at the last rest point.
 10. **Rest points:** which kinds exist in the first version, and the supernatural approach (section 13, "Tone").
 
 ## 13. Rest points and the supernatural tone (talk of 2026-10-23)
@@ -158,7 +158,7 @@
   - **Same rules in every kind.** The kinds differ in look, text, cost and services, never in what resting does, so the player learns resting once.
   - **Per place:** each placed rest point picks its kind, so shrine or camp for a dungeon is a choice at level design time.
   - **First version:** free to rest everywhere (user: "good choice"). A cost comes with money in Phase 4.
-  - **Built in this order (proposed):** the generic system first, in memory only (like `GameFlags` in item 8) with a placeholder box as the look; saving joins in Phase 4; the real kinds and art join in Phase 5 and 6. It would get its own full check, probably as the next Phase 2 item after 16.
+  - **Built (item 18, done and tested 2026-10-23, in memory, with the placeholder shrine):** the generic system and the Inari shrine kind; see `docs/phase-2-plan.md`. The order was: the generic system first, in memory only (like `GameFlags` in item 8) with a placeholder box as the look; saving joins in Phase 4; the real kinds and art join in Phase 5 and 6. It would get its own full check, probably as the next Phase 2 item after 16.
 - **Kinds that fit Bakumatsu (proposed, user liked them, "many of them"):**
   - **Inari shrine:** the default; small roadside shrines were everywhere, realistic and with a fox-spirit undertone. Free and no NPC, good for the wilds and dungeon-like areas.
   - **Western-medicine clinic:** a Dutch-trained doctor (rangaku medicine) in the treaty port; resting is treatment, the gourd refill is restocked medicine.
@@ -177,3 +177,14 @@
   - **Gourd upgrades** (a seed, a shard or similar that adds charges or heals more): they need pickups and saving, so Phase 4 and 5.
   - **Low-HP vignette:** built and tested on 2026-10-23 as Phase 2 item 17 (see `docs/phase-2-plan.md`).
   - **Button icons on the interact prompt:** already done with item 16 (`InteractPrompt` uses `ButtonPrompts`). The item HUD glyphs were offered and the user said no need.
+- **Regenerated enemies instead of a respawn (user idea, talked 2026-10-23; for the later phases, a reminder):** the game is not soulslike, so resting does **not** bring the same enemies back. Instead a zone can **regenerate** its population after the player has rested and left it (or left and came back), never while the player is in it, so nothing pops in in front of them. (user)
+  - **What a zone could hold afterwards (user, proposed):** empty; the same group with a different look (a bandit gang with other clothes); a different gang or a rival moving in; other NPCs; animals; travellers; or only the signs of earlier life (ashes, a body, a dropped item). Fiction: word spreads, someone else takes the spot, the area lives on without the player.
+  - **Ultra rare extras (user idea, my view: fits, with care):** an ultra rare chance of a supernatural enemy type, and a wandering **ronin or hitokiri-style boss** (a generic swordsman type, not a real person). Care points: they stay really rare and cannot be farmed by resting again and again; an **omen** comes first (fox fire, a sudden silence, fog), so a player is never ambushed with no warning; they are never placed on a route a story or mission relies on; and the supernatural one keeps the quiet tone from the "Tone" notes above (a legend, not a regular).
+  - **Rules (proposed):** story and mission areas and bosses stay fixed; the regeneration is opt-in per free-roaming zone (a small population rule on the zone, the zone framework of Phase 4); a regeneration never changes a route the player just prepared while they are in it.
+  - **Needs (so it is later, not now):** the zone and mission framework (Phase 4), enemy look variants and the boss framework (Phase 5), and the wandering-boss design (Phase 5 or 6).
+  - **Hook (built in item 18):** each rest is announced on `RestPoints.bus.rested(point, count)` and counted in `RestPoints.rest_count`, so zones can listen later.
+- **The world reacts to how the player played, a rest never wipes it (user idea, talked 2026-10-23; later phases, a reminder):** whoever comes back to a zone after a rest is the world's answer to what the player did there. (user)
+  - **Cleared a bandit camp:** the people who return are relieved; some cheer or thank the player (later: small gifts, better prices). **Killed innocents or officials:** ordinary people return scared (shutters closed, eyes down, hushed voices), and an official or a patrol may start looking for the player (a fit for the Bakumatsu authorities). **Cleaners:** undertakers, monks or townsfolk clear the bodies, which also explains why the area is empty again.
+  - **Witnesses matter (my proposal):** each zone keeps a small record (who died, hostile or innocent, whether anyone saw it). A silent kill nobody saw leaves only rumour, not a reputation; a body hidden with the body-carry system leaves no mess to clean. This rewards stealth play.
+  - **Care points:** show the effects in speech, prices and who is around, not as invisible penalties; a murder-hobo run has a cost and its own flavor (fear), but is not a failure state; cleaners and frightened NPCs never block the player's route.
+  - **Needs:** an NPC and faction or reputation system (Phase 4 and 5) and the per-zone record. The zone listens to the rest point's `rested` event (`RestPoints.bus`, built in item 18) and reads its record at that moment.
