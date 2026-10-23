@@ -38,6 +38,8 @@ enum HintMode { ALWAYS, FIRST_TIMES, OFF }
 static var traversal_hints_mode: int = HintMode.ALWAYS
 ## 0 AUTO, 1 KEYBOARD, 2 XBOX, 3 PLAYSTATION (`ButtonPrompts.Style`).
 static var button_prompts: int = 0
+## Item 17: the red low-health screen warning (Options > Gameplay > LOW HEALTH WARNING).
+static var low_health_warning: bool = true
 
 static var _loaded: bool = false
 static var _warned_bus: bool = false
@@ -70,6 +72,7 @@ static func ensure_loaded() -> void:
 		else:
 			traversal_hints_mode = clampi(int(hints_value), 0, 2)
 		button_prompts = clampi(int(config.get_value("gameplay", "button_prompts", button_prompts)), 0, 3)
+		low_health_warning = bool(config.get_value("gameplay", "low_health_warning", low_health_warning))
 		ControlsBindings.load_from(config)
 		HintMemory.load_from(config)
 	elif error != ERR_FILE_NOT_FOUND:
@@ -93,6 +96,7 @@ static func save() -> void:
 	config.set_value("gameplay", "invert_y", invert_y)
 	config.set_value("gameplay", "traversal_hints", traversal_hints_mode)
 	config.set_value("gameplay", "button_prompts", button_prompts)
+	config.set_value("gameplay", "low_health_warning", low_health_warning)
 	ControlsBindings.save_to(config)
 	HintMemory.save_to(config)
 	var error := config.save(PATH)

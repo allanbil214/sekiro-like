@@ -107,6 +107,7 @@
 - **Progression:** XP or skills, and faction reputation (section 6), in Phase 5.
 - **A day and night cycle:** not discussed in depth; **open**.
 - **Seamless doors and the veil, the cell streaming:** section 3.
+- **Rest points (checkpoints):** one system with many kinds; the Inari shrine is the default. Section 13.
 
 ## 10. The phases
 
@@ -146,3 +147,33 @@
 6. **Throwables and items:** the exact damage and stun numbers (placeholders to tune by playing); whether more ammo types are wanted; a single item list (default) or categories on separate buttons later.
 7. **Fallback fights** (a fighting arena loaded from the hub) or only fights in the street.
 8. How mission scenes are named and listed (an `ArenaData`-like resource per mission?) when the mission framework is designed.
+9. **Rest points (section 13):** do enemies respawn when the player rests (Sekiro and Souls: yes; a stealth or mission game may want no)? And what happens after the 2 resurrections are used: respawn at the last rest point, or still reload the arena?
+10. **Rest points:** which kinds exist in the first version, and the supernatural approach (section 13, "Tone").
+
+## 13. Rest points and the supernatural tone (talk of 2026-10-23)
+
+- **Idea (user):** checkpoints should feel realistic, not like a bonfire or an idol: a clinic, a house, a camp and so on. The user wants **many kinds**, with the **Inari (fox) shrine as the generic default** for dungeon-like places; the user can also choose a field camp for a "dungeon" instead, per place. (user)
+- **Structure (proposed, accepted):**
+  - **One system, many kinds.** Every rest point is an `Interactable` that works the same way underneath: it sets the respawn point and refills health and gourd charges. A small data resource per kind (a working name: `RestPointKind`) holds its look and name, the prompt verb ("Pray", "Get treated", "Rest"), a flavor line, and later a cost, a shop or saving.
+  - **Same rules in every kind.** The kinds differ in look, text, cost and services, never in what resting does, so the player learns resting once.
+  - **Per place:** each placed rest point picks its kind, so shrine or camp for a dungeon is a choice at level design time.
+  - **First version:** free to rest everywhere (user: "good choice"). A cost comes with money in Phase 4.
+  - **Built in this order (proposed):** the generic system first, in memory only (like `GameFlags` in item 8) with a placeholder box as the look; saving joins in Phase 4; the real kinds and art join in Phase 5 and 6. It would get its own full check, probably as the next Phase 2 item after 16.
+- **Kinds that fit Bakumatsu (proposed, user liked them, "many of them"):**
+  - **Inari shrine:** the default; small roadside shrines were everywhere, realistic and with a fox-spirit undertone. Free and no NPC, good for the wilds and dungeon-like areas.
+  - **Western-medicine clinic:** a Dutch-trained doctor (rangaku medicine) in the treaty port; resting is treatment, the gourd refill is restocked medicine.
+  - **Machiya safehouse:** a sympathizer's townhouse with tatami and a futon.
+  - **Inn or roadside teahouse** (post-station inns): resting could cost money later, WoTS style.
+  - **Bathhouse (sento) or onsen:** a rest spot that is also a social place.
+  - **Temple:** monks sheltering travellers; can carry the uncanny layer without breaking realism.
+  - **Moored boat or warehouse loft** for the harbour districts, and a **field camp** (fire and lean-to) for the outer areas or a hostile compound where a shrine would feel odd.
+- **Tone (user):** the **realistic Bakumatsu world is the main front**; the supernatural, like Sekiro's, is a quiet layer under it. Ways to do it (**proposed, open**, pick later; they can be mixed):
+  - **Pure rumour:** ghost lights, fox spirits and curses only in NPC talk and small details, never confirmed.
+  - **Rare, deliberate exceptions:** one or two places or bosses where the uncanny is real.
+  - **A hidden layer:** the shrine rest points have an uncanny side that opens up late in the story.
+  - The fox shrine as a rest point suits all three: ordinary at first sight, folklore underneath.
+- **Related backlog items, talked through the same day:**
+  - **Status effect icons** (bleed, poison, flame, terror): nothing inflicts a status yet, so the icon row would stay empty; they wait for a status system (Phase 5).
+  - **Gourd upgrades** (a seed, a shard or similar that adds charges or heals more): they need pickups and saving, so Phase 4 and 5.
+  - **Low-HP vignette:** built and tested on 2026-10-23 as Phase 2 item 17 (see `docs/phase-2-plan.md`).
+  - **Button icons on the interact prompt:** already done with item 16 (`InteractPrompt` uses `ButtonPrompts`). The item HUD glyphs were offered and the user said no need.

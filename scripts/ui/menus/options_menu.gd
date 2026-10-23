@@ -255,6 +255,9 @@ func _build_gameplay_page() -> void:
 	controls.append(_add_choice(_gameplay_page, "BUTTON PROMPTS", PackedStringArray(["AUTO", "KEYBOARD", "XBOX", "PLAYSTATION"]),
 		func() -> int: return Settings.button_prompts,
 		func(value: int) -> void: Settings.button_prompts = value))
+	controls.append(_add_toggle(_gameplay_page, "LOW HEALTH WARNING", "ON", "OFF",
+		func() -> bool: return Settings.low_health_warning,
+		func(value: bool) -> void: Settings.low_health_warning = value))
 	_page_controls[Page.GAMEPLAY] = controls
 
 
