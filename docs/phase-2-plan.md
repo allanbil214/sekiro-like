@@ -44,7 +44,8 @@
 | 21 | Enemies that cannot reach the player (too high, no nav link) throw items at the player, with a repeating call for help; per-enemy item and numbers in `EnemyAIData` (section 3, item 21) | feature | [x] done and tested 2026-10-26 |
 | 22 | Guards look up and down: a vertical sight angle, a head pitch, awareness of the player's height (section 3, item 22) | feature | [x] done and tested 2026-10-26 (with the F3 sight-cone debug drawing) |
 | 23 | Witness and relay: unaware guards notice an ally in combat and follow, and a curious guard that reaches it is told where the player is; plus the noise of a fight (section 3, item 23) | feature | [x] done and tested 2026-10-26 |
-| 24 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 24 | Code cleanup: the orphaned comment, dead code, the stale awareness header; optionally merging the three duplicated ally loops (section 3, item 24) | refactor | [x] done and tested 2026-10-26 (scope 1 to 4; `CameraRig.is_aiming()` kept at the user's request) |
+| 25 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
 
@@ -230,7 +231,17 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **As built (agreed 2026-10-26):** a guard that is not alert follows the nearest visible ally in combat or alert and searching (`witness_range` 10 m, both sight cones, a clear line) and is told where the player is when it gets within `relay_distance` 4 m (`relay_max_depth` 2, `relay_cooldown` 6 s). The user also added the noise of a fight (`Combatant`: hit 8 m, guard 10 m, deflect 14 m, deathblow 10 m; halved through walls; thrown hits and stealth kills make none). Details: `docs/built-reference.md` and the build log.
 
 
-## 4. Backlog carried over (24 and later)
+### 24. Code cleanup (proposed 2026-10-26, not started)
+
+- **Status:** **done and tested 2026-10-26**, scope 1 to 4 (the user chose the merge). As built: `Enemy.calm_allies_within(radius)` returns the alive, calm (Phase.IDLE, `use_awareness`) allies in range; `_shout()`, `_alert_allies()`, `_raise_alarm()` (a fourth copy found while building) and `EnemyThrow._call_for_help()` use it. `BODY_HALF_WIDTH` was removed; `CameraRig.is_aiming()` was removed and then **restored by the user** (kept for a future HUD or debug use), so it stays. The text below is the plan as proposed.
+
+- **Source (user, 2026-10-26):** after items 21 to 23 and the backlog cleanup, a code cleanup. A read-only scan of all scripts found the code already clean: no shadowed-variable warnings left (the `set_restart_point` one was fixed 2026-10-26), no unused locals or parameters, no TODOs, and the only `print` calls are debug-gated or in the editor tool.
+- **Proposed scope:** (1) the orphaned doc comment above `Enemy.nav_direction()` belongs to `_is_out_of_reach()` and moves back; (2) dead code: `CameraRig.is_aiming()` (never called) and the constant `BODY_HALF_WIDTH` in `enemy_awareness.gd` (never used) are removed; (3) the stale header comment of `enemy_awareness.gd` ("no pathfinding") is brought up to date with navigation and items 21 to 23. Items 1 to 3 are the default.
+- **Open (the user decides):** (4) merge the three copies of the "calm allies in earshot" loop (`EnemyAwareness._shout()`, `_alert_allies()` and `EnemyThrow._call_for_help()`) into one helper. It touches tested behavior, so the shout, the body alarm and the call for help would need a retest.
+- **Left alone on purpose:** `Layers.hitbox_layer()` (unused, but it mirrors `hurtbox_layer()`), and the editor-tool button exports of `DropLinkGenerator` (the editor uses them).
+
+
+## 4. Backlog carried over (25 and later)
 
 Items 8 to 12 above were picked on 2026-10-16 (the interact system and four ideas from the same talk). The other open entries stay in section 13 of `docs/handoff.md`, which remains the single list: (the ledge enhancements became item 13), heal and death extras, lock-on extras, the sweep duck, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 

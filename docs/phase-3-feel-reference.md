@@ -94,3 +94,11 @@ Knockdown: invulnerable for 1.97 s, throws back about 4 m, a roll can cancel it 
 
 - Seconds, rounded; tune by playing. Where our design differs (posture instead of stamina, deflect timing, no equip-load rolls), ours wins and these numbers are only a starting feel.
 - Everything in this file is replaced by handcrafted values in Phase 6, and in any case before the project goes public (Kickstarter, early access or any public showing).
+
+## 8. Added 2026-10-26 (the discussion chat; notes, the decisions are in `docs/phase-3-plan.md`, section 7)
+
+- **Source of these numbers:** the same `extracted.rs`, now from `ELDEN-RING-Combat-Rewrite-with-data.zip` (the upload that also carries `player_anims.bin`).
+- **Scale (agreed):** the project's feel is a blend: the structure of this file (separate cancel times per input, turn control, motion curves, multi-hit lists) with the **times scaled to about 60 to 70 percent**, then tuned by playing. The 60 to 70 percent is a placeholder number.
+- **Why a scale:** our current actions are about half as long. Light attack 1: ours 1.16 s (hit 0.35 to 0.52, cancel from 0.64), theirs 2.30 s (hit 0.43 to 0.53, light cancel 0.53, move 1.13). Dodge: ours 0.45 s (free at 0.30, i-frames 0.05 to 0.28), their roll 1.67 s (i-frames 0 to 0.43, cancel into attacks at 0.60). The feel target stays Sekiro-snappy; ours wins where the two differ.
+- **Air attacks (uchigatana, one-handed):** the jump light attack is active from frame 12 to 16 (0.40 to 0.53 s; ours: 0.18 to 0.32 s). The jump heavy attack (`a029_031230`) is active from frame 14 to 40 (0.47 to 1.33 s): a fast downward swing, then the blade held low until landing. It is the clip for the helm splitter (the dive's length depends on the fall height, so the clip plays its swing and holds its last pose until landing).
+- **Enemy attacks (proposed clips, to verify at the 3a-3 full check):** the thrust uses the one-handed heavy attack 1 (check that its blade path reads as a thrust), the sweep uses the crouch attack (check that it is low enough to jump), the grab has no clip (a made-up pose).

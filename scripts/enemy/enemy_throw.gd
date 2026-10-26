@@ -141,10 +141,5 @@ func _arc_is_clear(origin: Vector3, velocity: Vector3, aim: Vector3) -> bool:
 ## The calm allies in earshot come to look (suspicious, or alert when close), told where the player is.
 func _call_for_help(target: Node3D) -> void:
 	Sfx.play_at(_enemy.get_tree(), Sfx.Id.ENEMY_PROVOKED, _enemy.global_position + Vector3.UP * 1.5)
-	for node: Node3D in Enemies.all():
-		var other := node as Enemy
-		if other == null or other == _enemy or not other.use_awareness:
-			continue
-		if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
-			continue
+	for other: Enemy in _enemy.calm_allies_within(_ai.call_radius):
 		other.hear_call(_enemy.global_position, target.global_position, _ai.call_radius)

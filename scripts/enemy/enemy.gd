@@ -1361,6 +1361,21 @@ func hear_call(caller_position: Vector3, player_position: Vector3, radius: float
 		_awareness.hear_call(caller_position, player_position, radius)
 
 
+## Cleanup item 24: the other awareness enemies within `radius` m that are alive and calm (still in Phase.IDLE).
+## The one place for "the calm allies in earshot": the shout, the body alarm, the corpse alert and the call for help.
+func calm_allies_within(radius: float) -> Array[Enemy]:
+	var found: Array[Enemy] = []
+	for node: Node3D in Enemies.all():
+		var other := node as Enemy
+		if other == null or other == self or not other.use_awareness:
+			continue
+		if other.combatant.dead or other.phase != Phase.IDLE:
+			continue
+		if (other.global_position - global_position).length() <= radius:
+			found.append(other)
+	return found
+
+
 ## Item 21: `EnemyAwareness` calls this every frame while this enemy sees the player and cannot reach it.
 func throw_watch(delta: float, target: Node3D) -> void:
 	if _throw != null:
@@ -1491,7 +1506,6 @@ func get_awareness_debug() -> String:
 	return _awareness.debug_text()
 
 
-## True when the player is on another level than this enemy can follow (no pathfinding, item 7a).
 ## Item 12a: the flat unit direction of the next step on the navmesh path toward `point`, or zero when the path
 ## is finished, missing, or the navigation could not be set up. Only meaningful when `use_navigation` is on.
 func nav_direction(point: Vector3) -> Vector3:
@@ -1500,6 +1514,8 @@ func nav_direction(point: Vector3) -> Vector3:
 	return _navigation.direction_to(point)
 
 
+## True when the player is on another level than this enemy can follow (item 7a; with navigation links, item 12b,
+## a level it can drop, jump or climb to counts as reachable).
 func _is_out_of_reach() -> bool:
 	return _awareness != null and _player != null \
 			and not can_reach_height(_player.global_position.y - global_position.y, 1.0)

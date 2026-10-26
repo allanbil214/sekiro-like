@@ -10,9 +10,12 @@ extends RefCounted
 ## - SUSPICIOUS: stops, turns toward the cause, then creeps to it. A yellow "?" over its head.
 ## - ALERT (the meter is full but it cannot see you, or it lost you in combat): goes to the last spot it knew
 ##   and searches for `search_time` seconds, then goes back to its post. A red "!". It stays alert while it sees
-##   you from another level (it cannot reach you: no pathfinding).
+##   you from another level it cannot reach (with `use_navigation` and `use_nav_links` it paths over drops, jumps
+##   and climbs, items 12a and 12b, and a far-off player it cannot reach gets items thrown at it, item 21).
 ## - It spots you (update returns true, the Enemy enters combat) when the meter is full and it sees you within
 ##   `max_vertical_reach`. An enemy that enters combat shouts: unaware allies nearby turn suspicious or alert.
+## Item 22: a vertical sight cone and a head pitch. Item 23: it follows allies in combat (`EnemyWitness`) and is told
+## where the player is when it reaches them (`share_knowledge()`), and a fight makes noise.
 ## Everything it does here moves the enemy by setting `velocity` and `rotation.y`; the Enemy's own loop
 ## applies gravity and `move_and_slide()`.
 ## The edge guard (`edge_safe`) is used by the Enemy for its combat movement too.
@@ -23,8 +26,7 @@ enum Level { UNAWARE, SUSPICIOUS, ALERT }
 ## shows "?" or "!"); RESPECT_GO to PLACE it is calm again and respects the body.
 ## WAKE_GO and WAKE (item 10) are the milder routine for an unconscious body: walk to it, pause, wake it.
 enum Tend { NONE, GO, CHECK, ROAM, RETURN, RESPECT_GO, LIFT, CARRY, PLACE, WAKE_GO, WAKE }
-## Half the width (m) of a lying body, and how far (m) behind the laid body the carrier stands.
-const BODY_HALF_WIDTH: float = 0.45
+## How far (m) behind the laid body the carrier stands.
 const CARRIER_BACK_OFF: float = 0.8
 const ROAM_CLEARANCE: float = 0.9
 ## Rays fanned out from a body to find the nearest wall.
@@ -613,15 +615,9 @@ func _line_is_clear(target: Node3D) -> bool:
 func _shout() -> void:
 	var target := _enemy.get_target()
 	var where := target.global_position if target != null else _enemy.global_position
-	for node: Node3D in Enemies.all():
-		var other := node as Enemy
-		if other == null or other == _enemy or not other.use_awareness:
-			continue
-		if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
-			continue
+	for other: Enemy in _enemy.calm_allies_within(_ai.shout_radius):
 		var distance := (other.global_position - _enemy.global_position).length()
-		if distance <= _ai.shout_radius:
-			other.hear_shout(where, distance <= _ai.shout_radius * 0.5)
+		other.hear_shout(where, distance <= _ai.shout_radius * 0.5)
 
 
 # --- Corpses (item 7d) ----------------------------------------------------------------------------
@@ -690,14 +686,8 @@ func _raise_alarm(position: Vector3, body: Enemy) -> void:
 	_set_tend(Tend.RESPECT_GO if _body_ok() else Tend.NONE, "alarm")
 	_stuck = 0.0
 	begin_search(position)
-	for node: Node3D in Enemies.all():
-		var other := node as Enemy
-		if other == null or other == _enemy or not other.use_awareness:
-			continue
-		if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
-			continue
-		if (other.global_position - _enemy.global_position).length() <= _ai.shout_radius:
-			other.hear_shout(position, true)
+	for other: Enemy in _enemy.calm_allies_within(_ai.shout_radius):
+		other.hear_shout(position, true)
 
 
 func _react_to_corpse(body: Enemy) -> void:
@@ -735,14 +725,8 @@ func _react_to_corpse(body: Enemy) -> void:
 
 ## Allies inside `shout_radius` that are calm turn suspicious about `position`.
 func _alert_allies(position: Vector3) -> void:
-	for node: Node3D in Enemies.all():
-		var other := node as Enemy
-		if other == null or other == _enemy or not other.use_awareness:
-			continue
-		if other.combatant.dead or other.phase != Enemy.Phase.IDLE:
-			continue
-		if (other.global_position - _enemy.global_position).length() <= _ai.shout_radius:
-			other.hear_shout(position, false)
+	for other: Enemy in _enemy.calm_allies_within(_ai.shout_radius):
+		other.hear_shout(position, false)
 
 
 ## A ray from the enemy's eye to `point` hits only the world (the same rules as _line_is_clear).
