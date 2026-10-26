@@ -84,6 +84,14 @@ var _los_timer: float = 0.0
 var _corpse_timer: float = 0.0
 var _has_los: bool = false
 var _can_see: bool = false
+## Item 22: where the head points (radians, positive = up), where it wants to point (set by `_face_point()` each
+## frame the guard looks at something) and whether it was set since the last `tick_head()`.
+var _head_pitch: float = 0.0
+var _look_pitch: float = 0.0
+var _look_pitch_set: bool = false
+## Item 22 debug: the two sight cones drawn on every guard with awareness (F3 in a debug build, see `Player`).
+static var show_debug_cones: bool = false
+var _cone_mesh: MeshInstance3D
 var _stuck: float = 0.0
 
 var _tend: Tend = Tend.NONE
@@ -326,7 +334,87 @@ func edge_safe(direction: Vector3) -> bool:
 
 func debug_text() -> String:
 	var tending := "  TEND:%s" % Tend.keys()[_tend] if _tend != Tend.NONE else ""
-	return "%s %s %.2f%s%s" % [_enemy.name, Level.keys()[level], meter, "  SEES" if _can_see else "", tending]
+	return "%s %s %.2f%s%s  pitch %+d" % [_enemy.name, Level.keys()[level], meter, "  SEES" if _can_see else "", tending, roundi(rad_to_deg(_head_pitch))]
+
+
+## Item 22 debug (a debug build, F3): the sideways cone (flat, at eye height; green unaware, yellow suspicious, red
+## alert, grey in combat) and the up-and-down cone (cyan, around the head's pitch), as lines out to `sight_range`,
+## and a line to the player (green when it sees the player, dark red when not). Called every frame by the Enemy.
+func draw_debug_cones() -> void:
+	if not OS.is_debug_build():
+		return
+	var shown := show_debug_cones and not _enemy.combatant.dead
+	if _cone_mesh == null:
+		if not shown:
+			return
+		_cone_mesh = MeshInstance3D.new()
+		_cone_mesh.name = "SightConesDebug"
+		_cone_mesh.mesh = ImmediateMesh.new()
+		_cone_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var material := StandardMaterial3D.new()
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.vertex_color_use_as_albedo = true
+		material.no_depth_test = true
+		material.render_priority = 5
+		_cone_mesh.material_override = material
+		_enemy.add_child(_cone_mesh)
+	_cone_mesh.visible = shown
+	if not shown:
+		return
+	var mesh := _cone_mesh.mesh as ImmediateMesh
+	mesh.clear_surfaces()
+	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	var eye := Vector3(0.0, _ai.sight_eye_height, 0.0)
+	var reach := _ai.sight_range
+	var side_color := Color(0.6, 0.6, 0.6)
+	if _enemy.phase == Enemy.Phase.IDLE:
+		match level:
+			Level.UNAWARE:
+				side_color = Color(0.2, 1.0, 0.3)
+			Level.SUSPICIOUS:
+				side_color = Color(1.0, 0.9, 0.2)
+			Level.ALERT:
+				side_color = Color(1.0, 0.25, 0.2)
+	var half := deg_to_rad(_ai.sight_degrees * 0.5)
+	_debug_fan(mesh, eye, reach, -half, half, false, 0.0, side_color)
+	if _ai.sight_vertical_degrees < 360.0:
+		var vertical_half := deg_to_rad(_ai.sight_vertical_degrees * 0.5)
+		_debug_fan(mesh, eye, reach, -vertical_half, vertical_half, true, _head_pitch, Color(0.2, 0.85, 1.0))
+	var target := _enemy.get_target()
+	if target != null:
+		var chest := _enemy.to_local(target.global_position + Vector3.UP * _ai.sight_target_height)
+		var seen_color := Color(0.3, 1.0, 0.3) if _can_see else Color(0.5, 0.1, 0.1)
+		mesh.surface_set_color(seen_color)
+		mesh.surface_add_vertex(eye)
+		mesh.surface_set_color(seen_color)
+		mesh.surface_add_vertex(chest)
+	mesh.surface_end()
+
+
+## One fan of lines in the enemy's local space: two edges and an arc. `vertical` false = flat (yaw from -half to
+## +half), true = in the forward-up plane (pitch from `tilt - half`... `tilt + half`).
+func _debug_fan(mesh: ImmediateMesh, eye: Vector3, reach: float, from_angle: float, to_angle: float, vertical: bool, tilt: float, color: Color) -> void:
+	const SEGMENTS: int = 24
+	var previous := Vector3.ZERO
+	for i in SEGMENTS + 1:
+		var angle := lerpf(from_angle, to_angle, float(i) / float(SEGMENTS))
+		var direction: Vector3
+		if vertical:
+			direction = Vector3(0.0, sin(tilt + angle), -cos(tilt + angle))
+		else:
+			direction = Vector3(sin(angle), 0.0, -cos(angle))
+		var point := eye + direction * reach
+		if i == 0 or i == SEGMENTS:
+			mesh.surface_set_color(color)
+			mesh.surface_add_vertex(eye)
+			mesh.surface_set_color(color)
+			mesh.surface_add_vertex(point)
+		if i > 0:
+			mesh.surface_set_color(color)
+			mesh.surface_add_vertex(previous)
+			mesh.surface_set_color(color)
+			mesh.surface_add_vertex(point)
+		previous = point
 
 
 # --- Senses -------------------------------------------------------------------------------------
@@ -346,7 +434,7 @@ func _sense(delta: float, target: Node3D, to_target: Vector3) -> void:
 	var rate := 0.0
 	_can_see = false
 	var flat := Vector3(to_target.x, 0.0, to_target.z)
-	if _has_los and distance <= _ai.sight_range and _in_cone(flat):
+	if _has_los and distance <= _ai.sight_range and _in_cone(flat) and _in_vertical_cone(target):
 		_can_see = true
 		rate += _sight_rate(distance, target)
 		_remember(target.global_position)
@@ -380,6 +468,32 @@ func _in_cone(flat_to_target: Vector3) -> bool:
 		return true
 	var angle := forward.normalized().angle_to(flat_to_target.normalized())
 	return angle <= deg_to_rad(_ai.sight_degrees * 0.5)
+
+
+## Item 22: true when the player's chest is inside the up-and-down view around the head's pitch.
+func _in_vertical_cone(target: Node3D) -> bool:
+	if _ai.sight_vertical_degrees >= 360.0:
+		return true
+	var to_chest := (target.global_position + Vector3.UP * _ai.sight_target_height) \
+			- (_enemy.global_position + Vector3.UP * _ai.sight_eye_height)
+	var angle := atan2(to_chest.y, Vector2(to_chest.x, to_chest.z).length())
+	return absf(angle - _head_pitch) <= deg_to_rad(_ai.sight_vertical_degrees * 0.5)
+
+
+## Item 22: every physics frame (any phase), before the senses: the head eases toward the pitch `_face_point()` asked
+## for in the last frame, or level when the guard is not looking at anything.
+func tick_head(delta: float) -> void:
+	var wanted := _look_pitch if _look_pitch_set else 0.0
+	_look_pitch_set = false
+	_head_pitch = lerpf(_head_pitch, wanted, 1.0 - exp(-_ai.head_pitch_speed * delta))
+	_enemy.set_head_pitch(_head_pitch)
+
+
+## The pitch (radians, clamped to the head's limit) from the eye toward `point`.
+func _pitch_to(point: Vector3) -> float:
+	var to := point - (_enemy.global_position + Vector3.UP * _ai.sight_eye_height)
+	var limit := deg_to_rad(_ai.head_pitch_max_degrees)
+	return clampf(atan2(to.y, Vector2(to.x, to.z).length()), -limit, limit)
 
 
 func _sight_rate(distance: float, target: Node3D) -> float:
@@ -1003,7 +1117,7 @@ func _run_search(delta: float, target: Node3D) -> void:
 		# It sees you but cannot reach you (another level): stay alert, stand and watch.
 		_search_left = _search_cap()
 		_stop(delta)
-		_face_point(target.global_position, delta)
+		_face_point(target.global_position + Vector3.UP * _ai.sight_target_height, delta)
 		# Item 21: it throws something at you and calls for help (EnemyThrow), if this enemy is set up to.
 		_enemy.throw_watch(delta, target)
 		return
@@ -1121,6 +1235,8 @@ func _stop(delta: float) -> void:
 
 
 func _face_point(point: Vector3, delta: float) -> void:
+	_look_pitch = _pitch_to(point)
+	_look_pitch_set = true
 	var to := point - _enemy.global_position
 	to.y = 0.0
 	if to.length_squared() > 0.0001:

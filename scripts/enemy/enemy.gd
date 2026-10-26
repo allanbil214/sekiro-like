@@ -128,6 +128,8 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 @onready var combatant: Combatant = $Combatant
 @onready var visual: Node3D = $Visual
 @onready var body: MeshInstance3D = $Visual/Body
+## Item 22: the placeholder face marker; it tilts with the head pitch.
+@onready var nose: MeshInstance3D = $Visual/Nose
 @onready var sword_visual: SwordVisual = $Visual/SwordVisual
 @onready var bar: EnemyBar = $Visual/Bar
 @onready var body_shape: CollisionShape3D = $CollisionShape3D
@@ -141,6 +143,8 @@ var _awareness: EnemyAwareness
 var _navigation: EnemyNavigation
 ## Item 21: the throw and the call for help (made in `_ready()` for an enemy with awareness and a `throw_item` or `call_for_help`).
 var _throw: EnemyThrow
+## Item 22: the nose's own transform at rest (set in `_ready()`), which the head pitch tilts around the head's center.
+var _nose_rest: Transform3D = Transform3D.IDENTITY
 ## True while the player is dead and this enemy is standing down (Step 10).
 var _stood_down: bool = false
 ## Item 7b: seconds left in which a fresh spot (not a hit) can still be stealth-killed (see can_be_stealth_killed).
@@ -297,6 +301,7 @@ func _ready() -> void:
 	if ai.blade_color.a > 0.0:
 		sword_visual.idle_color = Color(ai.blade_color, 1.0)
 	sword_visual.setup(look_weapon, ai.blade_back_length)
+	_nose_rest = nose.transform
 	_think_timer = 0.5
 	_defense.roll_break_threshold()
 	if use_awareness:
@@ -353,6 +358,8 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 	_find_player()
+	if _awareness != null:
+		_awareness.tick_head(delta)
 	_update_stealth_marker(delta)
 	_think_timer = maxf(_think_timer - delta, 0.0)
 	var to_player := _flat_to_player()
@@ -411,6 +418,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _awareness != null:
+		_awareness.draw_debug_cones()
 	if _is_corpse or _unconscious:
 		return  # the body keeps its tipped-over pose (items 7d and 10)
 	if _held:
@@ -1318,6 +1327,13 @@ func can_be_stealth_killed() -> bool:
 	return phase == Phase.CHASE and _stealth_grace_left > 0.0
 
 
+## Item 7c fix (2026-10-26): can a death from above kill this enemy right now? Stricter than the ground kill: it must
+## be in Phase.IDLE and not ALERT (unaware or merely suspicious), so a guard that is searching for the player, or that
+## just spotted the player (the grace window), cannot be dropped on.
+func can_be_aerial_killed() -> bool:
+	return can_be_stealth_killed() and phase == Phase.IDLE and _awareness.level != EnemyAwareness.Level.ALERT
+
+
 ## Counts the grace down and shows the red marker while the player could stealth-kill this enemy now.
 func _update_stealth_marker(delta: float) -> void:
 	_stealth_grace_left = maxf(_stealth_grace_left - delta, 0.0)
@@ -1345,6 +1361,13 @@ func hear_call(caller_position: Vector3, player_position: Vector3, radius: float
 func throw_watch(delta: float, target: Node3D) -> void:
 	if _throw != null:
 		_throw.watch(delta, target)
+
+
+## Item 22: the head tilts `pitch` radians (positive = up). Only the nose marker shows it, around the head's center.
+func set_head_pitch(pitch: float) -> void:
+	var center := Vector3(0.0, _nose_rest.origin.y, 0.0)
+	var tilt := Basis(Vector3.RIGHT, pitch)
+	nose.transform = Transform3D(tilt * _nose_rest.basis, center + tilt * (_nose_rest.origin - center))
 
 
 ## Item 21: the wind-up glow of a throw (0 = off, 1 = full), on the base body material.

@@ -1645,11 +1645,15 @@ func can_stealth_kill(enemy: Enemy) -> bool:
 	return true
 
 
-## F4 flips `debug_undetectable` (debug builds only, the editor counts as one).
+## F4 flips `debug_undetectable`, F3 shows or hides the guards' sight cones (item 22). Debug builds only, the editor
+## counts as one.
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key != null and key.pressed and not key.echo and key.keycode == KEY_F4 and OS.is_debug_build():
 		debug_undetectable = not debug_undetectable
+		get_viewport().set_input_as_handled()
+	elif key != null and key.pressed and not key.echo and key.keycode == KEY_F3 and OS.is_debug_build():
+		EnemyAwareness.show_debug_cones = not EnemyAwareness.show_debug_cones
 		get_viewport().set_input_as_handled()
 
 
@@ -1676,11 +1680,11 @@ func find_aerial_target() -> Node3D:
 
 
 ## Item 7c: in the Air state (rising or falling), above `enemy` (flat range and height band), and `enemy`
-## can be stealth-killed (Enemy.can_be_stealth_killed).
+## can be aerial-killed (Enemy.can_be_aerial_killed: unaware or suspicious, not alert and not just spotted).
 func can_aerial_kill(enemy: Enemy) -> bool:
 	if not (state_machine.current is AirState) or is_on_floor():
 		return false
-	if not enemy.can_be_stealth_killed():
+	if not enemy.can_be_aerial_killed():
 		return false
 	var to_enemy := enemy.global_position - global_position
 	var height := -to_enemy.y

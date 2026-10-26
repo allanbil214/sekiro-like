@@ -42,7 +42,7 @@
 | 19 | Item HUD row (section 3, item 19) | feature | [x] done and tested 2026-10-23 |
 | 20 | A thrown item that hits an unaware enemy makes it look toward the shot and investigate, not spot the player (section 3, item 20) | feature | [x] done and tested 2026-10-23 |
 | 21 | Enemies that cannot reach the player (too high, no nav link) throw items at the player, with a repeating call for help; per-enemy item and numbers in `EnemyAIData` (section 3, item 21) | feature | [x] done and tested 2026-10-26 |
-| 22 | Guards look up and down: a vertical sight angle, a head pitch, awareness of the player's height (section 3, item 22) | feature | [ ] agreed 2026-10-23, not started; best after or just before item 21 |
+| 22 | Guards look up and down: a vertical sight angle, a head pitch, awareness of the player's height (section 3, item 22) | feature | [x] done and tested 2026-10-26 (with the F3 sight-cone debug drawing) |
 | 23 | Witness and relay: unaware guards notice an ally in combat and follow, and a curious guard that reaches it is told where the player is (section 3, item 23) | feature | [ ] proposed 2026-10-26, not started; needs its own full check (open points listed in section 3) |
 | 24 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
@@ -215,10 +215,11 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Not included:** guards looking up (item 22), ammo limits, a lethal throw, witnessing and relay (item 23), real throw animation and sound, a new arena.
 
 
-### 22. Guards look up and down (agreed 2026-10-23, not started)
+### 22. Guards look up and down (done and tested 2026-10-26)
 
 - **Source (user, 2026-10-23):** asked whether guards can look up and down. They cannot: a guard only turns around its vertical axis (yaw), the vision cone (`sight_degrees`, 110) is measured flat and ignores height, and only the line-of-sight ray (eye 1.6 m, target 1.0 m) and `max_vertical_reach` (3 m, for reaching, not seeing) involve height.
 - **Plan (proposed, full check later):** a vertical sight angle (a narrower up-and-down cone, so a player right above or below a guard is harder to see); a head pitch on the guard's visual so it looks toward a sound or a shot above or below it, and up at a player it cannot reach; awareness of the player's height, so a hiding spot above a guard's line of sight works. It fits with item 21 (a guard that cannot reach the player looks up before it throws), so it is best done just before or after item 21.
+- **As built (agreed 2026-10-26):** the vertical cone (`sight_vertical_degrees` 70, 360 = off), the head pitch (`head_pitch_max_degrees` 45, `head_pitch_speed` 5) with the placeholder nose tilting, and the F3 debug drawing of both sight cones (added at the full check). Details: `docs/built-reference.md` and the build log.
 
 
 ### 23. Witness and relay (proposed 2026-10-26, not started)

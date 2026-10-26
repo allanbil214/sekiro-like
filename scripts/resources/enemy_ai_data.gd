@@ -226,6 +226,14 @@ extends Resource
 @export_range(10.0, 360.0) var sight_degrees: float = 110.0
 @export var sight_eye_height: float = 1.6
 @export var sight_target_height: float = 1.0
+## Phase 2 item 22: the up-and-down view, in degrees in total (35 up and 35 down from where the head points). It is
+## measured from the eye to the player's chest, so a player right above or below a guard is not seen even with a clear
+## line. 360 = no vertical limit.
+@export_range(10.0, 360.0) var sight_vertical_degrees: float = 70.0
+## How far (degrees) the head tilts up or down toward what the guard looks at (a noise, a shot, a spot, the player it
+## cannot reach), and how fast it eases there (like `look_turn_speed`). The view cone moves with the head.
+@export_range(0.0, 80.0) var head_pitch_max_degrees: float = 45.0
+@export var head_pitch_speed: float = 5.0
 ## Meter per second at medium range, times 2 within `sight_close_range` (m), falling to the far multiplier at
 ## the edge of the range; times these while the player runs or is crouched.
 @export var sight_fill_rate: float = 0.5
