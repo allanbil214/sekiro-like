@@ -1842,8 +1842,8 @@ func rest_refill() -> void:
 
 
 ## Item 18: where the player starts after a death reload or a fall respawn.
-func set_restart_point(position: Vector3, yaw: float) -> void:
-	_spawn_position = position
+func set_restart_point(point: Vector3, yaw: float) -> void:
+	_spawn_position = point
 	_spawn_yaw = yaw
 
 

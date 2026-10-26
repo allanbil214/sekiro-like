@@ -139,6 +139,8 @@ var _guarding: bool = false
 var _player: Node3D
 var _awareness: EnemyAwareness
 var _navigation: EnemyNavigation
+## Item 21: the throw and the call for help (made in `_ready()` for an enemy with awareness and a `throw_item` or `call_for_help`).
+var _throw: EnemyThrow
 ## True while the player is dead and this enemy is standing down (Step 10).
 var _stood_down: bool = false
 ## Item 7b: seconds left in which a fresh spot (not a hit) can still be stealth-killed (see can_be_stealth_killed).
@@ -303,6 +305,8 @@ func _ready() -> void:
 	if use_navigation:
 		_navigation = EnemyNavigation.new(self)
 		_navigation.setup()
+	if use_awareness and (ai.throw_item != null or ai.call_for_help):
+		_throw = EnemyThrow.new(self)
 
 
 func _exit_tree() -> void:
@@ -332,6 +336,8 @@ func _physics_process(delta: float) -> void:
 	_peril_cooldown = maxf(_peril_cooldown - delta, 0.0)
 	_head_bounce_time = maxf(_head_bounce_time - delta, 0.0)
 	_tick_provoke(delta)
+	if _throw != null:
+		_throw.tick(delta)
 	var acting := phase == Phase.ATTACK or phase == Phase.PERILOUS
 	combatant.tick_posture(delta, acting)
 	combatant.tick_guard(delta, _guarding, acting)
@@ -1328,6 +1334,28 @@ func hear_shout(player_position: Vector3, close: bool) -> void:
 		_awareness.hear_shout(player_position, close)
 
 
+## Phase 2 item 21: an enemy that cannot reach the player calls for help (`EnemyThrow`). A calm enemy with awareness
+## inside earshot turns suspicious or alert about `player_position` (`EnemyAwareness.hear_call()`).
+func hear_call(caller_position: Vector3, player_position: Vector3, radius: float) -> void:
+	if _awareness != null and phase == Phase.IDLE and not combatant.dead and not _unconscious:
+		_awareness.hear_call(caller_position, player_position, radius)
+
+
+## Item 21: `EnemyAwareness` calls this every frame while this enemy sees the player and cannot reach it.
+func throw_watch(delta: float, target: Node3D) -> void:
+	if _throw != null:
+		_throw.watch(delta, target)
+
+
+## Item 21: the wind-up glow of a throw (0 = off, 1 = full), on the base body material.
+func set_windup_glow(amount: float) -> void:
+	if _base_material == null:
+		return
+	_base_material.emission_enabled = amount > 0.0
+	_base_material.emission = Color(1.0, 0.75, 0.3)
+	_base_material.emission_energy_multiplier = amount * 1.2
+
+
 ## Phase 2 item 11a: a thrown item landed at `point` and made `radius` m of noise. An enemy with awareness that is
 ## not in combat (and not unconscious) may turn suspicious and go to look.
 func hear_noise_at(point: Vector3, radius: float) -> void:
@@ -1537,6 +1565,8 @@ func _return_to_spawn() -> void:
 
 ## An unguarded hit landed: the recoil wobble always, a flinch if this moment allows it.
 func _on_damaged(hit: HitData, _amount: float) -> void:
+	if _throw != null:
+		_throw.cancel()
 	# A hit on an enemy that had not noticed the player: it notices at once (item 7a).
 	_stealth_grace_left = 0.0
 	if _awareness != null and phase == Phase.IDLE and not combatant.dead:
@@ -1621,6 +1651,8 @@ func _on_deathblow_closed(executed: bool, killed: bool) -> void:
 ## awareness resets) but it stays here, tipped over, and wakes later (see `_tick_wake`). No victory banner.
 func _on_knocked_out() -> void:
 	_clear_provoke()
+	if _throw != null:
+		_throw.cancel()
 	if _navigation != null:
 		_navigation.cancel_crossing()
 	bar.set_stealth_marker(false)
@@ -1712,6 +1744,8 @@ func wake_up(from_position: Vector3, at_post: bool) -> void:
 
 func _on_died() -> void:
 	_clear_provoke()
+	if _throw != null:
+		_throw.cancel()
 	if _navigation != null:
 		_navigation.cancel_crossing()
 	bar.set_stealth_marker(false)

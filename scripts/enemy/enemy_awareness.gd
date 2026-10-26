@@ -229,6 +229,19 @@ func hear_shout(player_position: Vector3, close: bool) -> void:
 	_pause_left = 0.0
 
 
+## Phase 2 item 21: another enemy that sees the player but cannot reach it calls for help from `caller_position`;
+## `player_position` is where the player is. Heard inside `radius` (less through a wall): within half of it this
+## enemy goes alert and searches there, farther it turns suspicious and creeps to it (like a shout).
+func hear_call(caller_position: Vector3, player_position: Vector3, radius: float) -> void:
+	var heard := radius
+	if not _line_to_point_is_clear(caller_position + Vector3.UP * 0.3):
+		heard *= _ai.hearing_wall_factor
+	var distance := _enemy.global_position.distance_to(caller_position)
+	if distance > heard:
+		return
+	hear_shout(player_position, distance <= heard * 0.5)
+
+
 ## Phase 2 item 11a: something thrown landed at `point` and made `radius` m of noise (`Throwable`). Within hearing
 ## (less through a wall) the enemy turns suspicious and goes to look, like a far shout; it does not spot anyone.
 func hear_noise_at(point: Vector3, radius: float) -> void:
@@ -991,6 +1004,8 @@ func _run_search(delta: float, target: Node3D) -> void:
 		_search_left = _search_cap()
 		_stop(delta)
 		_face_point(target.global_position, delta)
+		# Item 21: it throws something at you and calls for help (EnemyThrow), if this enemy is set up to.
+		_enemy.throw_watch(delta, target)
 		return
 	if not _search_arrived:
 		_search_arrived = _walk_to(_last_known, _ai.search_speed, delta)

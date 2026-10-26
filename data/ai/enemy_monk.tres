@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ey2sisai4rox" path="res://scripts/resources/enemy_ai_data.gd" id="1_ai"]
 [ext_resource type="Resource" path="res://data/actions/enemy/enemy_sweep.tres" id="2_sweep"]
+[ext_resource type="Resource" uid="uid://due3ae2xbwsgr" path="res://data/items/rock.tres" id="9_rock"]
 
 [resource]
 script = ExtResource("1_ai")
@@ -26,3 +27,4 @@ perilous_cooldown = 3.0
 perilous_range = 4.0
 perilous_chain_chance = 0.5
 mikiri_range = 4.5
+throw_item = ExtResource("9_rock")

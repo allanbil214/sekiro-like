@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="EnemyAIData" format=3 uid="uid://clw70htnbxgei"]
 
 [ext_resource type="Script" uid="uid://ey2sisai4rox" path="res://scripts/resources/enemy_ai_data.gd" id="1_ai"]
+[ext_resource type="Resource" uid="uid://due3ae2xbwsgr" path="res://data/items/rock.tres" id="9_rock"]
 
 [resource]
 script = ExtResource("1_ai")
@@ -17,3 +18,4 @@ riposte_armor = true
 pressure_break_hits = 4
 perilous_thrust = true
 perilous_chain_chance = 0.25
+throw_item = ExtResource("9_rock")

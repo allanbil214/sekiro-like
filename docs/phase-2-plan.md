@@ -41,9 +41,10 @@
 | 18 | Rest points, the Inari shrine (section 3, item 18) | feature | [x] done and tested 2026-10-23 |
 | 19 | Item HUD row (section 3, item 19) | feature | [x] done and tested 2026-10-23 |
 | 20 | A thrown item that hits an unaware enemy makes it look toward the shot and investigate, not spot the player (section 3, item 20) | feature | [x] done and tested 2026-10-23 |
-| 21 | Enemies that cannot reach the player (too high, no nav link) throw items at the player, per-enemy item and numbers in `EnemyAIData` (section 3, item 21) | feature | [ ] agreed 2026-10-23, not started; its full check comes after item 20 |
+| 21 | Enemies that cannot reach the player (too high, no nav link) throw items at the player, with a repeating call for help; per-enemy item and numbers in `EnemyAIData` (section 3, item 21) | feature | [x] done and tested 2026-10-26 |
 | 22 | Guards look up and down: a vertical sight angle, a head pitch, awareness of the player's height (section 3, item 22) | feature | [ ] agreed 2026-10-23, not started; best after or just before item 21 |
-| 23 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
+| 23 | Witness and relay: unaware guards notice an ally in combat and follow, and a curious guard that reaches it is told where the player is (section 3, item 23) | feature | [ ] proposed 2026-10-26, not started; needs its own full check (open points listed in section 3) |
+| 24 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
 
@@ -197,10 +198,21 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **As built:** a thrown hit (item or body) carries `thrown` and `origin` (where the thrower stood); an unaware enemy with awareness turns toward the guess (the origin off by up to 1.5 m, `shot_guess_error`), shows the "?", walks there and checks, with no shout and no "!"; 3 shots make it furious (an alert search at the guess). Enemies in combat and enemies without awareness are unchanged. Details: `docs/built-reference.md`, build log.
 - **Not included:** guards looking up and down (item 22), enemies throwing items back (item 21).
 
-### 21. Enemies throw items at a player they cannot reach (agreed 2026-10-23, not started)
+### 21. Enemies throw items at a player they cannot reach (done and tested 2026-10-26)
 
 - **Source (user, 2026-10-23):** when an enemy cannot get to the player (the player is on a roof or ledge that is too tall for `max_vertical_reach` and no nav link reaches it, `Enemy._is_out_of_reach()`), most enemies should throw a rock at the player, and some enemy types other items, for enemy variety. This is the "ranged rock throwers" part of the enemy variety backlog entry.
-- **Plan (proposed, full check after item 20):** per-enemy throw settings in `EnemyAIData` (the item, range, wind-up, cooldown, accuracy), the throw only when the enemy sees the player and cannot reach; `Throwable` learns to be thrown by an enemy and to hit the player (guardable); rock as the default, other items for variety.
+- **Where it hooks in:** an enemy that sees the player but cannot reach it stands and watches in `EnemyAwareness._run_search()` (the branch "it sees you but cannot reach you"); the throw and the call start there. A new helper `scripts/enemy/enemy_throw.gd` (like `EnemyNavigation`, made in `Enemy._ready()` only when `ai.throw_item` is set).
+- **Agreed 2026-10-26 (user):**
+  - **When:** only while the enemy sees the player, cannot reach it, the target is inside `throw_range` and the cooldown is over; the arc is tested with `Throwable.trace` and a blocked arc means no throw.
+  - **Data:** a new group "Ranged throw (item 21)" in `EnemyAIData`: `throw_item` (a `ThrowableData`, empty = never throws), `throw_range` (18 m), `throw_windup` (0.7 s, standing still facing the player), `throw_cooldown` (3.0 s), `throw_error` (0.6 m of spread), `throw_damage_scale` (1.0), `throw_makes_noise` (on). Defaults are placeholders to tune by playing.
+  - **Aim and hit:** the arc to the player's chest with `ThrowableData.velocity_to()`, no lead. The item's own damage and posture damage (rock 4 and 12). It can be guarded (chip), not deflected; dodge i-frames avoid it. `Throwable` learns any `Node3D` thrower and a team (an enemy's projectile checks player hurtboxes and ignores the other enemies).
+  - **Noise (user, 2026-10-26):** every enemy throw broadcasts its landing noise (`Throwable.broadcast_noise()`, the item's `noise`, 12 m for the rock, less through walls), so unaware guards nearby turn suspicious and come to look; the thrower ignores its own noise; enemies already in combat are unaffected; `spot_alert_count` (3 noises) makes a guard furious.
+  - **Call for help (add-on, user, 2026-10-26):** while the thrower sees the player and cannot reach it, it repeats a shout every `call_interval` (5 s) with a wider `call_radius` (16 m), reusing `EnemyAwareness._shout()` and `hear_shout()` (calm allies within earshot turn suspicious or alert and come to look; reduced through walls). Placeholder sound and the existing "!" symbol, no voice line yet. Its numbers go in the same `EnemyAIData` group (`call_for_help` on by default).
+  - **Presets:** the rock on `enemy_default`, `soldier`, `duelist`, `grappler` and `monk`; none on `aura` and `repulser` (melee only). Other items per enemy are a one-field change later.
+  - **Wind-up look:** a short tint flash and the existing throw sound as placeholders (no arm animation before Phase 6). Ammo is unlimited, limited by the cooldown only. Testing uses the existing Stealth Compound and Movement arenas (roofs), no new arena.
+- **As built:** as agreed above; details in `docs/built-reference.md` and the build log.
+- **Files:** new `scripts/enemy/enemy_throw.gd`; changed `scripts/items/throwable.gd`, `scripts/resources/enemy_ai_data.gd`, `scripts/enemy/enemy.gd`, `scripts/enemy/enemy_awareness.gd` and the five `data/ai/*.tres` presets above (edited on top of the user's tuned values). To check: how `player.gd` and `Combatant` treat a thrown hit from an enemy.
+- **Not included:** guards looking up (item 22), ammo limits, a lethal throw, witnessing and relay (item 23), real throw animation and sound, a new arena.
 
 
 ### 22. Guards look up and down (agreed 2026-10-23, not started)
@@ -209,7 +221,14 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **Plan (proposed, full check later):** a vertical sight angle (a narrower up-and-down cone, so a player right above or below a guard is harder to see); a head pitch on the guard's visual so it looks toward a sound or a shot above or below it, and up at a player it cannot reach; awareness of the player's height, so a hiding spot above a guard's line of sight works. It fits with item 21 (a guard that cannot reach the player looks up before it throws), so it is best done just before or after item 21.
 
 
-## 4. Backlog carried over (23 and later)
+### 23. Witness and relay (proposed 2026-10-26, not started)
+
+- **Source (user, 2026-10-26, after the item 21 check, in the style of Shinobido):** today an enemy that enters combat shouts once (`EnemyAwareness._shout()`, allies in `shout_radius` turn suspicious or alert) and the item 15d alarm alerts allies; guards do not notice an ally chasing or fighting, and a curious guard that reaches an alerted ally learns nothing. The user wants the world to react: an unaware guard that sees an ally in combat becomes curious and follows, and when it reaches that ally, the ally tells it the player is near and they all become alert.
+- **Split from item 21 on purpose** (user, 2026-10-26): item 21 only gets the repeating call for help; this item is bigger and touches the awareness core.
+- **Open points for its full check (each gets a proposed default then):** how far a guard sees an ally in combat (range, view cone, line of sight); whether the sighting makes it suspicious or alert; whether it follows the ally or goes to the place the ally is facing; whether the relay happens at a distance (a call) or only when they meet; whether guards on a patrol break their route and return afterwards; how the alert spreads in a chain (guard B tells guard C) and a cap so the whole level does not light up; what they know after the relay (the player's last known position only, never a free spot); the symbols (`?`, `!`) and sound placeholders; and the interplay with item 21 (a thrower that cannot reach the player) and item 22 (looking up).
+
+
+## 4. Backlog carried over (24 and later)
 
 Items 8 to 12 above were picked on 2026-10-16 (the interact system and four ideas from the same talk). The other open entries stay in section 13 of `docs/handoff.md`, which remains the single list: (the ledge enhancements became item 13), heal and death extras, lock-on extras, the sweep duck, enemy variety, the generic interact system, sound extras, more enemy body feedback, and real animation integration. When the user picks one, it gets the next item number here with its decisions, and is ticked off in both files. Items 1 to 3 do not change those entries.
 

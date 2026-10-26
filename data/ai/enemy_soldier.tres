@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="EnemyAIData" format=3 uid="uid://dkn2mp6tq5nlj"]
 
 [ext_resource type="Script" uid="uid://ey2sisai4rox" path="res://scripts/resources/enemy_ai_data.gd" id="1_ai"]
+[ext_resource type="Resource" uid="uid://due3ae2xbwsgr" path="res://data/items/rock.tres" id="9_rock"]
 
 [resource]
 script = ExtResource("1_ai")
@@ -9,3 +10,4 @@ neutral_deflect_chance = 0.32
 pressured_guard_chance = 0.75
 pressured_deflect_chance = 0.47
 riposte_chance = 0.5
+throw_item = ExtResource("9_rock")

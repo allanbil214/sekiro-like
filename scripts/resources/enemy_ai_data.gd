@@ -383,3 +383,26 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 ## The body color moves toward this at full stacks, by `provoke_tint_strength` (0 to 1).
 @export var provoke_tint: Color = Color(0.9, 0.15, 0.1)
 @export_range(0.0, 1.0, 0.05) var provoke_tint_strength: float = 0.6
+
+
+@export_group("Ranged throw and call for help (Phase 2 item 21)")
+## What this enemy throws at a player it SEES but cannot REACH (on a roof or ledge it cannot climb to). Empty = it
+## never throws. Only for enemies with awareness (`use_awareness`). All numbers here are placeholders to tune.
+@export var throw_item: ThrowableData
+## It throws only at a target this close (m).
+@export var throw_range: float = 18.0
+## Standing still and facing the player before the item leaves the hand (s); the body glows while it winds up.
+@export var throw_windup: float = 0.7
+## Seconds between two throws.
+@export var throw_cooldown: float = 3.0
+## Random spread of the aim point (m), so it can miss. The wind-up gives the player time to dodge.
+@export var throw_error: float = 0.6
+## Multiplies the item's damage and posture damage for this enemy's throws.
+@export var throw_damage_scale: float = 1.0
+## On: the landing makes the item's noise, so unaware guards nearby turn suspicious and come to look.
+@export var throw_makes_noise: bool = true
+## On: while it sees the player and cannot reach it, it calls for help every `call_interval` seconds. Calm allies
+## inside `call_radius` (m, less through walls) turn suspicious (alert inside half of it) and come to look.
+@export var call_for_help: bool = true
+@export var call_interval: float = 5.0
+@export var call_radius: float = 16.0
