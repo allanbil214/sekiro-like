@@ -43,7 +43,7 @@
 | 20 | A thrown item that hits an unaware enemy makes it look toward the shot and investigate, not spot the player (section 3, item 20) | feature | [x] done and tested 2026-10-23 |
 | 21 | Enemies that cannot reach the player (too high, no nav link) throw items at the player, with a repeating call for help; per-enemy item and numbers in `EnemyAIData` (section 3, item 21) | feature | [x] done and tested 2026-10-26 |
 | 22 | Guards look up and down: a vertical sight angle, a head pitch, awareness of the player's height (section 3, item 22) | feature | [x] done and tested 2026-10-26 (with the F3 sight-cone debug drawing) |
-| 23 | Witness and relay: unaware guards notice an ally in combat and follow, and a curious guard that reaches it is told where the player is (section 3, item 23) | feature | [ ] proposed 2026-10-26, not started; needs its own full check (open points listed in section 3) |
+| 23 | Witness and relay: unaware guards notice an ally in combat and follow, and a curious guard that reaches it is told where the player is; plus the noise of a fight (section 3, item 23) | feature | [x] done and tested 2026-10-26 |
 | 24 and later | The other open entries of the Phase 2 backlog (handoff, section 13); numbers are given when the user picks each one | various | not started |
 
 Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, because it needs their Theme), 5 (the loading screens), 6 (the options screen), 7 (enemy awareness and the stealth deathblow, picked by the user 2026-10-13), then 8 to 12 (agreed as a list on 2026-10-16; the numbers match the build order, so the order is 8, 9, 10, 11, 12, each with its own full check), then the rest of the backlog in the order the user picks.
@@ -222,11 +222,12 @@ Order: 1, 2, 3 (3a first, because it changes gameplay), 4 (after items 1 and 2, 
 - **As built (agreed 2026-10-26):** the vertical cone (`sight_vertical_degrees` 70, 360 = off), the head pitch (`head_pitch_max_degrees` 45, `head_pitch_speed` 5) with the placeholder nose tilting, and the F3 debug drawing of both sight cones (added at the full check). Details: `docs/built-reference.md` and the build log.
 
 
-### 23. Witness and relay (proposed 2026-10-26, not started)
+### 23. Witness and relay (done and tested 2026-10-26)
 
 - **Source (user, 2026-10-26, after the item 21 check, in the style of Shinobido):** today an enemy that enters combat shouts once (`EnemyAwareness._shout()`, allies in `shout_radius` turn suspicious or alert) and the item 15d alarm alerts allies; guards do not notice an ally chasing or fighting, and a curious guard that reaches an alerted ally learns nothing. The user wants the world to react: an unaware guard that sees an ally in combat becomes curious and follows, and when it reaches that ally, the ally tells it the player is near and they all become alert.
 - **Split from item 21 on purpose** (user, 2026-10-26): item 21 only gets the repeating call for help; this item is bigger and touches the awareness core.
 - **Open points for its full check (each gets a proposed default then):** how far a guard sees an ally in combat (range, view cone, line of sight); whether the sighting makes it suspicious or alert; whether it follows the ally or goes to the place the ally is facing; whether the relay happens at a distance (a call) or only when they meet; whether guards on a patrol break their route and return afterwards; how the alert spreads in a chain (guard B tells guard C) and a cap so the whole level does not light up; what they know after the relay (the player's last known position only, never a free spot); the symbols (`?`, `!`) and sound placeholders; and the interplay with item 21 (a thrower that cannot reach the player) and item 22 (looking up).
+- **As built (agreed 2026-10-26):** a guard that is not alert follows the nearest visible ally in combat or alert and searching (`witness_range` 10 m, both sight cones, a clear line) and is told where the player is when it gets within `relay_distance` 4 m (`relay_max_depth` 2, `relay_cooldown` 6 s). The user also added the noise of a fight (`Combatant`: hit 8 m, guard 10 m, deflect 14 m, deathblow 10 m; halved through walls; thrown hits and stealth kills make none). Details: `docs/built-reference.md` and the build log.
 
 
 ## 4. Backlog carried over (24 and later)
