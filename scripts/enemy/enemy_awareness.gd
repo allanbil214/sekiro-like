@@ -92,6 +92,12 @@ var _look_pitch_set: bool = false
 ## Item 22 debug: the two sight cones drawn on every guard with awareness (F3 in a debug build, see `Player`).
 static var show_debug_cones: bool = false
 var _cone_mesh: MeshInstance3D
+## Item 23: how many hops the news this guard acts on has travelled (0 = it saw or spotted the player itself), when it
+## may be told again (msec), and for the debug text: the ally it follows and for how long.
+var relay_depth: int = 0
+var told_until_msec: int = 0
+var _follow_name: String = ""
+var _follow_left: float = 0.0
 var _stuck: float = 0.0
 
 var _tend: Tend = Tend.NONE
@@ -143,6 +149,8 @@ func setup() -> void:
 ## Every physics frame while the enemy is in Phase.IDLE. Returns true when it spots the player.
 func update(delta: float, has_target: bool) -> bool:
 	_tick_symbol(delta)
+	_follow_left = maxf(_follow_left - delta, 0.0)
+	_enemy.witness_scan(delta)
 	if _ai.notices_corpses and level == Level.UNAWARE and _search_left <= 0.0:
 		_look_for_corpses(delta)
 	var target := _enemy.get_target()
@@ -199,6 +207,7 @@ func update(delta: float, has_target: bool) -> bool:
 ## The enemy entered combat (it spotted the player, or was hit): the "detected" sound, hide the symbol and shout.
 func on_spotted() -> void:
 	spotted_stamp += 1
+	relay_depth = 0
 	Sfx.play(_enemy.get_tree(), Sfx.Id.DETECTED)
 	meter = 1.0
 	_search_left = 0.0
@@ -235,6 +244,65 @@ func hear_shout(player_position: Vector3, close: bool) -> void:
 	meter = maxf(meter, 1.0 if close else 0.75)
 	_since_sensed = 0.0
 	_pause_left = 0.0
+
+
+## Phase 2 item 23: can this guard see `ally` right now: inside `witness_range`, the sideways and up-and-down cones
+## and with a clear line (the same senses as for the player).
+func can_see_ally(ally: Enemy) -> bool:
+	var to_ally := ally.global_position - _enemy.global_position
+	if to_ally.length() > _ai.witness_range:
+		return false
+	var flat := Vector3(to_ally.x, 0.0, to_ally.z)
+	if not _in_cone(flat) or not _in_vertical_cone(ally):
+		return false
+	return _line_to_point_is_clear(ally.global_position + Vector3.UP * _ai.sight_target_height)
+
+
+## Item 23: a guard that is calm or suspicious (not alert, not searching) may follow or be told.
+func can_witness() -> bool:
+	return level != Level.ALERT and _search_left <= 0.0
+
+
+## Item 23: what this guard could tell a guard that reaches it, `{"position", "depth"}`, or empty. In combat: where the
+## player is now (depth 0). Alert and searching: the last spot it knows (the hops its own news has travelled).
+func share_knowledge() -> Dictionary:
+	if _enemy.is_engaged():
+		var target := _enemy.get_target()
+		var where := target.global_position if target != null else _enemy.global_position
+		return {"position": where, "depth": 0}
+	if level == Level.ALERT and _has_last_known:
+		return {"position": _last_known, "depth": relay_depth}
+	return {}
+
+
+## Item 23: it saw an ally in combat or searching: turn suspicious about where the ally is and go and look (the
+## suspicious pause, then the walk; the spot is retargeted each time, so it follows the ally while it sees it).
+func follow_ally(ally: Enemy) -> void:
+	_last_known = ally.global_position
+	_has_last_known = true
+	_investigate = ally.global_position
+	meter = maxf(meter, _ai.suspicious_at)
+	_since_sensed = 0.0
+	_pause_left = 0.0
+	_follow_name = String(ally.name)
+	_follow_left = 1.0
+
+
+## Item 23: an ally that reached this guard told it where the player is (or where the ally searches): it goes alert and
+## searches there, and passes the news on one hop further at most (`relay_max_depth`).
+func receive_relay(ally: Enemy, position_told: Vector3, depth: int) -> void:
+	relay_depth = depth + 1
+	told_until_msec = Time.get_ticks_msec() + int(_ai.relay_cooldown * 1000.0)
+	_follow_name = String(ally.name)
+	_follow_left = 1.0
+	Sfx.play_at(_enemy.get_tree(), Sfx.Id.ENEMY_PROVOKED, ally.global_position + Vector3.UP * 1.5)
+	begin_search(position_told)
+
+
+## Item 23: debug (F4, the player cannot be noticed): no news about the player is taken then.
+func is_player_undetectable() -> bool:
+	var target := _enemy.get_target()
+	return target != null and _is_undetectable(target)
 
 
 ## Phase 2 item 21: another enemy that sees the player but cannot reach it calls for help from `caller_position`;
@@ -334,7 +402,12 @@ func edge_safe(direction: Vector3) -> bool:
 
 func debug_text() -> String:
 	var tending := "  TEND:%s" % Tend.keys()[_tend] if _tend != Tend.NONE else ""
-	return "%s %s %.2f%s%s  pitch %+d" % [_enemy.name, Level.keys()[level], meter, "  SEES" if _can_see else "", tending, roundi(rad_to_deg(_head_pitch))]
+	var news := ""
+	if _follow_left > 0.0:
+		news = "  FOLLOW:%s" % _follow_name
+	if relay_depth > 0:
+		news += "  RELAYED %d" % relay_depth
+	return "%s %s %.2f%s%s%s  pitch %+d" % [_enemy.name, Level.keys()[level], meter, "  SEES" if _can_see else "", tending, news, roundi(rad_to_deg(_head_pitch))]
 
 
 ## Item 22 debug (a debug build, F3): the sideways cone (flat, at eye height; green unaware, yellow suspicious, red
@@ -436,6 +509,7 @@ func _sense(delta: float, target: Node3D, to_target: Vector3) -> void:
 	var flat := Vector3(to_target.x, 0.0, to_target.z)
 	if _has_los and distance <= _ai.sight_range and _in_cone(flat) and _in_vertical_cone(target):
 		_can_see = true
+		relay_depth = 0
 		rate += _sight_rate(distance, target)
 		_remember(target.global_position)
 	var player := target as Player

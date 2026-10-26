@@ -414,3 +414,18 @@ enum CorpseReaction { SUSPICIOUS, ALERT, ALARM }
 @export var call_for_help: bool = true
 @export var call_interval: float = 5.0
 @export var call_radius: float = 16.0
+
+
+@export_group("Witness and relay (Phase 2 item 23)")
+## On: a guard that is not alert notices allies that are in combat or alert and searching (inside `witness_range` (m),
+## its sight cones and with a clear line), turns suspicious and walks toward them; close enough, it is told where the
+## player is and goes alert. Placeholders to tune by playing.
+@export var witnesses_allies: bool = true
+@export var witness_range: float = 10.0
+## Told inside this distance (m) of the ally.
+@export var relay_distance: float = 4.0
+## News passes on this many times at most: a guard that saw the player itself is depth 0, the one it told depth 1 ...
+## A guard at this depth does not tell anyone.
+@export var relay_max_depth: int = 2
+## Seconds before the same guard can be told again.
+@export var relay_cooldown: float = 6.0

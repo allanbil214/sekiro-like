@@ -143,6 +143,8 @@ var _awareness: EnemyAwareness
 var _navigation: EnemyNavigation
 ## Item 21: the throw and the call for help (made in `_ready()` for an enemy with awareness and a `throw_item` or `call_for_help`).
 var _throw: EnemyThrow
+## Item 23: looks for allies in combat or alert (the witness) and takes news from them (the relay).
+var _witness: EnemyWitness
 ## Item 22: the nose's own transform at rest (set in `_ready()`), which the head pitch tilts around the head's center.
 var _nose_rest: Transform3D = Transform3D.IDENTITY
 ## True while the player is dead and this enemy is standing down (Step 10).
@@ -312,6 +314,8 @@ func _ready() -> void:
 		_navigation.setup()
 	if use_awareness and (ai.throw_item != null or ai.call_for_help):
 		_throw = EnemyThrow.new(self)
+	if use_awareness and ai.witnesses_allies:
+		_witness = EnemyWitness.new(self, _awareness)
 
 
 func _exit_tree() -> void:
@@ -1361,6 +1365,25 @@ func hear_call(caller_position: Vector3, player_position: Vector3, radius: float
 func throw_watch(delta: float, target: Node3D) -> void:
 	if _throw != null:
 		_throw.watch(delta, target)
+
+
+## Item 23: true while this enemy is fighting (any phase but IDLE), alive, awake and not stood down.
+func is_engaged() -> bool:
+	return use_awareness and phase != Phase.IDLE and not combatant.dead and not _unconscious and not _stood_down
+
+
+## Item 23: what a guard that reaches this enemy is told, `{"position": Vector3, "depth": int}`, or empty when this
+## enemy is calm, dead, unconscious or carried (`EnemyAwareness.share_knowledge()`).
+func share_knowledge() -> Dictionary:
+	if _awareness == null or combatant.dead or _unconscious or _carried or _stood_down:
+		return {}
+	return _awareness.share_knowledge()
+
+
+## Item 23: `EnemyAwareness.update()` calls this every IDLE frame: look for allies to follow or to be told by.
+func witness_scan(delta: float) -> void:
+	if _witness != null:
+		_witness.scan(delta)
 
 
 ## Item 22: the head tilts `pitch` radians (positive = up). Only the nose marker shows it, around the head's center.

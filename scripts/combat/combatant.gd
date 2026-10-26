@@ -120,6 +120,15 @@ signal deathblow_closed(executed: bool, killed: bool)
 ## in the Inspector when tuning.
 @export var debug_log: bool = false
 
+@export_group("Noise (Phase 2 item 23)")
+## How far (m) a fight is heard by guards with awareness (less through walls): a hit that lands, a guarded hit, a
+## deflect (the loudest clang), and a deathblow. 0 = silent. A thrown item makes its own noise where it lands, and
+## the stealth deathblow is silent. Placeholders to tune by playing.
+@export var noise_hit: float = 8.0
+@export var noise_guard: float = 10.0
+@export var noise_deflect: float = 14.0
+@export var noise_deathblow: float = 10.0
+
 var health: float = 0.0
 var dead: bool = false
 ## True after a knockout (`dead` is true too, so every "ignore the dead" check also skips an unconscious one).
@@ -247,6 +256,7 @@ func take_hit(hit: HitData) -> float:
 	var outcome := _resolve(hit)
 	hit.outcome = outcome
 	last_outcome = outcome
+	_make_combat_noise(hit)
 	if debug_log and OS.is_debug_build() and guarding:
 		print("[Guard] hit -> %s (window left %.2f s)" % [["HIT", "GUARD", "DEFLECT"][outcome], deflect_left])
 	if outcome == HitData.Outcome.DEFLECT:
@@ -346,10 +356,35 @@ func tick_posture(delta: float, paused: bool) -> void:
 	posture_changed.emit(posture, max_posture)
 
 
+## Item 23: a fight is heard. Guards with awareness that are not in combat inside the radius (less through walls)
+## turn suspicious and go to look. The owner of this Combatant does not hear itself, and a thrown item is skipped (its
+## landing makes the noise).
+func _make_combat_noise(hit: HitData) -> void:
+	if hit.thrown:
+		return
+	var radius := noise_hit
+	if hit.outcome == HitData.Outcome.GUARD:
+		radius = noise_guard
+	elif hit.outcome == HitData.Outcome.DEFLECT:
+		radius = noise_deflect
+	_broadcast_noise(hit.point, radius)
+
+
+func _broadcast_noise(point: Vector3, radius: float) -> void:
+	if radius <= 0.0:
+		return
+	var owner_body := get_parent() as Node3D
+	var at := point
+	if at == Vector3.ZERO and owner_body != null:
+		at = owner_body.global_position
+	Throwable.broadcast_noise(at, radius, owner_body)
+
+
 ## A deathblow lands inside the window. Returns false if none is open.
 func execute_deathblow(lethal: bool = true) -> bool:
 	if not deathblow_open:
 		return false
+	_broadcast_noise(Vector3.ZERO, noise_deathblow)
 	last_blow_lethal = lethal
 	deathblow_open = false
 	if bars_left > 1:
