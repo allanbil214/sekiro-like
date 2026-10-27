@@ -55,6 +55,7 @@ EXCLUDE_SUFFIXES = {
     ".import",
     ".uid",
     ".tmp",
+    ".lnk",  # Windows shortcuts (no use to Claude)
 }
 
 # Binary assets Claude can't read. Skipped, but their NAMES are listed in
@@ -73,6 +74,9 @@ BINARY_SUFFIXES = {
     ".ttf", ".otf", ".woff", ".woff2",
     # archives / executables
     ".zip", ".7z", ".rar", ".exe", ".dll", ".pck",
+    ".z01", ".z02", ".z03",  # split zip parts
+    # generated data (Phase 3a-3: assets/placeholder/player_clips.bin; tools/placeholder/convert_clips.py makes it)
+    ".bin",
 }
 
 # Always included when using --only (relative to the project root).

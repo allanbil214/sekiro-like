@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), 3a-3a (clip converter and viewer) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -188,7 +188,7 @@ Read together with section 2 (3b) and the code of `AttackState`, `DodgeState`, `
 - **Test values:** two hits on `attack_5` (made up, summing to the old damage and posture). The other actions have no hit list.
 - **Next:** 3a-3 (the placeholder animation import and the figure), then 3c and 3d. 3b is complete.
 
-## 10. 3a-3 plan: what the 2026-10-27 re-read of the data showed (proposed; the check is not agreed yet, nothing built)
+## 10. 3a-3 plan: what the 2026-10-27 re-read of the data showed (split agreed 2026-10-27; 3a-3a built and tested, 3a-3b and 3a-3c planned)
 
 Read from `ELDEN-RING-Combat-Rewrite-with-data.zip` (the split `.z01` + `.zip` joins with `zip -s 0 <name>.zip --out all.zip` on a writable copy) and `tools/bake_anims.py`, together with section 7.
 
@@ -208,3 +208,12 @@ Read from `ELDEN-RING-Combat-Rewrite-with-data.zip` (the split `.z01` + `.zip` j
 3. **3a-3c, clips drive the figure:** a clip player follows the action clock (uniform stretch); first the ground combo, then dodge, the air attacks and the helm splitter, then the enemy thrust and sweep. Register rows P2 and P3. Made-up poses (P4) stay a later step.
 - **Defaults proposed:** a compact binary of joint positions sampled by a script (not Godot `Animation` resources); the converter outside `res://` logic, the output under `assets/placeholder/`, left out of public exports; locomotion clips follow speed (3c).
 - **Not in 3a-3a:** the figure in the game, any gameplay link, made-up poses, enemies, sheathe and guard arms (3d).
+
+### 10.4 3a-3a built and tested (2026-10-27)
+
+- **Built:** the converter, `player_clips.bin` (27 clips, 0.84 MB), `PlaceholderClips`, `MannequinFigure` and `ClipViewer` with the F1 "Clip viewer" option. Details: `docs/built-reference.md` and the build log.
+- **As proposed (10.3):** a compact binary of joint positions sampled by a script; the converter outside the game code, the output under `assets/placeholder/`; a uniform stretch to the action length (previewed with End in the viewer).
+- **Decided at the check:** the clip table (see the build log; the crouch attack is the curved sword's `a028_030310` because the uchigatana has none); the viewer stands in the arena in front of the player, not in a separate scene.
+- **Tested by the user:** the clips look like the original and fine.
+- **Still open for 3a-3c:** whether `heavy1` reads as the enemy thrust and `crouch_attack` as a sweep low enough to jump (judge on the enemy); how the figure's proportions fit our capsule and the enemy sizes (3a-3b); the made-up poses (P4).
+- **Next:** 3a-3b, the figure in the game (replaces `Body` and `Nose`; an F1 toggle brings the capsule back), with its own full check.

@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/placeholder/clip_viewer.gd" id="1_viewer"]
+[ext_resource type="Script" path="res://scripts/placeholder/mannequin_figure.gd" id="2_figure"]
+
+[node name="ClipViewer" type="Node3D"]
+script = ExtResource("1_viewer")
+
+[node name="Figure" type="Node3D" parent="."]
+script = ExtResource("2_figure")
+
+[node name="Info" type="CanvasLayer" parent="."]
+layer = 30
+
+[node name="Text" type="Label" parent="Info"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -640.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 120.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(1, 0.85, 0.5, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 2

@@ -74,6 +74,11 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return ActionData.er_feel_enabled,
 			func(on: bool) -> void: ActionData.er_feel_enabled = on))
 
+	# --- PLACEHOLDER CLIPS (Phase 3a-3a) ---
+	list.append(_toggle(&"clip_viewer", "PLACEHOLDER", "Clip viewer (the converted Elden Ring clips, in front of you)",
+			func() -> bool: return is_instance_valid(_clip_viewer),
+			func(on: bool) -> void: _set_clip_viewer(player, on)))
+
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
 			func() -> bool: return player.debug_undetectable,
@@ -105,6 +110,33 @@ static func _choice(id: StringName, group: String, label: String, choices: Packe
 	var option := _toggle(id, group, label, getter, setter)
 	option.choices = choices
 	return option
+
+
+const CLIP_VIEWER_SCENE: String = "res://scenes/debug/clip_viewer.tscn"
+## The clip viewer standing in the arena, or null.
+static var _clip_viewer: Node3D
+
+
+## On: stand the viewer 2.5 m in front of the player, facing it. Off: remove it.
+static func _set_clip_viewer(player: Player, on: bool) -> void:
+	if not on:
+		if is_instance_valid(_clip_viewer):
+			_clip_viewer.queue_free()
+		_clip_viewer = null
+		return
+	if is_instance_valid(_clip_viewer):
+		return
+	var scene := load(CLIP_VIEWER_SCENE) as PackedScene
+	if scene == null:
+		return
+	_clip_viewer = scene.instantiate() as Node3D
+	player.get_parent().add_child(_clip_viewer)
+	var spot := player.global_position + player.get_facing_direction() * 2.5
+	_clip_viewer.global_position = spot
+	var toward := player.global_position
+	toward.y = spot.y
+	if toward.distance_squared_to(spot) > 0.01:
+		_clip_viewer.look_at(toward, Vector3.UP)
 
 
 static func _enemies() -> Array[Enemy]:
