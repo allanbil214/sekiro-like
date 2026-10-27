@@ -93,6 +93,23 @@ func _active_speed_factor() -> float:
 	return player.slash_active_speed
 
 
+## 3b-2: turns the body toward the movement input (or the lock-on target) for this frame. An action with turn
+## fields (`ActionData.has_turn_fields()`) turns at the rate its data gives for the current time; any other action
+## keeps the old rule (free steering until the hit window opens). Returns true when the body was allowed to turn, so
+## the caller can steer the lunge direction with it.
+func _turn_toward_input(delta: float) -> bool:
+	if action.has_turn_fields():
+		var rate := action.turn_rate_at(action_time)
+		if rate <= 0.0:
+			return false
+		player.face_input_rate(rate, delta)
+		return true
+	if action_time < action.active_hit.x:
+		player.face_input(delta)
+		return true
+	return false
+
+
 ## Subclasses return false for actions that keep their own speed (thrusts, helm splitters, the
 ## deathblow).
 func _slows_active_window() -> bool:

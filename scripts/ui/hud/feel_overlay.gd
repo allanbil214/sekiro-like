@@ -5,6 +5,8 @@ extends CanvasLayer
 ## 3b-1: an INPUT row (the red stretch = presses are discarded until `input_from`; letters A D J G M I = the earliest
 ## attack, dodge, jump, guard, movement and item cancel), the header shows "ER FEEL: ON/OFF", and a small "ER FEEL OFF"
 ## tag stays on screen in debug builds while the debug-menu switch is off, even when the timeline is hidden.
+## 3b-2: a TURN row (the turn speed over time: dark red = no turning, brighter blue = faster; an action without turn
+## fields shows the old rule, free steering until the hit opens, as a flat band) with the current speed in deg/s.
 ## One block for the player's action and one for the locked-on enemy (else the nearest enemy that is
 ## attacking). Rows: LOCK, CANCEL, BUFFER, HIT, IFRAMES, MOVE; a row label turns bright while its window is
 ## open, and a white line is the action clock. An empty cancel window is drawn from `locked_until` to the end
@@ -15,7 +17,7 @@ const LABEL_W: float = 70.0
 const BAR_W: float = 440.0
 const ROW_H: float = 11.0
 const ROW_GAP: float = 2.0
-const ROW_COUNT: int = 7
+const ROW_COUNT: int = 8
 const BLOCK_GAP: float = 10.0
 
 const COLOR_LOCK := Color(0.85, 0.3, 0.3)
@@ -26,6 +28,11 @@ const COLOR_IFRAMES := Color(0.3, 0.7, 1.0)
 const COLOR_MOVE := Color(0.7, 0.5, 0.95)
 const COLOR_INPUT := Color(0.9, 0.4, 0.4)
 const INPUT_ROW: int = 6
+const TURN_ROW: int = 7
+const TURN_STEP: float = 4.0
+const TURN_MAX_RATE: float = 720.0
+const COLOR_TURN := Color(0.35, 0.65, 1.0)
+const COLOR_NO_TURN := Color(0.6, 0.15, 0.15)
 const INPUT_LETTERS: Array[String] = ["A", "D", "J", "G", "M", "I"]
 const COLOR_WARN := Color(1.0, 0.35, 0.35)
 const COLOR_PLACEHOLDER := Color(1.0, 0.85, 0.3)
@@ -163,6 +170,7 @@ func _draw_block(origin: Vector2, title: String, action: ActionData, time: float
 		["IFRAMES", _window_or_none(action.iframes), COLOR_IFRAMES],
 		["MOVE", _window_or_none(action.move_window), COLOR_MOVE],
 		["INPUT", _input_zone(action), COLOR_INPUT],
+		["TURN", NO_SPAN, COLOR_TURN],
 	]
 	for i in rows.size():
 		var row: Array = rows[i]
@@ -170,6 +178,8 @@ func _draw_block(origin: Vector2, title: String, action: ActionData, time: float
 		var row_y := top + i * (ROW_H + ROW_GAP)
 		_canvas.draw_rect(Rect2(bar_x, row_y, BAR_W, ROW_H), Color(1, 1, 1, 0.08))
 		var open := span != NO_SPAN and time >= span.x and time < span.y
+		if i == TURN_ROW:
+			open = _turn_rate_now(action, time) > 0.0
 		if span != NO_SPAN and span.y > span.x:
 			var x0 := bar_x + clampf(span.x / duration, 0.0, 1.0) * BAR_W
 			var x1 := bar_x + clampf(span.y / duration, 0.0, 1.0) * BAR_W
@@ -180,6 +190,8 @@ func _draw_block(origin: Vector2, title: String, action: ActionData, time: float
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color.WHITE if open else Color(1, 1, 1, 0.45))
 		if i == INPUT_ROW:
 			_draw_cancel_ticks(action, time, bar_x, row_y, duration)
+		elif i == TURN_ROW:
+			_draw_turn_row(action, time, bar_x, row_y, duration)
 	var line_x := bar_x + clampf(time / duration, 0.0, 1.0) * BAR_W
 	_canvas.draw_line(Vector2(line_x, top - 2.0), Vector2(line_x, top + ROW_COUNT * (ROW_H + ROW_GAP)), Color.WHITE, 2.0)
 	var found := _warnings_for(action)
@@ -213,6 +225,37 @@ func _draw_cancel_ticks(action: ActionData, time: float, bar_x: float, row_y: fl
 		_canvas.draw_string(_font, Vector2(letter_x, row_y + ROW_H), INPUT_LETTERS[index],
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color.WHITE if reached else Color(1, 1, 1, 0.7))
 		next_free = letter_x + 8.0
+
+
+## The TURN row (3b-2): one column per TURN_STEP pixels, dark red where no turning is allowed and blue where it is
+## (brighter = faster). An action without turn fields shows the old rule (free until the hit window opens) as a flat
+## band; only player attacks follow either rule, so other actions get an empty row.
+func _draw_turn_row(action: ActionData, time: float, bar_x: float, row_y: float, duration: float) -> void:
+	var has_fields := action.has_turn_fields()
+	var old_rule := not has_fields and action.kind == ActionData.Kind.ATTACK and action.active_hit != Vector2.ZERO
+	if not has_fields and not old_rule:
+		return
+	var x := 0.0
+	while x < BAR_W:
+		var at := (x + TURN_STEP * 0.5) / BAR_W * duration
+		var rate := action.turn_rate_at(at) if has_fields else (TURN_MAX_RATE * 0.5 if at < action.active_hit.x else 0.0)
+		var color := COLOR_NO_TURN if rate <= 0.0 else COLOR_TURN
+		color.a = 0.5 if rate <= 0.0 else clampf(0.35 + 0.6 * rate / TURN_MAX_RATE, 0.0, 0.95)
+		_canvas.draw_rect(Rect2(bar_x + x, row_y, TURN_STEP, ROW_H), color)
+		x += TURN_STEP
+	var label := "%d deg/s" % int(_turn_rate_now(action, time)) if has_fields else "old rule"
+	_canvas.draw_string(_font, Vector2(bar_x + BAR_W - 62.0, row_y + ROW_H), label,
+			HORIZONTAL_ALIGNMENT_RIGHT, 60.0, 10, Color.WHITE)
+
+
+## The turn speed in force now (deg/s) for the TURN row's label: the data's rate, or for the old rule a flat value
+## while the hit window has not opened (so the row label lights up the same way).
+func _turn_rate_now(action: ActionData, time: float) -> float:
+	if action.has_turn_fields():
+		return action.turn_rate_at(time)
+	if action.kind == ActionData.Kind.ATTACK and action.active_hit != Vector2.ZERO and time < action.active_hit.x:
+		return TURN_MAX_RATE * 0.5
+	return 0.0
 
 
 func _window_or_none(window: Vector2) -> Vector2:

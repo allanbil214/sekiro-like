@@ -52,6 +52,7 @@ static func check(a: ActionData) -> PackedStringArray:
 	if a.move_speed > 0.0 and a.move_window == Vector2.ZERO:
 		w.append("move_speed is set but move_window is empty (no movement happens)")
 	_check_feel_fields(a, w)
+	_check_turn_fields(a, w)
 	if a.hitstop < 0.0:
 		w.append("hitstop is negative")
 	if a.knockback < 0.0:
@@ -80,6 +81,41 @@ static func _check_feel_fields(a: ActionData, w: PackedStringArray) -> void:
 				and value >= a.active_hit.x and value < a.active_hit.y - EPS:
 			w.append("%s (%.2f) is inside the hit window; it can only fire once the window closes (%.2f)"
 					% [label, value, a.active_hit.y])
+
+
+## The 3b-2 turn fields: spans inside the action, from before to, no negative rates, overrides that do not overlap
+## each other, and a note when a no-turn span hides an override. Only player attacks read these fields.
+static func _check_turn_fields(a: ActionData, w: PackedStringArray) -> void:
+	if a.turn_rate < 0.0 and not is_equal_approx(a.turn_rate, -1.0):
+		w.append("turn_rate is %.0f (use -1 for off)" % a.turn_rate)
+	if a.turn_rate >= 0.0 or not a.no_turn.is_empty() or not a.turn_overrides.is_empty():
+		if a.kind != ActionData.Kind.ATTACK:
+			w.append("turn fields are set on a non-attack action (only player ground and air attacks read them)")
+	for span: Vector2 in a.no_turn:
+		if span.y <= span.x:
+			w.append("no_turn span (%.2f, %.2f) ends before it starts" % [span.x, span.y])
+		if span.x < 0.0:
+			w.append("no_turn span starts before 0 (%.2f)" % span.x)
+		if a.duration > 0.0 and span.y > a.duration + EPS:
+			w.append("no_turn span ends at %.2f, after the duration (%.2f)" % [span.y, a.duration])
+	for i in a.turn_overrides.size():
+		var entry := a.turn_overrides[i]
+		if entry.y <= entry.x:
+			w.append("turn_overrides[%d] (%.2f, %.2f) ends before it starts" % [i, entry.x, entry.y])
+		if entry.x < 0.0:
+			w.append("turn_overrides[%d] starts before 0 (%.2f)" % [i, entry.x])
+		if entry.z < 0.0:
+			w.append("turn_overrides[%d] has a negative rate (%.0f)" % [i, entry.z])
+		if a.duration > 0.0 and entry.y > a.duration + EPS:
+			w.append("turn_overrides[%d] ends at %.2f, after the duration (%.2f)" % [i, entry.y, a.duration])
+		for j in range(i + 1, a.turn_overrides.size()):
+			var other := a.turn_overrides[j]
+			if entry.x < other.y and other.x < entry.y:
+				w.append("turn_overrides[%d] and [%d] overlap (the first one wins)" % [i, j])
+		for span: Vector2 in a.no_turn:
+			if entry.x >= span.x and entry.y <= span.y + EPS:
+				w.append("turn_overrides[%d] lies inside a no_turn span (no_turn wins, the override does nothing)" % i)
+				break
 
 
 ## The text for the Inspector: "OK", or a count and one line per problem.

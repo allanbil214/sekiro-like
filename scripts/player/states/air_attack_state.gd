@@ -90,8 +90,7 @@ func _on_action_update(delta: float) -> void:
 		_decided = true
 		if _try_helm_splitter():
 			return
-	if action_time < action.active_hit.x:
-		player.face_input(delta)
+	_turn_toward_input(delta)
 	if player.sword_visual != null:
 		player.sword_visual.update_action(action, action_time)
 	_accept_attack_press()

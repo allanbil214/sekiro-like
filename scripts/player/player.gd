@@ -1215,6 +1215,26 @@ func face_direction(dir: Vector3, delta: float) -> void:
 	visual.rotation.y = lerp_angle(visual.rotation.y, target_yaw, 1.0 - exp(-turn_speed * delta))
 
 
+## 3b-2: like face_input(), but at a constant turn speed in degrees per second (a rate of 0 or less does not turn).
+func face_input_rate(rate_deg: float, delta: float) -> void:
+	var lock_dir := get_lock_direction()
+	if lock_dir != Vector3.ZERO:
+		face_direction_rate(lock_dir, rate_deg, delta)
+		return
+	var move_dir := get_move_input()
+	if move_dir.length_squared() > 0.01:
+		face_direction_rate(move_dir, rate_deg, delta)
+
+
+## 3b-2: turn toward `dir` by at most `rate_deg` degrees per second (the attack turn control).
+func face_direction_rate(dir: Vector3, rate_deg: float, delta: float) -> void:
+	if rate_deg <= 0.0:
+		return
+	var target_yaw := atan2(-dir.x, -dir.z)
+	var step := deg_to_rad(rate_deg) * delta
+	visual.rotation.y += clampf(angle_difference(visual.rotation.y, target_yaw), -step, step)
+
+
 ## Turn instantly (used when an action starts).
 func snap_facing(dir: Vector3) -> void:
 	visual.rotation.y = atan2(-dir.x, -dir.z)

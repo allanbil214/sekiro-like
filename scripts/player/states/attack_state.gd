@@ -277,9 +277,9 @@ func _on_action_update(delta: float) -> void:
 		_update_hold(delta)
 		return
 	# Steering: during the wind-up the body turns toward the movement input, and the lunge
-	# follows a held direction. Both lock when the active window starts.
-	if action_time < action.active_hit.x and _can_steer():
-		player.face_input(delta)
+	# follows a held direction. Both lock when the active window starts, or as the turn fields
+	# of the action say (3b-2: no_turn, turn_overrides, turn_rate).
+	if _can_steer() and _turn_toward_input(delta):
 		_update_lunge_direction(false)
 	if player.sword_visual != null:
 		player.sword_visual.update_action(action, action_time, _thrust_mirror)

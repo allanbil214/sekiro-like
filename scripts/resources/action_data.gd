@@ -13,6 +13,10 @@ enum PlaceholderSource { NONE, ER_NUMBERS, ER_CLIP, MADE_UP_POSE }
 ## The inputs that have their own "free from" time (Phase 3b-1, `cancel_*` fields below).
 enum FeelInput { ATTACK, DODGE, JUMP, GUARD, MOVE, ITEM }
 
+## Turn speed (deg/s) of an action that sets turn fields but no `turn_rate`.
+## PLACEHOLDER(ER numbers): the sandbox's rate for "inside an action with no setting" (`docs/phase-3-feel-reference.md`, section 3).
+const DEFAULT_TURN_RATE: float = 360.0
+
 ## Debug switch (Debug menu, FEEL group): false = actions tagged ER_NUMBERS ignore their 3b-1 test values and play
 ## with the original timing. Release builds ignore this and always use the values. Other actions are never affected.
 static var er_feel_enabled: bool = true
@@ -54,6 +58,18 @@ static var er_feel_enabled: bool = true
 ## Earliest time the gourd (`heal`) or an item (`use_item`: a throw or an aim, later pellets) may start out of this
 ## attack (ground attacks only). -1 = never: they wait until the attack ends. A press before the time is ignored.
 @export var cancel_item: float = -1.0
+
+@export_group("Feel (3b-2)")
+## Turn control for player attacks (ground and air; `docs/phase-3-plan.md`, section 9). Setting any of the three fields
+## below replaces the old rule (steer freely until the hit window opens) for this action. The rate in force at any
+## time is: a `no_turn` span (0) beats a `turn_overrides` span, which beats `turn_rate`; with `turn_rate` at -1 the rest
+## of the action turns at DEFAULT_TURN_RATE. All times are seconds from the start of the action.
+## Default turn speed in degrees per second (-1 = off; 0 = no turning outside the overrides).
+@export var turn_rate: float = -1.0
+## Spans (from, to) in which the body cannot turn at all.
+@export var no_turn: Array[Vector2] = []
+## Spans (from, to, degrees per second) that turn faster or slower than the default; the first match wins.
+@export var turn_overrides: Array[Vector3] = []
 
 @export_group("Movement")
 @export var move_speed: float = 0.0
@@ -187,6 +203,24 @@ func has_feel_fields() -> bool:
 		return false
 	return input_from >= 0.0 or cancel_attack >= 0.0 or cancel_dodge >= 0.0 or cancel_jump >= 0.0 \
 			or cancel_guard >= 0.0 or cancel_move >= 0.0 or cancel_item >= 0.0
+
+
+## True when any 3b-2 turn field is set and counts right now (ER_NUMBERS actions follow the debug switch).
+func has_turn_fields() -> bool:
+	if not feel_applies():
+		return false
+	return turn_rate >= 0.0 or not no_turn.is_empty() or not turn_overrides.is_empty()
+
+
+## The turn speed (deg/s) allowed at `time`. Only meaningful when has_turn_fields() is true.
+func turn_rate_at(time: float) -> float:
+	for span: Vector2 in no_turn:
+		if in_window(span, time):
+			return 0.0
+	for entry: Vector3 in turn_overrides:
+		if time >= entry.x and time < entry.y:
+			return maxf(entry.z, 0.0)
+	return turn_rate if turn_rate >= 0.0 else DEFAULT_TURN_RATE
 
 
 ## Whether `input` may cancel the action at `time` under the 3b-1 fields only: true when no time is set for it.

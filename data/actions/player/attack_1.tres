@@ -20,4 +20,6 @@ posture_damage = 15.0
 input_from = 0.25
 cancel_move = 0.85
 cancel_item = 0.95
+no_turn = Array[Vector2]([Vector2(0, 0.11), Vector2(0.32, 1.16)])
+turn_overrides = Array[Vector3]([Vector3(0.11, 0.22, 720)])
 placeholder_source = 1
