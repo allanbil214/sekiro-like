@@ -70,6 +70,24 @@ func in_move_window(action: ActionData) -> bool:
 	return ActionData.in_window(action.move_window, time)
 
 
+## 3b-3: true while the clock is inside a set motion curve (before the end of its domain).
+func in_motion(action: ActionData) -> bool:
+	for curve: Curve in [action.motion_forward, action.motion_side]:
+		if curve != null and time < curve.max_domain:
+			return true
+	return false
+
+
+## 3b-3: the speeds of the motion curves at the current time as (forward, side) in m/s; a curve that has ended gives 0.
+func motion_velocity(action: ActionData) -> Vector2:
+	var speed := Vector2.ZERO
+	if action.motion_forward != null and time < action.motion_forward.max_domain:
+		speed.x = action.motion_forward.sample(time)
+	if action.motion_side != null and time < action.motion_side.max_domain:
+		speed.y = action.motion_side.sample(time)
+	return speed
+
+
 ## The speed factor of the movement at the current time: 1 without a fade, else it eases from 1 to
 ## move_end_factor across the movement window.
 func move_fade_factor(action: ActionData) -> float:

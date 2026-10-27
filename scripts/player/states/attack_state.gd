@@ -461,7 +461,7 @@ func _apply_action_movement(delta: float) -> void:
 		return
 	if _move_dir != Vector3.ZERO and player.is_on_floor():
 		var check := maxf(ledge_check_distance,
-				action.move_speed * _move_speed_multiplier * ledge_check_time)
+				action.lunge_speed() * _move_speed_multiplier * ledge_check_time)
 		if not player.has_ground_ahead(_move_dir, check):
 			var saved := _move_dir
 			_move_dir = Vector3.ZERO

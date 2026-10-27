@@ -53,6 +53,7 @@ static func check(a: ActionData) -> PackedStringArray:
 		w.append("move_speed is set but move_window is empty (no movement happens)")
 	_check_feel_fields(a, w)
 	_check_turn_fields(a, w)
+	_check_motion_curves(a, w)
 	if a.hitstop < 0.0:
 		w.append("hitstop is negative")
 	if a.knockback < 0.0:
@@ -116,6 +117,35 @@ static func _check_turn_fields(a: ActionData, w: PackedStringArray) -> void:
 			if entry.x >= span.x and entry.y <= span.y + EPS:
 				w.append("turn_overrides[%d] lies inside a no_turn span (no_turn wins, the override does nothing)" % i)
 				break
+
+
+## The 3b-3 motion curves: the domain must cover the action, the value range must hold the speeds (a Curve clamps y to
+## 0 to 1 by default), and a curve hides `move_speed`. Only player actions and the enemy's forward curve read them.
+static func _check_motion_curves(a: ActionData, w: PackedStringArray) -> void:
+	var curves: Array = [["motion_forward", a.motion_forward], ["motion_side", a.motion_side]]
+	for entry: Array in curves:
+		var label: String = entry[0]
+		var curve := entry[1] as Curve
+		if curve == null:
+			continue
+		if curve.point_count < 2:
+			w.append("%s has fewer than 2 points" % label)
+		if a.duration > 0.0 and curve.max_domain < a.duration - EPS:
+			w.append("%s: Max Domain (%.2f) is before the end of the action (%.2f); the curve stops there" % [label, curve.max_domain, a.duration])
+		if curve.min_domain > EPS:
+			w.append("%s: Min Domain is %.2f (the action clock starts at 0)" % [label, curve.min_domain])
+		if curve.min_value >= -EPS and curve.max_value <= 1.0 + EPS:
+			w.append("%s: value range is 0 to 1 (the default); speeds above 1 m/s are clamped, raise Max Value" % label)
+		else:
+			for i in curve.point_count:
+				var y := curve.get_point_position(i).y
+				if y > curve.max_value + EPS or y < curve.min_value - EPS:
+					w.append("%s: point %d (%.2f) is outside Min/Max Value" % [label, i, y])
+					break
+	# An ER_NUMBERS action keeps its old move_speed on purpose (the F1 switch OFF plays it), so no note there.
+	if (a.motion_forward != null or a.motion_side != null) and a.move_speed > 0.0 \
+			and a.placeholder_source != ActionData.PlaceholderSource.ER_NUMBERS:
+		w.append("a motion curve is set, so move_speed, move_fade and move_window are ignored (the F1 switch OFF uses them)")
 
 
 ## The text for the Inspector: "OK", or a count and one line per problem.

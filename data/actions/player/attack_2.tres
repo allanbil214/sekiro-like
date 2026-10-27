@@ -2,6 +2,14 @@
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://scripts/resources/action_data.gd" id="1_actiondata"]
 
+[sub_resource type="Curve" id="Curve_atk2"]
+min_domain = 0.0
+max_domain = 1.01
+min_value = -15.0
+max_value = 15.0
+_data = [Vector2(0, 0.434), 0.0, 0.0, 1, 1, Vector2(0.0243, 0.434), 0.0, -5.9504, 1, 1, Vector2(0.0485, 0.29), -5.9504, 8.1893, 1, 1, Vector2(0.0728, 0.489), 8.1893, 38.7243, 1, 1, Vector2(0.0971, 1.43), 38.7243, 124.0909, 1, 1, Vector2(0.1213, 4.433), 124.0909, 107.9835, 1, 1, Vector2(0.1456, 7.057), 107.9835, 19.3827, 1, 1, Vector2(0.1699, 7.528), 19.3827, -92.7273, 1, 1, Vector2(0.1941, 5.284), -92.7273, -71.4815, 1, 1, Vector2(0.2184, 3.547), -71.4815, -112.4691, 1, 1, Vector2(0.2427, 0.814), -112.4691, -67.2727, 1, 1, Vector2(0.2548, 0), -67.2727, 0.0, 1, 1, Vector2(1.01, 0), 0.0, 0.0, 1, 1]
+point_count = 13
+
 [resource]
 script = ExtResource("1_actiondata")
 animation = &"attack_2"
@@ -22,4 +30,5 @@ cancel_move = 0.72
 cancel_item = 0.85
 no_turn = Array[Vector2]([Vector2(0, 0.07), Vector2(0.17, 1.01)])
 turn_overrides = Array[Vector3]([Vector3(0.07, 0.13, 720)])
+motion_forward = SubResource("Curve_atk2")
 placeholder_source = 1

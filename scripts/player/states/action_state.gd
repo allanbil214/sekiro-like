@@ -133,11 +133,19 @@ func _allows_guard_cancel() -> bool:
 
 
 func _apply_action_movement(delta: float) -> void:
-	if _move_dir != Vector3.ZERO and runner.in_move_window(action):
-		var factor := runner.move_fade_factor(action)
-		player.set_horizontal_velocity(_move_dir * action.move_speed * _move_speed_multiplier * factor)
-	else:
-		player.decelerate(delta)
+	if _move_dir != Vector3.ZERO:
+		if action.has_motion_curve():
+			# 3b-3: the curves give the speed (forward along the move direction, side to its right).
+			if runner.in_motion(action):
+				var speed := runner.motion_velocity(action)
+				var right := _move_dir.cross(Vector3.UP)
+				player.set_horizontal_velocity((_move_dir * speed.x + right * speed.y) * _move_speed_multiplier)
+				return
+		elif runner.in_move_window(action):
+			var factor := runner.move_fade_factor(action)
+			player.set_horizontal_velocity(_move_dir * action.move_speed * _move_speed_multiplier * factor)
+			return
+	player.decelerate(delta)
 
 
 ## Open, sweep, and close the sword's hitbox for the current action.

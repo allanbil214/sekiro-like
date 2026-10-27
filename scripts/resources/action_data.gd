@@ -71,6 +71,16 @@ static var er_feel_enabled: bool = true
 ## Spans (from, to, degrees per second) that turn faster or slower than the default; the first match wins.
 @export var turn_overrides: Array[Vector3] = []
 
+@export_group("Feel (3b-3)")
+## Motion curves (`docs/phase-3-plan.md`, section 9). x = seconds from the start of the action, y = speed in m/s.
+## A set curve replaces `move_speed`, the fade and `move_window` for this action's movement; after the end of the
+## curve's domain the body decelerates as before. The curve's Max Domain must cover the action and its Min and Max Value
+## must hold the speeds (a Curve clamps y to 0 to 1 by default); the validator checks both.
+## Forward speed along the action's move direction (negative = backward).
+@export var motion_forward: Curve
+## Sideways speed, positive to the right of the move direction. Player only for now.
+@export var motion_side: Curve
+
 @export_group("Movement")
 @export var move_speed: float = 0.0
 @export var move_window: Vector2 = Vector2.ZERO
@@ -210,6 +220,22 @@ func has_turn_fields() -> bool:
 	if not feel_applies():
 		return false
 	return turn_rate >= 0.0 or not no_turn.is_empty() or not turn_overrides.is_empty()
+
+
+## True when a 3b-3 motion curve is set and counts right now (ER_NUMBERS actions follow the debug switch).
+func has_motion_curve() -> bool:
+	return (motion_forward != null or motion_side != null) and feel_applies()
+
+
+## The fastest forward speed the action moves at: the curve's peak when it has one, else `move_speed`. Used for the
+## "do not lunge off an edge" check.
+func lunge_speed() -> float:
+	if not has_motion_curve() or motion_forward == null:
+		return move_speed
+	var peak := 0.0
+	for i in motion_forward.point_count:
+		peak = maxf(peak, absf(motion_forward.get_point_position(i).y))
+	return peak
 
 
 ## The turn speed (deg/s) allowed at `time`. Only meaningful when has_turn_fields() is true.

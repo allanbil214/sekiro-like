@@ -2,6 +2,14 @@
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://scripts/resources/action_data.gd" id="1_actiondata"]
 
+[sub_resource type="Curve" id="Curve_atk1"]
+min_domain = 0.0
+max_domain = 1.16
+min_value = -15.0
+max_value = 15.0
+_data = [Vector2(0, 0.563), 0.0, 0.9276, 1, 1, Vector2(0.0539, 0.613), 0.9276, 1.1338, 1, 1, Vector2(0.1077, 0.674), 1.1338, 14.2301, 1, 1, Vector2(0.1616, 1.441), 14.2301, 26.5863, 1, 1, Vector2(0.2155, 2.874), 26.5863, 33.4758, 1, 1, Vector2(0.2693, 4.675), 33.4758, -4.6939, 1, 1, Vector2(0.3232, 4.422), -4.6939, -51.039, 1, 1, Vector2(0.3771, 1.671), -51.039, -25.0743, 1, 1, Vector2(0.4309, 0.322), -25.0743, -11.9259, 1, 1, Vector2(0.4579, 0), -11.9259, 0.0, 1, 1, Vector2(1.16, 0), 0.0, 0.0, 1, 1]
+point_count = 11
+
 [resource]
 script = ExtResource("1_actiondata")
 animation = &"attack_1"
@@ -22,4 +30,5 @@ cancel_move = 0.85
 cancel_item = 0.95
 no_turn = Array[Vector2]([Vector2(0, 0.11), Vector2(0.32, 1.16)])
 turn_overrides = Array[Vector3]([Vector3(0.11, 0.22, 720)])
+motion_forward = SubResource("Curve_atk1")
 placeholder_source = 1

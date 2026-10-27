@@ -793,12 +793,17 @@ func _end_burst() -> void:
 
 
 func _apply_lunge(delta: float, distance: float) -> void:
-	if not _runner.in_move_window(_action) or _lunge_dir == Vector3.ZERO \
-			or distance <= ai.lunge_min_distance:
+	# 3b-3: a motion curve (forward only) replaces the speed and the fade.
+	var curved := _action.has_motion_curve() and _action.motion_forward != null
+	var moving := _runner.in_motion(_action) if curved else _runner.in_move_window(_action)
+	if not moving or _lunge_dir == Vector3.ZERO or distance <= ai.lunge_min_distance:
 		_decelerate(delta)
 		return
-	var factor := _runner.move_fade_factor(_action)
-	var speed := _action.move_speed * ai.lunge_factor * factor
+	var speed: float
+	if curved:
+		speed = _runner.motion_velocity(_action).x * ai.lunge_factor
+	else:
+		speed = _action.move_speed * ai.lunge_factor * _runner.move_fade_factor(_action)
 	velocity.x = _lunge_dir.x * speed
 	velocity.z = _lunge_dir.z * speed
 
