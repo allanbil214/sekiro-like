@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator) and 3a-4 (debug menu) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu) and 3b-1 (cancel times) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -160,3 +160,9 @@ Read together with section 2 (3b) and the code of `AttackState`, `DodgeState`, `
 - **Switch for the original timing (agreed 2026-10-27):** the new 3b fields can be turned off while playing, so the original behavior can be compared at any time (this works because 3b-1 adds only new fields and leaves the existing timings alone). It is an entry in the debug menu (not a separate key), ON by default, and a small "FEEL FIELDS OFF" tag stays on screen in debug builds while it is off. In a release build the fields are always on. Later changes to existing timings (swing lengths) would need a real copy of the original set instead.
 - **Test values (agreed 2026-10-27):** the first values on `attack_1` to `attack_5` (option B) start from the Elden Ring numbers scaled to about 65 percent and are adjusted so the difference between ON and OFF is obvious; they are a test, not tuned values.
 - **Not in 3b:** heavy-attack cancel, enemy turn control, enemy multi-hit, per-fighter hitstop (3c), the animation import (3a-3), tuning the other actions.
+
+## 9.5 3b-1 built and tested (2026-10-27), with the changes from the plan
+
+- **Built:** the fields `input_from`, `cancel_attack`, `cancel_dodge`, `cancel_jump`, `cancel_guard`, `cancel_move` and the new `cancel_item` (the gourd and `use_item`, ground attacks only, presses before the time ignored). Details: `docs/built-reference.md` and the build log.
+- **Changed from 9.3 and 9.4 (agreed with the user the same day):** the debug-menu toggle covers only the Elden Ring-like test values (actions tagged `ER_NUMBERS`), not the system, which is always on. Defense stays Sekiro-style: dodge, jump and guard are not delayed on any action (their fields exist but are unset). `input_from` discards attack presses only. Defense beats attack in the queue. The test values on `attack_1` to `attack_5` are `input_from`, `cancel_move` and `cancel_item` only; the chain (`cancel_attack`) stays at the original times because the earlier chain felt too fast.
+- **Later:** buffering heal and item presses, `cancel_item` for air attacks and other actions, and values for the other actions wait until the user asks.

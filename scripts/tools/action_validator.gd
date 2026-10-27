@@ -51,11 +51,35 @@ static func check(a: ActionData) -> PackedStringArray:
 		w.append("an attack with damage but no active_hit window (it never hits)")
 	if a.move_speed > 0.0 and a.move_window == Vector2.ZERO:
 		w.append("move_speed is set but move_window is empty (no movement happens)")
+	_check_feel_fields(a, w)
 	if a.hitstop < 0.0:
 		w.append("hitstop is negative")
 	if a.knockback < 0.0:
 		w.append("knockback is negative")
 	return w
+
+
+## The 3b-1 fields: -1 is off; a set time must lie inside the action, and a cancel time inside the hit window can
+## only fire once the window closes.
+static func _check_feel_fields(a: ActionData, w: PackedStringArray) -> void:
+	var fields: Array = [
+		["input_from", a.input_from], ["cancel_attack", a.cancel_attack], ["cancel_dodge", a.cancel_dodge],
+		["cancel_jump", a.cancel_jump], ["cancel_guard", a.cancel_guard], ["cancel_move", a.cancel_move],
+		["cancel_item", a.cancel_item],
+	]
+	for entry: Array in fields:
+		var label: String = entry[0]
+		var value: float = entry[1]
+		if value < 0.0:
+			if not is_equal_approx(value, -1.0):
+				w.append("%s is %.2f (use -1 for off)" % [label, value])
+			continue
+		if a.duration > 0.0 and value > a.duration + EPS:
+			w.append("%s (%.2f) is past the duration (%.2f)" % [label, value, a.duration])
+		if label != "input_from" and a.kind == ActionData.Kind.ATTACK and a.active_hit != Vector2.ZERO \
+				and value >= a.active_hit.x and value < a.active_hit.y - EPS:
+			w.append("%s (%.2f) is inside the hit window; it can only fire once the window closes (%.2f)"
+					% [label, value, a.active_hit.y])
 
 
 ## The text for the Inspector: "OK", or a count and one line per problem.

@@ -10,6 +10,13 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 ## feel overlay. Everything but NONE must be replaced by the user's own work before the project goes public.
 enum PlaceholderSource { NONE, ER_NUMBERS, ER_CLIP, MADE_UP_POSE }
 
+## The inputs that have their own "free from" time (Phase 3b-1, `cancel_*` fields below).
+enum FeelInput { ATTACK, DODGE, JUMP, GUARD, MOVE, ITEM }
+
+## Debug switch (Debug menu, FEEL group): false = actions tagged ER_NUMBERS ignore their 3b-1 test values and play
+## with the original timing. Release builds ignore this and always use the values. Other actions are never affected.
+static var er_feel_enabled: bool = true
+
 @export var kind: Kind = Kind.ATTACK
 @export var animation: StringName
 @export var duration: float = 0.8
@@ -27,6 +34,26 @@ enum PlaceholderSource { NONE, ER_NUMBERS, ER_CLIP, MADE_UP_POSE }
 @export var active_hit: Vector2 = Vector2.ZERO
 ## Invulnerable window.
 @export var iframes: Vector2 = Vector2.ZERO
+
+@export_group("Feel (3b-1)")
+## Per-input cancel times (seconds from the start of the action). -1 = off: the old rule applies to that input.
+## A set value replaces the old rule for that one input only; the active hit window still blocks everything.
+## Leave dodge, jump and guard at -1 for the Sekiro rule: they cancel in the wind-up and as soon as the hit ends.
+## Attack presses made before this time are discarded, not buffered (defensive presses are never discarded). -1 = off.
+@export var input_from: float = -1.0
+## Earliest time the next attack of the combo may start (replaces the chain time, `cancel_window.x`).
+@export var cancel_attack: float = -1.0
+## Earliest time a dodge may cancel this action (-1 = the old rule: any time outside the hit window).
+@export var cancel_dodge: float = -1.0
+## Earliest time a jump may cancel this action (-1 = the old rule).
+@export var cancel_jump: float = -1.0
+## Earliest time guard may cancel this action (-1 = the old rule).
+@export var cancel_guard: float = -1.0
+## Earliest time held movement input ends this action (-1 = never: the action runs to its duration).
+@export var cancel_move: float = -1.0
+## Earliest time the gourd (`heal`) or an item (`use_item`: a throw or an aim, later pellets) may start out of this
+## attack (ground attacks only). -1 = never: they wait until the attack ends. A press before the time is ignored.
+@export var cancel_item: float = -1.0
 
 @export_group("Movement")
 @export var move_speed: float = 0.0
@@ -120,6 +147,61 @@ func can_cancel(time: float) -> bool:
 	if cancel_window == Vector2.ZERO:
 		return true
 	return in_window(cancel_window, time)
+
+
+## True when this action's 3b-1 fields count right now (false only for an ER_NUMBERS action while the debug
+## switch is off, in a debug build).
+func feel_applies() -> bool:
+	if placeholder_source != PlaceholderSource.ER_NUMBERS:
+		return true
+	return er_feel_enabled or not OS.is_debug_build()
+
+
+## The set cancel time for `input`, or -1 when none is set (or the fields do not count right now).
+func feel_cancel_time(input: FeelInput) -> float:
+	var value := -1.0
+	match input:
+		FeelInput.ATTACK:
+			value = cancel_attack
+		FeelInput.DODGE:
+			value = cancel_dodge
+		FeelInput.JUMP:
+			value = cancel_jump
+		FeelInput.GUARD:
+			value = cancel_guard
+		FeelInput.MOVE:
+			value = cancel_move
+		FeelInput.ITEM:
+			value = cancel_item
+	return value if value >= 0.0 and feel_applies() else -1.0
+
+
+## The set `input_from` time, or -1 when none is set (or the fields do not count right now).
+func feel_input_from() -> float:
+	return input_from if input_from >= 0.0 and feel_applies() else -1.0
+
+
+## True when any 3b-1 field is set and counts right now.
+func has_feel_fields() -> bool:
+	if not feel_applies():
+		return false
+	return input_from >= 0.0 or cancel_attack >= 0.0 or cancel_dodge >= 0.0 or cancel_jump >= 0.0 \
+			or cancel_guard >= 0.0 or cancel_move >= 0.0 or cancel_item >= 0.0
+
+
+## Whether `input` may cancel the action at `time` under the 3b-1 fields only: true when no time is set for it.
+## States whose old rule is "any time outside the hit window" (an attack) use this directly.
+func feel_allows(input: FeelInput, time: float) -> bool:
+	var set_time := feel_cancel_time(input)
+	return set_time < 0.0 or time >= set_time
+
+
+## Like feel_allows(), but an input with no time set falls back to `can_cancel()` (the dodge's old rule).
+func can_cancel_input(input: FeelInput, time: float) -> bool:
+	var set_time := feel_cancel_time(input)
+	if set_time < 0.0:
+		return can_cancel(time)
+	return time >= set_time
 
 
 func has_iframes(time: float) -> bool:

@@ -29,6 +29,14 @@ func has_pressed(action: StringName, within: float = -1.0) -> bool:
 	return _time - pressed_time <= (buffer_time if within < 0.0 else within)
 
 
+## When the action was last pressed, on the buffer's own clock (-INF if never). Compare two of these to find the
+## newest press (3b-1: one queued input, the newest wins).
+func last_press_time(action: StringName) -> float:
+	if not _pressed_at.has(action):
+		return -INF
+	return _pressed_at[action]
+
+
 ## True if the action was pressed recently. Using it up so it can't trigger twice.
 func consume(action: StringName) -> bool:
 	if has_pressed(action):

@@ -26,22 +26,25 @@ func _on_action_enter(_previous: StringName) -> void:
 		_move_speed_multiplier = backstep_speed_multiplier
 
 
+## Each input has its own time when the dodge's 3b-1 fields are set; an input with none set follows the old
+## cancel window.
 func _on_action_update(_delta: float) -> void:
-	if not action.can_cancel(action_time):
-		return
-	if player.is_on_floor() and player.input_buffer.consume(Actions.JUMP):
+	if player.is_on_floor() and action.can_cancel_input(ActionData.FeelInput.JUMP, action_time) \
+			and player.input_buffer.consume(Actions.JUMP):
 		player.start_jump()
 		machine.transition_to(StateName.AIR)
 		return
-	if player.weapon != null and player.input_buffer.has_pressed(Actions.ATTACK):
+	if player.weapon != null and action.can_cancel_input(ActionData.FeelInput.ATTACK, action_time) \
+			and player.input_buffer.has_pressed(Actions.ATTACK):
 		var attack := machine.get_state(StateName.ATTACK) as AttackState
 		if attack != null and attack.try_start_variant(player.weapon.dash_attack):
 			player.input_buffer.consume(Actions.ATTACK)
 			return
-	if player.input_buffer.consume(Actions.DODGE):
+	if action.can_cancel_input(ActionData.FeelInput.DODGE, action_time) and player.input_buffer.consume(Actions.DODGE):
 		machine.transition_to(StateName.DODGE)
 		return
-	if player.get_move_input().length_squared() > 0.01:
+	if action.can_cancel_input(ActionData.FeelInput.MOVE, action_time) \
+			and player.get_move_input().length_squared() > 0.01:
 		if Input.is_action_pressed(Actions.DODGE):
 			machine.transition_to(StateName.DASH)
 		else:

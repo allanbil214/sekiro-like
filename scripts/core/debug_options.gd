@@ -69,6 +69,11 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return EnemyAwareness.show_debug_cones,
 			func(on: bool) -> void: EnemyAwareness.show_debug_cones = on))
 
+	# --- FEEL (Phase 3b) ---
+	list.append(_toggle(&"er_feel", "FEEL", "Elden Ring-like feel (test values on attack 1 to 5)",
+			func() -> bool: return ActionData.er_feel_enabled,
+			func(on: bool) -> void: ActionData.er_feel_enabled = on))
+
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
 			func() -> bool: return player.debug_undetectable,

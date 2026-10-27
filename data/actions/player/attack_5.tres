@@ -17,3 +17,7 @@ swing_end = Vector3(5, 1, 1)
 swing_follow = Vector3(6, 0.8, -0.6)
 damage = 15.0
 posture_damage = 23.0
+input_from = 0.4
+cancel_move = 1.05
+cancel_item = 1.2
+placeholder_source = 1

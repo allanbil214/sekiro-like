@@ -284,6 +284,7 @@ func _on_action_update(delta: float) -> void:
 	if player.sword_visual != null:
 		player.sword_visual.update_action(action, action_time, _thrust_mirror)
 	_accept_attack_press()
+	_drop_older_inputs()
 	if action.is_hit_active(action_time):
 		return
 	if _try_cancel():
@@ -472,32 +473,80 @@ func _apply_action_movement(delta: float) -> void:
 
 func _try_cancel() -> bool:
 	if _crouch_context and player.is_on_floor():
-		return _try_cancel_crouched()
+		return _try_cancel_crouched() or _try_cancel_move()
 	if player.is_on_floor():
-		if player.input_buffer.consume(Actions.DODGE):
+		if _feel_allows(ActionData.FeelInput.DODGE) and player.input_buffer.consume(Actions.DODGE):
 			machine.transition_to(StateName.DODGE)
 			return true
-		if player.input_buffer.consume(Actions.JUMP):
+		if _feel_allows(ActionData.FeelInput.JUMP) and player.input_buffer.consume(Actions.JUMP):
 			player.start_jump()
 			machine.transition_to(StateName.AIR)
 			return true
 		if Input.is_action_just_pressed(Actions.CROUCH):
 			machine.transition_to(StateName.CROUCH)
 			return true
+		if _try_cancel_move():
+			return true
 	return false
+
+
+## 3b-1: the per-input cancel times of the action. While waiting or charging a hold the clock is parked, so
+## the old rule (any time) applies there; a thrust or other hold action has no fields of its own.
+func _feel_allows(input: ActionData.FeelInput) -> bool:
+	return _phase != Phase.NORMAL or action.feel_allows(input, action_time)
+
+
+## 3b-1: held movement input ends the action once `cancel_move` is reached (never, when it is not set). A
+## crouched attack goes back to Crouch, anything else to Locomotion.
+func _try_cancel_move() -> bool:
+	if _phase != Phase.NORMAL:
+		return false
+	var from := action.feel_cancel_time(ActionData.FeelInput.MOVE)
+	if from < 0.0 or action_time < from or player.get_move_input().length_squared() <= 0.01:
+		return false
+	machine.transition_to(StateName.CROUCH if _crouch_context else StateName.LOCOMOTION)
+	return true
+
+
+## 3b-1, only on an action with feel fields set: one queued input. Defense beats attack: while a dodge or a
+## jump is waiting, an attack press is dropped (it would otherwise chain or turn into a dash attack right after
+## the dodge); between a dodge and a jump the newest press wins. Without feel fields every press stays as before.
+func _drop_older_inputs() -> void:
+	if _phase != Phase.NORMAL or not action.has_feel_fields():
+		return
+	var buffer := player.input_buffer
+	var dodge_at := buffer.last_press_time(Actions.DODGE) if buffer.has_pressed(Actions.DODGE) else -INF
+	var jump_at := buffer.last_press_time(Actions.JUMP) if buffer.has_pressed(Actions.JUMP) else -INF
+	if is_inf(dodge_at) and is_inf(jump_at):
+		return
+	_queued = false
+	buffer.clear(Actions.ATTACK)
+	if dodge_at < jump_at:
+		buffer.clear(Actions.DODGE)
+	elif jump_at < dodge_at:
+		buffer.clear(Actions.JUMP)
+
+
+## 3b-1: may the gourd or an item start out of this attack now? Needs `cancel_item` set and reached, the hit window
+## closed, and no hold waiting or charging. Read by Player._try_heal() and Player.can_start_throw().
+func allows_item_now() -> bool:
+	if _phase != Phase.NORMAL or action.is_hit_active(action_time):
+		return false
+	var from := action.feel_cancel_time(ActionData.FeelInput.ITEM)
+	return from >= 0.0 and action_time >= from
 
 
 ## Cancels while crouched follow the Crouch state: dodge and jump need headroom, and pressing
 ## crouch (or releasing it, in hold mode) stands you up.
 func _try_cancel_crouched() -> bool:
 	var headroom := player.can_stand()
-	if player.input_buffer.has_pressed(Actions.DODGE):
+	if _feel_allows(ActionData.FeelInput.DODGE) and player.input_buffer.has_pressed(Actions.DODGE):
 		if headroom:
 			player.input_buffer.consume(Actions.DODGE)
 			machine.transition_to(StateName.DODGE)
 			return true
 		player.input_buffer.clear(Actions.DODGE)
-	if player.input_buffer.has_pressed(Actions.JUMP):
+	if _feel_allows(ActionData.FeelInput.JUMP) and player.input_buffer.has_pressed(Actions.JUMP):
 		if headroom:
 			player.input_buffer.consume(Actions.JUMP)
 			player.start_jump()
@@ -529,8 +578,11 @@ func _in_buffer_window() -> bool:
 	return action_time >= window.x and action_time <= window.y
 
 
-## Earliest time the next attack may start: where the cancel window opens.
+## Earliest time the next attack may start: `cancel_attack` when set (3b-1), else where the cancel window opens.
 func _chain_time() -> float:
+	var set_time := action.feel_cancel_time(ActionData.FeelInput.ATTACK)
+	if set_time >= 0.0:
+		return set_time
 	if action.cancel_window == Vector2.ZERO:
 		return action.locked_until
 	return action.cancel_window.x

@@ -1,6 +1,6 @@
 # Placeholder register
 
-> Created 2026-10-26 (Phase 3 discussion). One row per temporary thing, so it is always clear what is a placeholder, where it came from and what replaces it. Claude keeps this file up to date: when something temporary is added, changed or replaced, and when a Phase 3 milestone is finished (the reminder rule in `docs/phase-3-plan.md`, section 1). Built so far (2026-10-27): the `ActionData.placeholder_source` field (layer 3) and the feel overlay that shows it; every register row is still planned.
+> Created 2026-10-26 (Phase 3 discussion). One row per temporary thing, so it is always clear what is a placeholder, where it came from and what replaces it. Claude keeps this file up to date: when something temporary is added, changed or replaced, and when a Phase 3 milestone is finished (the reminder rule in `docs/phase-3-plan.md`, section 1). Built so far (2026-10-27): the `ActionData.placeholder_source` field (layer 3) and the feel overlay that shows it; P1 is partly in use (3b-1 test values); the other register rows are still planned.
 
 ## How placeholders are marked (`docs/phase-3-plan.md`, section 8)
 
@@ -13,7 +13,7 @@
 
 | ID | What | Where (planned) | Source | Replaced by | Status |
 |---|---|---|---|---|---|
-| P1 | Timings, windows, cancel and turn times and speeds, scaled to about 60 to 70 percent | the `ActionData` `.tres` files and the locomotion code | Elden Ring numbers (`docs/phase-3-feel-reference.md`) | the user's tuned values (Phase 6, and before anything public) | planned (3b and 3c) |
+| P1 | Timings, windows, cancel and turn times and speeds, scaled to about 60 to 70 percent | the `ActionData` `.tres` files and the locomotion code | Elden Ring numbers (`docs/phase-3-feel-reference.md`) | the user's tuned values (Phase 6, and before anything public) | in use since 2026-10-27 (3b-1): `input_from`, `cancel_move` and `cancel_item` on `attack_1` to `attack_5`, tagged `ER_NUMBERS` and switchable in the F1 debug menu (the item times are guesses, not Elden Ring numbers); more in 3b and 3c |
 | P2 | Player animation clips (one-handed uchigatana set: combat, dodge, jump, air attacks) | converted data under `assets/placeholder/` and the clip player | Elden Ring clips (`player_anims.bin` of the Bevy sandbox) | the user's Blender animations (Phase 6) | planned (3a-3) |
 | P3 | Enemy attack clips: the thrust (one-handed heavy 1) and the sweep (crouch attack), both to be verified | the same | Elden Ring clips | the user's Blender animations (Phase 6) | planned (3a-3) |
 | P4 | Made-up poses: enemy grab, slide, wall hug, ledges (hang, climb, shimmy), taunt, throw, sheathe, draw slash, deflect poses, charged iai | pose data (location decided at the 3a-3 full check) | made up by Claude, tested by the user | the user's Blender animations (Phase 6) | planned (3a-3) |

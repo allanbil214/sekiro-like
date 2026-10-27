@@ -1877,11 +1877,18 @@ func _try_heal() -> void:
 	if not allow_heal_at_full_health and combatant.health >= combatant.max_health:
 		return
 	var current := state_machine.current
-	if not (current is LocomotionState or current is CrouchState or current is DashState or current is AimState):
+	if not (current is LocomotionState or current is CrouchState or current is DashState or current is AimState \
+			or _attack_allows_item()):
 		return
 	if is_crouched and not can_stand():
 		return
 	state_machine.transition_to(StateName.HEAL)
+
+
+## 3b-1: an attack with a `cancel_item` time lets the gourd and the items start once that time is reached.
+func _attack_allows_item() -> bool:
+	var attack := state_machine.current as AttackState
+	return attack != null and attack.allows_item_now()
 
 
 ## Steps to the next item (`cycle_item`). Works in any state except death.
@@ -1923,7 +1930,7 @@ func _try_use_item(delta: float) -> void:
 ## True in the states a throw or an aim can start from (Locomotion, Crouch, Dash); a crouch needs headroom to stand.
 func can_start_throw() -> bool:
 	var current := state_machine.current
-	if not (current is LocomotionState or current is CrouchState or current is DashState):
+	if not (current is LocomotionState or current is CrouchState or current is DashState or _attack_allows_item()):
 		return false
 	return not is_crouched or can_stand()
 

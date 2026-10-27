@@ -40,6 +40,7 @@ func exit(_next: StringName) -> void:
 
 
 func physics_update(delta: float) -> void:
+	_discard_early_presses()
 	if _try_guard_cancel():
 		return
 	action_time += delta * speed_scale * _active_speed_factor()
@@ -55,11 +56,25 @@ func physics_update(delta: float) -> void:
 		_on_action_finished()
 
 
+## 3b-1: until the action's `input_from` time, attack presses are thrown away instead of waiting in the buffer
+## (stops mashing from chaining too early). Defensive presses (dodge, jump, guard) are never discarded. Does
+## nothing when the field is not set.
+func _discard_early_presses() -> void:
+	if action == null:
+		return
+	var from := action.feel_input_from()
+	if from < 0.0 or action_time >= from:
+		return
+	player.input_buffer.clear(Actions.ATTACK)
+
+
 ## Guard cancels any action except during its hit window (a press made then stays buffered and
 ## fires once the window closes, if it is still fresh). A crouched action under a low ceiling
 ## ignores it (guard stands you up).
 func _try_guard_cancel() -> bool:
 	if not _allows_guard_cancel() or not player.input_buffer.has_pressed(Actions.GUARD):
+		return false
+	if not action.feel_allows(ActionData.FeelInput.GUARD, action_time):
 		return false
 	if _hit_is_active():
 		return false
