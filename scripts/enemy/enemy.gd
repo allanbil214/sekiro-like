@@ -130,6 +130,9 @@ enum Peril { NONE, THRUST, SWEEP, GRAB }
 @onready var body: MeshInstance3D = $Visual/Body
 ## Item 22: the placeholder face marker; it tilts with the head pitch.
 @onready var nose: MeshInstance3D = $Visual/Nose
+## Phase 3a-3b-3: the mannequin (a placeholder, P5) that replaces the capsule and the nose while shown. It reuses the
+## player's `player_figure.gd` (idle pose only, the sword arm follows the sword).
+@onready var figure: PlayerFigure = $Visual/Figure
 @onready var sword_visual: SwordVisual = $Visual/SwordVisual
 @onready var bar: EnemyBar = $Visual/Bar
 @onready var body_shape: CollisionShape3D = $CollisionShape3D
@@ -269,7 +272,7 @@ func _ready() -> void:
 	_base_posture_regen = combatant.posture_regen
 	_base_material = StandardMaterial3D.new()
 	_base_material.albedo_color = body_color
-	body.material_override = _base_material
+	_set_body_material(_base_material)
 	_stun_material = StandardMaterial3D.new()
 	_stun_material.albedo_color = Color(0.95, 0.95, 0.85)
 	_stun_material.emission_enabled = true
@@ -304,6 +307,9 @@ func _ready() -> void:
 		sword_visual.idle_color = Color(ai.blade_color, 1.0)
 	sword_visual.setup(look_weapon, ai.blade_back_length)
 	_nose_rest = nose.transform
+	figure.fit_to_height(FIGURE_HEIGHT)
+	figure.bind_arms(sword_visual, null, null)
+	set_figure_shown(true)
 	_think_timer = 0.5
 	_defense.roll_break_threshold()
 	if use_awareness:
@@ -1141,7 +1147,7 @@ func _become_corpse() -> void:
 	if _corpse_material == null:
 		_corpse_material = StandardMaterial3D.new()
 		_corpse_material.albedo_color = Color(0.3, 0.3, 0.33)
-	body.material_override = _corpse_material
+	_set_body_material(_corpse_material)
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(visual, "rotation:x", deg_to_rad(90.0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.tween_property(visual, "position:y", 0.4, 0.35)
@@ -1188,6 +1194,8 @@ func place_body(at: Vector3, yaw: float, fall: bool, body_scale: float = 1.0) ->
 ## Item 15a: where this lying body's root goes so its middle is at `center` with the root turned by `basis`. The
 ## root is at the feet; the tipped-over body's middle is LYING_MIDDLE from it (in the root's own axes).
 const LYING_MIDDLE: Vector3 = Vector3(0.0, 0.4, 0.9)
+## PLACEHOLDER: the height (m) the mannequin is scaled to (the same as the enemy's collision capsule).
+const FIGURE_HEIGHT: float = 1.8
 
 
 func lying_root_for(center: Vector3, body_basis: Basis) -> Vector3:
@@ -1422,8 +1430,28 @@ func witness_scan(delta: float) -> void:
 ## Item 22: the head tilts `pitch` radians (positive = up). Only the nose marker shows it, around the head's center.
 func set_head_pitch(pitch: float) -> void:
 	var center := Vector3(0.0, _nose_rest.origin.y, 0.0)
+	figure.head_pitch = pitch
 	var tilt := Basis(Vector3.RIGHT, pitch)
 	nose.transform = Transform3D(tilt * _nose_rest.basis, center + tilt * (_nose_rest.origin - center))
+
+
+## Phase 3a-3b-3: show the mannequin (on) or the old capsule and nose (off). Stays off when the clips are missing.
+func set_figure_shown(on: bool) -> void:
+	var show_it: bool = on and figure.available
+	figure.visible = show_it
+	body.visible = not show_it
+	nose.visible = not show_it
+	sword_visual.set_arm_hidden(show_it)
+
+
+func is_figure_shown() -> bool:
+	return figure.visible
+
+
+## The body's color state (normal, stunned, unconscious, corpse): the capsule and, when shown, every shape of the figure.
+func _set_body_material(material: Material) -> void:
+	body.material_override = material
+	figure.set_overlay_material(material)
 
 
 ## Item 21: the wind-up glow of a throw (0 = off, 1 = full), on the base body material.
@@ -1697,7 +1725,7 @@ func _on_deathblow_opened() -> void:
 	_defense.riposte_pending = false
 	_end_pose()
 	_set_phase(Phase.STUNNED)
-	body.material_override = _stun_material
+	_set_body_material(_stun_material)
 	_start_stun_bobble()
 	if was_unaware:
 		_awareness.on_spotted()
@@ -1711,7 +1739,7 @@ func _on_deathblow_closed(executed: bool, killed: bool) -> void:
 			blow = global_position - _player.global_position
 			blow.y = 0.0
 		Fx.play(get_tree(), Fx.Kind.DEATHBLOW, global_position + Vector3.UP * 1.2, blow, visual)
-	body.material_override = _base_material
+	_set_body_material(_base_material)
 	_end_stun_bobble()
 	if phase == Phase.STUNNED:
 		_start_recover()
@@ -1759,7 +1787,7 @@ func _on_knocked_out() -> void:
 	if _unconscious_material == null:
 		_unconscious_material = StandardMaterial3D.new()
 		_unconscious_material.albedo_color = Color(0.35, 0.42, 0.62)
-	body.material_override = _unconscious_material
+	_set_body_material(_unconscious_material)
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(visual, "rotation:x", deg_to_rad(90.0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.tween_property(visual, "position:y", 0.4, 0.35)
@@ -1795,7 +1823,7 @@ func wake_up(from_position: Vector3, at_post: bool) -> void:
 	_unconscious = false
 	corpse_discovered = false
 	scale = Vector3.ONE
-	body.material_override = _base_material
+	_set_body_material(_base_material)
 	visual.rotation.x = 0.0
 	visual.position = Vector3.ZERO
 	if at_post:
@@ -1841,7 +1869,7 @@ func _on_died() -> void:
 	_defense.riposte_pending = false
 	_end_pose()
 	_end_stun_bobble()
-	body.material_override = _base_material
+	_set_body_material(_base_material)
 	if leaves_corpse and use_awareness and not boss:
 		_become_corpse()
 		return

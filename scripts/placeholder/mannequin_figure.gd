@@ -21,6 +21,8 @@ const BLADE_RADIUS: float = 0.012
 @export var tint: Color = Color(0.72, 0.76, 0.84)
 ## Off hides the blade (the game draws its own sword, `SwordVisual`). Set it before `setup()`.
 @export var show_blade: bool = true
+## Radians the head (its nose) tilts up (negative = down); the enemy's head pitch sets it. Used at the next `show_pose()`.
+var head_pitch: float = 0.0
 
 var _clips: PlaceholderClips
 var _segments: Array[MeshInstance3D] = []
@@ -90,9 +92,10 @@ func show_pose(pose: PlaceholderClips.Pose) -> void:
 	var head := pose.points[_head_joint]
 	_head.position = head + Vector3.UP * 0.07
 	# The Head's Z axis faces forward (checked on the idle clip); the nose sits on that side.
-	var forward := pose.axes[_head_axes * 3 + 2]
+	var tilt := Basis(Vector3.RIGHT, head_pitch)
+	var forward := tilt * pose.axes[_head_axes * 3 + 2]
 	_nose.position = head + Vector3.UP * 0.07 + forward * HEAD_RADIUS
-	_nose.basis = Basis.looking_at(forward, pose.axes[_head_axes * 3 + 1])
+	_nose.basis = Basis.looking_at(forward, tilt * pose.axes[_head_axes * 3 + 1])
 	# The weapon joint's Y axis runs along the blade (checked on the first attack's hit frames).
 	var root := pose.points[_weapon_joint]
 	var along := pose.axes[_weapon_axes * 3 + 1]

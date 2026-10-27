@@ -79,9 +79,9 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return is_instance_valid(_clip_viewer),
 			func(on: bool) -> void: _set_clip_viewer(player, on)))
 
-	list.append(_toggle(&"mannequin_figure", "PLACEHOLDER", "Mannequin figure (off = the capsule)",
+	list.append(_toggle(&"mannequin_figure", "PLACEHOLDER", "Mannequin figure (player and enemies; off = the capsule)",
 			func() -> bool: return player.is_figure_shown(),
-			func(on: bool) -> void: player.set_figure_shown(on)))
+			func(on: bool) -> void: _set_figure_shown(player, on)))
 
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
@@ -141,6 +141,13 @@ static func _set_clip_viewer(player: Player, on: bool) -> void:
 	toward.y = spot.y
 	if toward.distance_squared_to(spot) > 0.01:
 		_clip_viewer.look_at(toward, Vector3.UP)
+
+
+## The mannequin on the player and on every enemy in the arena (3a-3b-3).
+static func _set_figure_shown(player: Player, on: bool) -> void:
+	player.set_figure_shown(on)
+	for enemy: Enemy in _enemies():
+		enemy.set_figure_shown(on)
 
 
 static func _enemies() -> Array[Enemy]:

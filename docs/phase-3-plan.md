@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), 3a-3a (clip converter and viewer) built and tested 2026-10-27, 3a-3b split in three on 2026-10-27 (section 10.5), 3a-3b-1 (the figure on the player) and 3a-3b-2 (its arms) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), 3a-3a (clip converter and viewer) built and tested 2026-10-27, 3a-3b split in three on 2026-10-27 (section 10.5), 3a-3b (the figure on the player, its arms and enemies) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -218,7 +218,7 @@ Read from `ELDEN-RING-Combat-Rewrite-with-data.zip` (the split `.z01` + `.zip` j
 - **Still open for 3a-3c:** whether `heavy1` reads as the enemy thrust and `crouch_attack` as a sweep low enough to jump (judge on the enemy); how the figure's proportions fit our capsule and the enemy sizes (3a-3b); the made-up poses (P4).
 - **Next:** 3a-3b, the figure in the game (replaces `Body` and `Nose`; an F1 toggle brings the capsule back), with its own full check.
 
-## 10.5 3a-3b split in three (agreed 2026-10-27; 3a-3b-1 and 3a-3b-2 built and tested 2026-10-27, the rest planned)
+## 10.5 3a-3b split in three (agreed 2026-10-27; all three built and tested 2026-10-27; 3a-3c is next)
 
 Decided at the 3a-3b full check, after the user asked why the figure's own arms were not used.
 
@@ -227,6 +227,7 @@ Decided at the 3a-3b full check, after the user asked why the figure's own arms 
 - **3a-3b-1 built and tested (2026-10-27), as described.** Details: `docs/built-reference.md` and the build log.
 - **3a-3b-2 built and tested (2026-10-27), as described** (details: `docs/built-reference.md` and the build log). Planned text:
 - **3a-3b-2, the figure's arms:** a two-bone solve (shoulder, elbow, hand) per arm toward the code-drawn hand: the sword arm follows `SwordVisual`'s hand, the left arm follows `HealArm` while healing, and `ReachArms` covers the reach and the choke. The box arms of those three scripts are hidden while the figure is on (the toggle brings them back with the capsule). The three scripts expose their hand point; sword poses, timings and `ActionData` stay untouched. Needs a tuned default elbow direction. The shield and the guard arms stay in 3d step (c).
+- **3a-3b-3 built and tested (2026-10-27)** (details: `docs/built-reference.md` and the build log; the dummy stays a capsule). Planned text:
 - **3a-3b-3, enemies:** the figure on `Enemy` and the dummy, with a tint per type; the enemy's use of `Body` (corpse material, tint, tipped-over pose, bobblehead, the head pitch on the nose) is handled here. Register row P5.
 - **Order:** 3a-3b-1, then 3a-3b-2, then 3a-3b-3, each with its own full check and test, then 3a-3c. 3a-3c is unchanged.
 - **Not in any of them:** clip playback, walk animation, foot placement, made-up poses, new collision, hurtbox or hitbox shapes.
