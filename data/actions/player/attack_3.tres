@@ -1,12 +1,10 @@
 [gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://dw7rfx82nc5vj"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://scripts/resources/action_data.gd" id="1_actiondata"]
+[ext_resource type="Script" uid="uid://dbxsk01td8g27" path="res://scripts/resources/hit_spec.gd" id="1_hsc20"]
 
 [sub_resource type="Curve" id="Curve_atk3"]
-min_domain = 0.0
-max_domain = 1.08
-min_value = -15.0
-max_value = 15.0
+_limits = [-15.0, 15.0, 0.0, 1.08]
 _data = [Vector2(0, 0), 0.0, 3.3051, 1, 1, Vector2(0.0354, 0.117), 3.3051, 10.5085, 1, 1, Vector2(0.0708, 0.489), 10.5085, 6.1017, 1, 1, Vector2(0.1062, 0.705), 6.1017, 23.2203, 1, 1, Vector2(0.1416, 1.527), 23.2203, 112.2034, 1, 1, Vector2(0.177, 5.499), 112.2034, 145.4237, 1, 1, Vector2(0.2124, 10.647), 145.4237, -55.3107, 1, 1, Vector2(0.2478, 8.689), -55.3107, -184.096, 1, 1, Vector2(0.2832, 2.172), -184.096, -61.3559, 1, 1, Vector2(0.3186, 0), -61.3559, 0.0, 1, 1, Vector2(1.08, 0), 0.0, 0.0, 1, 1]
 point_count = 11
 
@@ -18,6 +16,12 @@ locked_until = 0.41
 cancel_window = Vector2(0.52, 1.08)
 buffer_window = Vector2(0.14, 1.08)
 active_hit = Vector2(0.23, 0.41)
+input_from = 0.18
+cancel_move = 0.78
+cancel_item = 0.9
+no_turn = Array[Vector2]([Vector2(0, 0.09), Vector2(0.23, 1.08)])
+turn_overrides = Array[Vector3]([Vector3(0.09, 0.16, 720)])
+motion_forward = SubResource("Curve_atk3")
 move_speed = 7.3
 move_window = Vector2(0.08, 0.37)
 swing_windup = Vector3(8.5, 0.9, -0.3)
@@ -25,10 +29,4 @@ swing_end = Vector3(2.5, 0.9, 0.9)
 swing_follow = Vector3(3, 0.8, -0.3)
 damage = 10.0
 posture_damage = 15.0
-input_from = 0.18
-cancel_move = 0.78
-cancel_item = 0.9
-no_turn = Array[Vector2]([Vector2(0, 0.09), Vector2(0.23, 1.08)])
-turn_overrides = Array[Vector3]([Vector3(0.09, 0.16, 720)])
-motion_forward = SubResource("Curve_atk3")
 placeholder_source = 1

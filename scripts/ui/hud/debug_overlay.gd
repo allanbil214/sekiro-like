@@ -17,6 +17,8 @@ extends CanvasLayer
 var _player: Player
 var _label: Label
 var _body: MeshInstance3D
+var _figure: PlayerFigure
+var _figure_tinted: bool = false
 var _tint_material: StandardMaterial3D
 var _ledge_marker: MeshInstance3D
 var _wall_ring: MeshInstance3D
@@ -25,6 +27,7 @@ var _wall_ring: MeshInstance3D
 func _ready() -> void:
 	_player = get_parent() as Player
 	_body = _player.get_node_or_null("Visual/Body") as MeshInstance3D
+	_figure = _player.get_node_or_null("Visual/Figure") as PlayerFigure
 	_label = Label.new()
 	_label.position = Vector2(16, 16)
 	# White text with a black outline and shadow, so it reads on any background.
@@ -146,6 +149,11 @@ func _process(_delta: float) -> void:
 			_body.material_override = _tint_material
 		else:
 			_body.material_override = null
+	if _figure != null:
+		var tinted: bool = tint_on_iframes and _player.invulnerable
+		if tinted != _figure_tinted:
+			_figure_tinted = tinted
+			_figure.set_overlay_material(_tint_material if tinted else null)
 
 
 func _create_wall_range_ring() -> void:

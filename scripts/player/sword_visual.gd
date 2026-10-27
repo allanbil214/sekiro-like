@@ -193,6 +193,8 @@ var _rest_edge: Vector3 = Vector3.UP
 var _twist: float = 0.0
 var _from_twist: float = 0.0
 var _nose: Node3D
+## Phase 3a-3b-1: the player's mannequin (a sibling under Visual; null on enemies), turned by the same twist.
+var _figure: Node3D
 var _nose_base: Vector3 = Vector3.ZERO
 var _nose_twisted: bool = false
 var _glow: float = 0.0
@@ -304,6 +306,7 @@ func setup(weapon: WeaponData, back_length: float = 0.0) -> void:
 	_from_twist = 0.0
 	# The torso twist also turns the capsule's nose (a sibling under Visual).
 	_nose = get_parent().get_node_or_null("Nose") as Node3D
+	_figure = get_parent().get_node_or_null("Figure") as Node3D
 	_player = get_parent().get_parent() as Player
 	if _nose != null:
 		_nose_base = Vector3(_nose.position.x, 0.0, _nose.position.z)
@@ -874,6 +877,8 @@ func _apply_twist() -> void:
 	rotation.y = yaw * arm_twist_factor
 	if _scabbard != null:
 		_scabbard.rotation.y = yaw
+	if _figure != null:
+		_figure.rotation.y = yaw
 	if _nose == null:
 		return
 	if absf(_twist) < 0.001 and not _nose_twisted:

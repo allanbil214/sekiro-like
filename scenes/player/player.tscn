@@ -65,6 +65,7 @@
 [ext_resource type="Script" uid="uid://cslmwjamdevbp" path="res://scripts/ui/hud/low_health_vignette.gd" id="62_hir57"]
 [ext_resource type="Script" uid="uid://cqqptb1h5dki0" path="res://scripts/ui/hud/feel_overlay.gd" id="64_gmu8b"]
 [ext_resource type="Script" uid="uid://ca0afgp715m37" path="res://scripts/ui/menus/debug_menu.gd" id="65_a38bk"]
+[ext_resource type="Script" uid="uid://cm8nobhhoku6h" path="res://scripts/player/player_figure.gd" id="66_3chqh"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -214,6 +215,9 @@ script = ExtResource("5_6cv16")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Visual/SwordVisual/Hitbox" unique_id=1215039185]
 shape = SubResource("BoxShape3D_v2xx4")
+
+[node name="Figure" type="Node3D" parent="Visual" unique_id=1582810204]
+script = ExtResource("66_3chqh")
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=76740487]
 script = ExtResource("2_gmlin")

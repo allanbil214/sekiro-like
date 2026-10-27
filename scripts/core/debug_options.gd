@@ -79,6 +79,10 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return is_instance_valid(_clip_viewer),
 			func(on: bool) -> void: _set_clip_viewer(player, on)))
 
+	list.append(_toggle(&"mannequin_figure", "PLACEHOLDER", "Mannequin figure (off = the capsule)",
+			func() -> bool: return player.is_figure_shown(),
+			func(on: bool) -> void: player.set_figure_shown(on)))
+
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
 			func() -> bool: return player.debug_undetectable,

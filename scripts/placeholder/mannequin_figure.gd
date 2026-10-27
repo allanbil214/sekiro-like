@@ -19,6 +19,8 @@ const BLADE_LENGTH: float = 1.0
 const BLADE_RADIUS: float = 0.012
 
 @export var tint: Color = Color(0.72, 0.76, 0.84)
+## Off hides the blade (the game draws its own sword, `SwordVisual`). Set it before `setup()`.
+@export var show_blade: bool = true
 
 var _clips: PlaceholderClips
 var _segments: Array[MeshInstance3D] = []
@@ -31,6 +33,8 @@ var _head_joint: int = -1
 var _head_axes: int = -1
 var _weapon_joint: int = -1
 var _weapon_axes: int = -1
+var _meshes: Array[MeshInstance3D] = []
+var _own_materials: Array[Material] = []
 
 
 ## Builds the shapes for the joints of `clips`. Call once.
@@ -66,6 +70,7 @@ func setup(clips: PlaceholderClips) -> void:
 	_head_axes = clips.oriented_index("Head")
 	_weapon_joint = clips.joint_index("R_Weapon")
 	_weapon_axes = clips.oriented_index("R_Weapon")
+	_blade.visible = show_blade
 
 
 ## Put the figure into `pose` (null does nothing).
@@ -86,6 +91,12 @@ func show_pose(pose: PlaceholderClips.Pose) -> void:
 	_blade.transform = _segment_transform(root, root + along * BLADE_LENGTH)
 
 
+## Draw every shape with `material` (the i-frame tint), or with its own colors again when null.
+func set_overlay_material(material: Material) -> void:
+	for i in _meshes.size():
+		_meshes[i].material_override = material if material != null else _own_materials[i]
+
+
 func _instance(mesh: Mesh, color: Color) -> MeshInstance3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
@@ -94,6 +105,8 @@ func _instance(mesh: Mesh, color: Color) -> MeshInstance3D:
 	instance.material_override = material
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(instance)
+	_meshes.append(instance)
+	_own_materials.append(material)
 	return instance
 
 

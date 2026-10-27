@@ -493,6 +493,8 @@ var sword_visual: SwordVisual
 @onready var _collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var _body_mesh: MeshInstance3D = $Visual/Body
 @onready var _nose: MeshInstance3D = $Visual/Nose
+## Phase 3a-3b-1: the mannequin that replaces the capsule and the nose while shown (a placeholder, P5).
+@onready var figure: PlayerFigure = $Visual/Figure
 ## The left arm that lifts the gourd while healing (Step 11, HealState drives it).
 @onready var heal_arm: HealArm = $Visual/HealArm
 @onready var screen_fade: ScreenFade = $ScreenFade
@@ -513,6 +515,8 @@ func _ready() -> void:
 	_reaction = PlayerBodyReaction.new(self)
 	Fx.blood_enabled = show_blood
 	_nose_drop = stand_height - _nose.position.y
+	figure.fit_to_height(stand_height)
+	set_figure_shown(true)
 	_reach_arms = get_node_or_null("Visual/ReachArms") as ReachArms
 	sword_visual = get_node_or_null("Visual/SwordVisual") as SwordVisual
 	if sword_visual != null and weapon != null:
@@ -1252,6 +1256,7 @@ func snap_facing_lock_aware(dir: Vector3) -> void:
 ## The bottom stays at the feet.
 func set_crouched(crouched: bool) -> void:
 	is_crouched = crouched
+	figure.set_crouched(crouched, crouch_transition_time)
 	var height := crouch_height if crouched else stand_height
 	var shape := _collision_shape.shape as CapsuleShape3D
 	shape.height = height
@@ -1269,6 +1274,18 @@ func set_crouched(crouched: bool) -> void:
 	_visual_tween.tween_property(mesh, "height", height, crouch_transition_time)
 	_visual_tween.tween_property(_body_mesh, "position:y", height * 0.5, crouch_transition_time)
 	_visual_tween.tween_property(_nose, "position:y", nose_y, crouch_transition_time)
+
+
+## Phase 3a-3b-1: show the mannequin (on) or the old capsule and nose (off). Stays off when the clips are missing.
+func set_figure_shown(on: bool) -> void:
+	var show_it: bool = on and figure.available
+	figure.visible = show_it
+	_body_mesh.visible = not show_it
+	_nose.visible = not show_it
+
+
+func is_figure_shown() -> bool:
+	return figure.visible
 
 
 ## The radius of the body capsule (used by the LedgeSensor).
