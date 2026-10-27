@@ -54,6 +54,7 @@ static func check(a: ActionData) -> PackedStringArray:
 	_check_feel_fields(a, w)
 	_check_turn_fields(a, w)
 	_check_motion_curves(a, w)
+	_check_hits(a, w)
 	if a.hitstop < 0.0:
 		w.append("hitstop is negative")
 	if a.knockback < 0.0:
@@ -146,6 +147,36 @@ static func _check_motion_curves(a: ActionData, w: PackedStringArray) -> void:
 	if (a.motion_forward != null or a.motion_side != null) and a.move_speed > 0.0 \
 			and a.placeholder_source != ActionData.PlaceholderSource.ER_NUMBERS:
 		w.append("a motion curve is set, so move_speed, move_fade and move_window are ignored (the F1 switch OFF uses them)")
+
+
+## The 3b-4 hit list: attacks only, each window valid and inside `active_hit`, no overlaps, and some damage to deal.
+static func _check_hits(a: ActionData, w: PackedStringArray) -> void:
+	if a.hits.is_empty():
+		return
+	if a.kind != ActionData.Kind.ATTACK:
+		w.append("hits are set on a non-attack action (only player attacks read them)")
+	if a.active_hit == Vector2.ZERO:
+		w.append("hits are set but active_hit is empty (it is the overall span, and it never opens)")
+	for i in a.hits.size():
+		var spec := a.hits[i]
+		if spec == null:
+			w.append("hits[%d] is empty" % i)
+			continue
+		var window := spec.window
+		if window.y <= window.x:
+			w.append("hits[%d] window (%.2f, %.2f) ends before it starts" % [i, window.x, window.y])
+			continue
+		if a.active_hit != Vector2.ZERO and (window.x < a.active_hit.x - EPS or window.y > a.active_hit.y + EPS):
+			w.append("hits[%d] window (%.2f, %.2f) is outside active_hit (%.2f, %.2f)"
+					% [i, window.x, window.y, a.active_hit.x, a.active_hit.y])
+		for j in range(i + 1, a.hits.size()):
+			var other := a.hits[j]
+			if other != null and window.x < other.window.y and other.window.x < window.y:
+				w.append("hits[%d] and [%d] overlap (the first one wins)" % [i, j])
+		if spec.damage < 0.0 and not is_equal_approx(spec.damage, -1.0):
+			w.append("hits[%d] damage is %.2f (use -1 for the action's damage)" % [i, spec.damage])
+		if a.damage <= 0.0 and spec.damage <= 0.0:
+			w.append("hits[%d] has no damage (the action's damage is 0 and the hit sets none)" % i)
 
 
 ## The text for the Inspector: "OK", or a count and one line per problem.

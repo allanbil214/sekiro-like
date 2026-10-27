@@ -186,6 +186,25 @@ func _draw_block(origin: Vector2, title: String, action: ActionData, time: float
 		elif i == MOVE_ROW and action.has_motion_curve():
 			span = NO_SPAN
 			open = absf(_motion_speed(action, time)) > 0.05
+		if row[0] == "HIT" and action.has_hits():
+			# 3b-4: each hit of a multi-hit list is its own segment; the overall span shows faintly behind them.
+			var hit_open_now := action.hit_index_at(time) >= 0
+			if span != NO_SPAN and span.y > span.x:
+				var gx0 := bar_x + clampf(span.x / duration, 0.0, 1.0) * BAR_W
+				var gx1 := bar_x + clampf(span.y / duration, 0.0, 1.0) * BAR_W
+				var faint: Color = row[2]
+				faint.a = 0.25
+				_canvas.draw_rect(Rect2(gx0, row_y, maxf(gx1 - gx0, 1.0), ROW_H), faint)
+			for spec: HitSpec in action.hits:
+				if spec == null or spec.window.y <= spec.window.x:
+					continue
+				var hx0 := bar_x + clampf(spec.window.x / duration, 0.0, 1.0) * BAR_W
+				var hx1 := bar_x + clampf(spec.window.y / duration, 0.0, 1.0) * BAR_W
+				var hit_color: Color = row[2]
+				hit_color.a = 0.95 if time >= spec.window.x and time < spec.window.y else 0.6
+				_canvas.draw_rect(Rect2(hx0, row_y, maxf(hx1 - hx0, 1.0), ROW_H), hit_color)
+			open = hit_open_now
+			span = NO_SPAN
 		if span != NO_SPAN and span.y > span.x:
 			var x0 := bar_x + clampf(span.x / duration, 0.0, 1.0) * BAR_W
 			var x1 := bar_x + clampf(span.y / duration, 0.0, 1.0) * BAR_W

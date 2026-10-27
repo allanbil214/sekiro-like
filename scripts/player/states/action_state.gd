@@ -156,10 +156,22 @@ func _update_hit() -> void:
 	if not _hit_is_active():
 		_end_hit()
 		return
-	if runner.open_hit(hitbox, action, _shows_extension()):
-		Sfx.play(player.get_tree(), Sfx.swing_id(action))
-		_on_hit_window_opened(hitbox)
-	var template := runner.make_hit(action, player, _hit_damage_multiplier(), _hit_posture_multiplier())
+	var index := -1
+	var spec: HitSpec = null
+	if action.has_hits():
+		# 3b-4: the hitbox is open only inside a hit's window; it closes between hits and each hit forgets who was hit.
+		index = action.hit_index_at(action_time)
+		if runner.hit_open and runner.hit_index != index:
+			runner.end_hit(hitbox)
+		if index < 0:
+			return
+		spec = action.hits[index]
+	if runner.open_hit(hitbox, action, _shows_extension(), index):
+		# One swing sound and one visual hook per action: the first hit only.
+		if index <= 0:
+			Sfx.play(player.get_tree(), Sfx.swing_id(action))
+			_on_hit_window_opened(hitbox)
+	var template := runner.make_hit(action, player, _hit_damage_multiplier(), _hit_posture_multiplier(), spec)
 	var landed := hitbox.sweep(template)
 	if not landed.is_empty():
 		player.on_hit_landed(landed[0])

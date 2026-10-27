@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control) and 3b-3 (motion curves) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -180,3 +180,31 @@ Read together with section 2 (3b) and the code of `AttackState`, `DodgeState`, `
 - **As planned (9.3):** a set curve replaces `move_speed` and the fade; the enemy uses the forward curve. **Decided at the full check (2026-10-27):** the curve gets the usual lunge multipliers, the body decelerates after the end of its domain, the ledge check uses the curve's peak, and the fields follow the F1 ER FEEL toggle.
 - **Changed from the check:** the test curves keep the sandbox's motion shape but are scaled to each attack's current travel instead of keeping the sandbox speeds (time stretched alone would have halved the travel of attacks 2 to 5), so ON versus OFF differs only in shape.
 - **Next:** 3b-4 (multi-hit).
+
+## 9.8 3b-4 built and tested (2026-10-27)
+
+- **Built:** `HitSpec` and `ActionData.hits`, read by `ActionState._update_hit()` through `ActionRunner` (`hit_index`, `make_hit(..., spec)`); the overlay's HIT row shows each hit; validator rules. Details: `docs/built-reference.md` and the build log.
+- **As planned (9.3):** `active_hit` stays the overall span; player attacks only. **Decided at the full check (2026-10-27):** -1 in a `HitSpec` field means the action's value; the gaps between hits still block dodge and jump cancels; the swing sound and visual hook run on the first hit only; each hit is resolved on its own by the guard; the fields follow the F1 ER FEEL toggle.
+- **Test values:** two hits on `attack_5` (made up, summing to the old damage and posture). The other actions have no hit list.
+- **Next:** 3a-3 (the placeholder animation import and the figure), then 3c and 3d. 3b is complete.
+
+## 10. 3a-3 plan: what the 2026-10-27 re-read of the data showed (proposed; the check is not agreed yet, nothing built)
+
+Read from `ELDEN-RING-Combat-Rewrite-with-data.zip` (the split `.z01` + `.zip` joins with `zip -s 0 <name>.zip --out all.zip` on a writable copy) and `tools/bake_anims.py`, together with section 7.
+
+### 10.1 Facts about the data (checked)
+- `assets/player_anims.bin` (about 52 MB): header `ERAN`, then 38 joints, 3 oriented joints (`Head`, `R_Weapon`, `L_Weapon`) and **1479 clips**, 92,112 frames in all; each frame is 141 floats (38 joints x 3, plus 3 x 9 axes), little endian, 30 fps; each clip has a name, a blend length (6 to 10 frames) and a frame count. Only about 30 clips are needed, so the converted file is a few MB at most.
+- The sandbox space is +X left, +Y up, +Z forward (already mirrored by the bake from the game's left-handed space). Godot is +X right, +Y up, -Z forward, so the converter **rotates 180 degrees about Y** (x, z negated): a rotation, not a mirror.
+- Confirmed clip names: the one-handed light chain `a029_030000`, `030010`, `030020`, `030030`, `030040` (70, 60, 69, 65 and 88 frames, so 2.0 to 2.9 s against our 0.9 to 1.5 s: the uniform stretch of 7.2 item 12 applies), the jump heavy `a029_031230` (31 frames), walk `a000_020000` (idle-start 41 frames) and run `a000_020100` (23 frames, a loop). The other ids of the table in 7.3 (roll, backstep, crouch attack, run light attack, jump light attack, heavy 1) are looked up in `src/sim/extracted.rs` at the 3a-3a check.
+- The sandbox's code is MIT-licensed; the clip data is derived from the game and counts as an Elden Ring placeholder (`assets/placeholder/`, never public).
+- The sandbox's `ActionDef` shows the same turn and motion data as 3b (already used); it also has the blade capsules per hit, not used by us.
+
+### 10.2 The `Body` and `Nose` coupling (why the figure is its own delivery)
+`Player` reads `$Visual/Body` and `$Visual/Nose` directly (crouch resizing of the capsule mesh and its tween, `PlayerBodyReaction`, the bobblehead enemy feedback), and `enemy.tscn` has the same two nodes. A figure that replaces them must keep the crouch height, the reactions and the sword and arm visuals working, so it is built and tested alone before any clip drives it.
+
+### 10.3 Proposed split (three deliveries, each with its own full check and test)
+1. **3a-3a, converter and viewer:** an offline Python converter (`tools/placeholder/`, run once on the PC; Claude also delivers the generated file) writes only the mapped clips to one compact binary, `assets/placeholder/player_clips.bin`, with a loader script; an F1 debug entry opens a viewer scene that plays any clip on a figure of simple shapes. No link to gameplay. The user judges the clips; the clip-to-action table of 7.3 is confirmed here.
+2. **3a-3b, the figure in the game:** the mannequin replaces `Body` and `Nose` on the player (an F1 toggle brings the capsule back), keeping crouch, body reactions and the sword visuals; enemies follow with a tint per type. Register row P5.
+3. **3a-3c, clips drive the figure:** a clip player follows the action clock (uniform stretch); first the ground combo, then dodge, the air attacks and the helm splitter, then the enemy thrust and sweep. Register rows P2 and P3. Made-up poses (P4) stay a later step.
+- **Defaults proposed:** a compact binary of joint positions sampled by a script (not Godot `Animation` resources); the converter outside `res://` logic, the output under `assets/placeholder/`, left out of public exports; locomotion clips follow speed (3c).
+- **Not in 3a-3a:** the figure in the game, any gameplay link, made-up poses, enemies, sheathe and guard arms (3d).

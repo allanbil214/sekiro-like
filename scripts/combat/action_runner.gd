@@ -11,12 +11,15 @@ extends RefCounted
 var time: float = 0.0
 ## True while a swing is open (open_hit() was called and end_hit() has not been).
 var hit_open: bool = false
+## 3b-4: the index of the open hit in the action's `hits` list, or -1 (a single-hit action, or no swing open).
+var hit_index: int = -1
 
 
 ## Start a new action: the clock to 0. An open swing is not closed here (the owner calls end_hit()).
 func reset() -> void:
 	time = 0.0
 	hit_open = false
+	hit_index = -1
 
 
 ## True while the action is an ATTACK with damage and its hit window is open at the current time.
@@ -27,11 +30,13 @@ func hit_is_active(action: ActionData) -> bool:
 
 ## Opens the hitbox swing if it is not open yet. Returns true on the call that opened it (the owner
 ## then plays its swing sound and runs its own hook).
-func open_hit(hitbox: Hitbox, action: ActionData, show_extension: bool = false) -> bool:
+## `index` is the hit of a multi-hit list that is opening (3b-4), -1 for a single-hit action.
+func open_hit(hitbox: Hitbox, action: ActionData, show_extension: bool = false, index: int = -1) -> bool:
 	if hit_open:
 		return false
 	hitbox.begin_swing(action.hitbox_length_scale, show_extension)
 	hit_open = true
+	hit_index = index
 	return true
 
 
@@ -40,21 +45,33 @@ func end_hit(hitbox: Hitbox) -> void:
 	if not hit_open:
 		return
 	hit_open = false
+	hit_index = -1
 	if hitbox != null:
 		hitbox.end_swing()
 
 
 ## A HitData with the fields every attack copies from its ActionData. The owner may change it
-## afterwards (the enemy's perilous attacks override some fields).
-func make_hit(action: ActionData, attacker: Node, damage_multiplier: float, posture_multiplier: float) -> HitData:
+## afterwards (the enemy's perilous attacks override some fields). `spec` (3b-4) is the hit of a multi-hit list; its
+## set fields (0 or more) replace the action's own.
+func make_hit(action: ActionData, attacker: Node, damage_multiplier: float, posture_multiplier: float,
+		spec: HitSpec = null) -> HitData:
 	var hit := HitData.new()
 	hit.attacker = attacker
-	hit.damage = action.damage * damage_multiplier
-	hit.posture_damage = action.posture_damage * posture_multiplier
-	hit.hitstop = action.hitstop
+	var base_damage := action.damage
+	var base_posture := action.posture_damage
+	var base_hitstop := action.hitstop
+	var base_knockback := action.knockback
+	if spec != null:
+		base_damage = spec.damage if spec.damage >= 0.0 else base_damage
+		base_posture = spec.posture_damage if spec.posture_damage >= 0.0 else base_posture
+		base_hitstop = spec.hitstop if spec.hitstop >= 0.0 else base_hitstop
+		base_knockback = spec.knockback if spec.knockback >= 0.0 else base_knockback
+	hit.damage = base_damage * damage_multiplier
+	hit.posture_damage = base_posture * posture_multiplier
+	hit.hitstop = base_hitstop
 	hit.guardable = action.guardable
 	hit.deflectable = action.deflectable
-	hit.knockback = action.knockback
+	hit.knockback = base_knockback
 	hit.action = action
 	# The player's reversed blade (item 10): half the health damage, full posture, and it cannot kill.
 	var player := attacker as Player

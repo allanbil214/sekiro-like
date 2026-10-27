@@ -138,6 +138,12 @@ static var er_feel_enabled: bool = true
 ## first attack of the loop. Not used by the ground combo (WeaponData.combo holds that).
 @export var combo_next: ActionData
 
+@export_group("Multi-hit (3b-4)")
+## A list of hits for one action: each opens the hitbox in its own window and can hit the same target again.
+## Empty = the old single hit (`active_hit`, `damage`, ...). When set, `active_hit` stays the overall span (the sword
+## visual, the cancel rules and the overlay read it) and every hit's window must lie inside it. Player attacks only.
+@export var hits: Array[HitSpec] = []
+
 @export_group("Placeholder")
 ## Phase 3: the source of this action's temporary numbers or animation. NONE = the user's own work.
 @export var placeholder_source: PlaceholderSource = PlaceholderSource.NONE
@@ -270,3 +276,19 @@ func has_iframes(time: float) -> bool:
 
 func is_hit_active(time: float) -> bool:
 	return in_window(active_hit, time)
+
+
+## True when a 3b-4 hit list is set and counts right now (ER_NUMBERS actions follow the debug switch).
+func has_hits() -> bool:
+	return not hits.is_empty() and feel_applies()
+
+
+## 3b-4: the index of the hit whose window holds `time`, or -1 (between hits, or no list). The first match wins.
+func hit_index_at(time: float) -> int:
+	if not has_hits():
+		return -1
+	for i in hits.size():
+		var spec := hits[i]
+		if spec != null and in_window(spec.window, time):
+			return i
+	return -1
