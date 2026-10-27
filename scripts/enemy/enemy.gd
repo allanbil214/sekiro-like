@@ -712,6 +712,19 @@ func _start_burst(counts: Vector2i, armored: bool = false) -> void:
 	_begin_attack(0)
 
 
+## Phase 3a (the feel overlay): the action this enemy is attacking with right now, or null when it is not
+## attacking. Read-only.
+func get_feel_action() -> ActionData:
+	if phase == Phase.ATTACK or phase == Phase.PERILOUS:
+		return _action
+	return null
+
+
+## Phase 3a: the clock of `get_feel_action()` (it holds 0 while a thrust charges).
+func get_feel_time() -> float:
+	return _action_time
+
+
 func _begin_attack(index: int) -> void:
 	_end_hit()
 	_chain_rolled = false

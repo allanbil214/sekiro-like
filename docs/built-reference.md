@@ -148,3 +148,6 @@ F3 (debug builds) shows each guard's sight cones: flat cone (green, yellow, red 
 Combat noise: `Combatant._make_combat_noise()` makes a landed hit heard 8 m (`noise_hit`), a guarded hit 10 m, a deflect 14 m and a deathblow 10 m by guards with awareness not in combat (halved through walls); thrown hits and the stealth deathblow make none here.
 
 Ally loops, item 24: `Enemy.calm_allies_within(radius)` is the one list of calm allies in earshot (alive, `use_awareness`, Phase.IDLE, within radius). Used by `EnemyAwareness._shout()`, `_alert_allies()`, `_raise_alarm()` and `EnemyThrow._call_for_help()`; each caller keeps its own `hear_shout` or `hear_call`.
+
+Phase 3a part 1 (2026-10-27): the feel overlay (`FeelOverlay`, F2, debug builds only, top left via `panel_origin`) draws a timeline of the running action's windows (LOCK, CANCEL, BUFFER, HIT, IFRAMES, MOVE) with the action clock as a white line, for the player and for the locked-on or nearest attacking enemy (`Enemy.get_feel_action()`). It also shows the action's `placeholder_source` and the first validator warning.
+`ActionValidator.check(action)` returns warnings for broken timing; `ActionData` shows them in the Inspector ("Validation", read-only, not stored), and `ActionValidator.scan_once()` prints them for all `data/actions` at debug startup. Warnings only.

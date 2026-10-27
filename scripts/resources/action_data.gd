@@ -1,9 +1,14 @@
+@tool
 class_name ActionData
 extends Resource
 ## Data for one action (dodge, attack, heal...). Edit the .tres in the Inspector.
 ## All times are in seconds from the start of the action. Windows are (start, end).
 
 enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_THRUST, PERILOUS_SWEEP, GRAB, OTHER }
+
+## Where this action's numbers or animation came from (`docs/phase-3-plan.md`, section 8). Shown in the Inspector and in the
+## feel overlay. Everything but NONE must be replaced by the user's own work before the project goes public.
+enum PlaceholderSource { NONE, ER_NUMBERS, ER_CLIP, MADE_UP_POSE }
 
 @export var kind: Kind = Kind.ATTACK
 @export var animation: StringName
@@ -79,6 +84,26 @@ enum Kind { ATTACK, DODGE, GUARD, HEAL, JUMP, WALL_JUMP, LEDGE_CLIMB, PERILOUS_T
 ## Next attack in a variant loop (the crouch loop; later the air loop). Empty = back to the
 ## first attack of the loop. Not used by the ground combo (WeaponData.combo holds that).
 @export var combo_next: ActionData
+
+@export_group("Placeholder")
+## Phase 3: the source of this action's temporary numbers or animation. NONE = the user's own work.
+@export var placeholder_source: PlaceholderSource = PlaceholderSource.NONE
+
+
+## A read-only "Validation" line at the bottom of the Inspector (ActionValidator). Not stored in the .tres.
+func _get_property_list() -> Array[Dictionary]:
+	return [{
+		"name": "validation",
+		"type": TYPE_STRING,
+		"hint": PROPERTY_HINT_MULTILINE_TEXT,
+		"usage": PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY,
+	}]
+
+
+func _get(property: StringName) -> Variant:
+	if property == &"validation":
+		return ActionValidator.report(self)
+	return null
 
 
 static func in_window(window: Vector2, time: float) -> bool:

@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: planned, nothing built yet; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 

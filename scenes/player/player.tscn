@@ -63,6 +63,7 @@
 [ext_resource type="Script" uid="uid://bs16xhj3rdx0g" path="res://scripts/ui/hud/aim_hud.gd" id="49_t1aof"]
 [ext_resource type="Script" uid="uid://ve6lva1taao4" path="res://scripts/ui/hud/traversal_hint.gd" id="61_5xbmr"]
 [ext_resource type="Script" uid="uid://cslmwjamdevbp" path="res://scripts/ui/hud/low_health_vignette.gd" id="62_hir57"]
+[ext_resource type="Script" uid="uid://cqqptb1h5dki0" path="res://scripts/ui/hud/feel_overlay.gd" id="64_gmu8b"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wynvb"]
 radius = 0.4
@@ -276,3 +277,6 @@ script = ExtResource("61_5xbmr")
 
 [node name="LowHealthVignette" type="CanvasLayer" parent="." unique_id=823552265]
 script = ExtResource("62_hir57")
+
+[node name="FeelOverlay" type="CanvasLayer" parent="." unique_id=1364127582]
+script = ExtResource("64_gmu8b")

@@ -1,6 +1,6 @@
 # Placeholder register
 
-> Created 2026-10-26 (Phase 3 discussion). One row per temporary thing, so it is always clear what is a placeholder, where it came from and what replaces it. Claude keeps this file up to date: when something temporary is added, changed or replaced, and when a Phase 3 milestone is finished (the reminder rule in `docs/phase-3-plan.md`, section 1). Nothing is built yet; every row is planned.
+> Created 2026-10-26 (Phase 3 discussion). One row per temporary thing, so it is always clear what is a placeholder, where it came from and what replaces it. Claude keeps this file up to date: when something temporary is added, changed or replaced, and when a Phase 3 milestone is finished (the reminder rule in `docs/phase-3-plan.md`, section 1). Built so far (2026-10-27): the `ActionData.placeholder_source` field (layer 3) and the feel overlay that shows it; every register row is still planned.
 
 ## How placeholders are marked (`docs/phase-3-plan.md`, section 8)
 
