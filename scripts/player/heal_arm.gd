@@ -43,6 +43,8 @@ var _gourd: Node3D
 var _reach: float = 0.0
 var _tilt: float = 0.0
 var _driven: bool = false
+## Phase 3a-3b-2: the box arm is hidden while the player's figure draws its own (the gourd stays).
+var _arm_hidden: bool = false
 
 
 func _ready() -> void:
@@ -50,6 +52,8 @@ func _ready() -> void:
 	material.albedo_color = arm_color
 	_upper = _make_segment(upper_length, material)
 	_fore = _make_segment(fore_length, material)
+	_upper.visible = not _arm_hidden
+	_fore.visible = not _arm_hidden
 	var gourd_material := StandardMaterial3D.new()
 	gourd_material.albedo_color = gourd_color
 	_gourd = Node3D.new()
@@ -76,6 +80,19 @@ func _make_segment(length: float, material: Material) -> Node3D:
 	segment.add_child(box)
 	add_child(segment)
 	return segment
+
+
+## Phase 3a-3b-2: hide the box arm (the gourd stays) while the figure has arms.
+func set_arm_hidden(hidden_now: bool) -> void:
+	_arm_hidden = hidden_now
+	if _upper != null:
+		_upper.visible = not hidden_now
+		_fore.visible = not hidden_now
+
+
+## Phase 3a-3b-2: where the hand (the gourd) is, in the world.
+func get_hand_global() -> Vector3:
+	return _gourd.global_position
 
 
 ## The heal started: show the arm at rest.

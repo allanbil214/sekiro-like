@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), 3a-3a (clip converter and viewer) built and tested 2026-10-27, 3a-3b split in three on 2026-10-27 (section 10.5), 3a-3b-1 (the figure on the player) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), 3a-3a (clip converter and viewer) built and tested 2026-10-27, 3a-3b split in three on 2026-10-27 (section 10.5), 3a-3b-1 (the figure on the player) and 3a-3b-2 (its arms) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -218,13 +218,14 @@ Read from `ELDEN-RING-Combat-Rewrite-with-data.zip` (the split `.z01` + `.zip` j
 - **Still open for 3a-3c:** whether `heavy1` reads as the enemy thrust and `crouch_attack` as a sweep low enough to jump (judge on the enemy); how the figure's proportions fit our capsule and the enemy sizes (3a-3b); the made-up poses (P4).
 - **Next:** 3a-3b, the figure in the game (replaces `Body` and `Nose`; an F1 toggle brings the capsule back), with its own full check.
 
-## 10.5 3a-3b split in three (agreed 2026-10-27; 3a-3b-1 built and tested 2026-10-27, the rest planned)
+## 10.5 3a-3b split in three (agreed 2026-10-27; 3a-3b-1 and 3a-3b-2 built and tested 2026-10-27, the rest planned)
 
 Decided at the 3a-3b full check, after the user asked why the figure's own arms were not used.
 
 - **Why:** with the code-drawn box arms (`SwordVisual`, `ReachArms`, `HealArm`) left in place, the figure's idle arms would look doubled during swings. Using the figure's arms removes that, and there is no technical reason against it (the plan only parked it in 3d step c to keep 3a-3b small).
 - **3a-3b-1, the figure on the player:** `scripts/player/player_figure.gd` (glue), a `Figure` node under `Visual`, held poses (`idle` standing, `crouch_idle` crouched, blended over `crouch_transition_time`), scaled so the head top is at `stand_height`, body twist applied to the whole figure, the i-frame tint on the figure, an F1 "Mannequin figure" toggle (ON by default; OFF shows the capsule and nose, which stay in the scene, hidden while the figure is on). The figure's blade is hidden (the code-drawn sword stays). The box arms stay for this delivery.
 - **3a-3b-1 built and tested (2026-10-27), as described.** Details: `docs/built-reference.md` and the build log.
+- **3a-3b-2 built and tested (2026-10-27), as described** (details: `docs/built-reference.md` and the build log). Planned text:
 - **3a-3b-2, the figure's arms:** a two-bone solve (shoulder, elbow, hand) per arm toward the code-drawn hand: the sword arm follows `SwordVisual`'s hand, the left arm follows `HealArm` while healing, and `ReachArms` covers the reach and the choke. The box arms of those three scripts are hidden while the figure is on (the toggle brings them back with the capsule). The three scripts expose their hand point; sword poses, timings and `ActionData` stay untouched. Needs a tuned default elbow direction. The shield and the guard arms stay in 3d step (c).
 - **3a-3b-3, enemies:** the figure on `Enemy` and the dummy, with a tint per type; the enemy's use of `Body` (corpse material, tint, tipped-over pose, bobblehead, the head pitch on the nose) is handled here. Register row P5.
 - **Order:** 3a-3b-1, then 3a-3b-2, then 3a-3b-3, each with its own full check and test, then 3a-3c. 3a-3c is unchanged.

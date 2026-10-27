@@ -33,6 +33,9 @@ var _head_joint: int = -1
 var _head_axes: int = -1
 var _weapon_joint: int = -1
 var _weapon_axes: int = -1
+var _last_pose: PlaceholderClips.Pose
+## prefix ("L" or "R") -> (index of the upper arm segment, index of the forearm segment).
+var _arm_segments: Dictionary = {}
 var _meshes: Array[MeshInstance3D] = []
 var _own_materials: Array[Material] = []
 
@@ -52,6 +55,10 @@ func setup(clips: PlaceholderClips) -> void:
 		_segments.append(segment)
 		_from.append(clips.joint_index(bone[0]))
 		_to.append(clips.joint_index(bone[1]))
+	for i in BONES.size():
+		var from_joint: String = BONES[i][0]
+		if from_joint.ends_with("_UpperArm"):
+			_arm_segments[from_joint.substr(0, 1)] = Vector2i(i, i + 1)
 	var sphere := SphereMesh.new()
 	sphere.radius = HEAD_RADIUS
 	sphere.height = HEAD_RADIUS * 2.0
@@ -77,6 +84,7 @@ func setup(clips: PlaceholderClips) -> void:
 func show_pose(pose: PlaceholderClips.Pose) -> void:
 	if pose == null or _clips == null:
 		return
+	_last_pose = pose
 	for i in _segments.size():
 		_segments[i].transform = _segment_transform(pose.points[_from[i]], pose.points[_to[i]])
 	var head := pose.points[_head_joint]
@@ -89,6 +97,37 @@ func show_pose(pose: PlaceholderClips.Pose) -> void:
 	var root := pose.points[_weapon_joint]
 	var along := pose.axes[_weapon_axes * 3 + 1]
 	_blade.transform = _segment_transform(root, root + along * BLADE_LENGTH)
+
+
+## Bend arm `prefix` ("L" or "R") of the last pose so its hand reaches `hand_target` (this node's own space): a two-bone
+## solve from the pose's shoulder, the elbow bending toward `pole`. The bones keep their length and stretch up to
+## `max_stretch` (0.25 = 25 percent) to reach; farther than that the hand stops short. Call after `show_pose()`.
+func solve_arm(prefix: String, hand_target: Vector3, pole: Vector3, max_stretch: float) -> void:
+	if _last_pose == null or not _arm_segments.has(prefix):
+		return
+	var shoulder: Vector3 = _last_pose.points[_clips.joint_index(prefix + "_UpperArm")]
+	var elbow_rest: Vector3 = _last_pose.points[_clips.joint_index(prefix + "_Forearm")]
+	var hand_rest: Vector3 = _last_pose.points[_clips.joint_index(prefix + "_Hand")]
+	var upper: float = shoulder.distance_to(elbow_rest)
+	var fore: float = elbow_rest.distance_to(hand_rest)
+	var to: Vector3 = hand_target - shoulder
+	var dist: float = to.length()
+	if dist < 0.001 or upper + fore < 0.001:
+		return
+	var dir: Vector3 = to / dist
+	var stretch: float = clampf(dist / ((upper + fore) * 0.999), 1.0, 1.0 + max_stretch)
+	upper *= stretch
+	fore *= stretch
+	dist = clampf(dist, absf(upper - fore) + 0.001, (upper + fore) * 0.999)
+	var along: float = (upper * upper - fore * fore + dist * dist) / (2.0 * dist)
+	var height: float = sqrt(maxf(upper * upper - along * along, 0.0))
+	var bend: Vector3 = pole - dir * pole.dot(dir)
+	bend = bend.normalized() if bend.length() > 0.0001 else Vector3.DOWN
+	var elbow: Vector3 = shoulder + dir * along + bend * height
+	var hand: Vector3 = shoulder + dir * dist
+	var segments: Vector2i = _arm_segments[prefix]
+	_segments[segments.x].transform = _segment_transform(shoulder, elbow)
+	_segments[segments.y].transform = _segment_transform(elbow, hand)
 
 
 ## Draw every shape with `material` (the i-frame tint), or with its own colors again when null.

@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://ccpsk46sfaf3q" path="res://scripts/combat/hitbox.gd" id="5_hitbox"]
 [ext_resource type="Script" uid="uid://ci1x2m5cjnqd7" path="res://scripts/combat/hurtbox.gd" id="6_hurtbox"]
 [ext_resource type="Script" uid="uid://bh8lwmou5enq6" path="res://scripts/combat/combatant.gd" id="7_combatant"]
+[ext_resource type="Script" uid="uid://cm8nobhhoku6h" path="res://scripts/player/player_figure.gd" id="7_hvxgb"]
 [ext_resource type="Script" uid="uid://84kjs2gkp6la" path="res://scripts/ui/hud/enemy_bar.gd" id="8_bar"]
 [ext_resource type="Script" uid="uid://bd67na816tt85" path="res://scripts/interact/body_pickup.gd" id="9_4efjx"]
 
@@ -67,6 +68,9 @@ shape = SubResource("BoxShape3D_hitbox")
 [node name="Bar" type="Node3D" parent="Visual" unique_id=527325189]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, 0)
 script = ExtResource("8_bar")
+
+[node name="Figure" type="Node3D" parent="Visual" unique_id=706776754]
+script = ExtResource("7_hvxgb")
 
 [node name="Hurtbox" type="Area3D" parent="." unique_id=888449573]
 script = ExtResource("6_hurtbox")

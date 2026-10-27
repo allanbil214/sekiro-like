@@ -195,6 +195,9 @@ var _from_twist: float = 0.0
 var _nose: Node3D
 ## Phase 3a-3b-1: the player's mannequin (a sibling under Visual; null on enemies), turned by the same twist.
 var _figure: Node3D
+## Phase 3a-3b-2: the hand (end of the arm) in this node's space, and whether the box arm is hidden (the figure has arms).
+var _hand_end: Vector3 = Vector3.ZERO
+var _arm_hidden: bool = false
 var _nose_base: Vector3 = Vector3.ZERO
 var _nose_twisted: bool = false
 var _glow: float = 0.0
@@ -293,7 +296,7 @@ func setup(weapon: WeaponData, back_length: float = 0.0) -> void:
 	arm_mesh_instance.position = Vector3(0.0, 0.0, -arm_reach * 0.5)
 	_arm = Node3D.new()
 	_arm.add_child(arm_mesh_instance)
-	_arm.visible = show_arm
+	_arm.visible = show_arm and not _arm_hidden
 	add_child(_arm)
 	_rest_tip = pose_to_point(weapon.rest_pose)
 	_rest_blade = rest_blade_direction.normalized()
@@ -890,6 +893,18 @@ func _apply_twist() -> void:
 	_nose_twisted = absf(_twist) >= 0.001
 
 
+## Phase 3a-3b-2: hide the box arm while the player's figure draws its own arms.
+func set_arm_hidden(hidden_now: bool) -> void:
+	_arm_hidden = hidden_now
+	if _arm != null:
+		_arm.visible = show_arm and not hidden_now
+
+
+## Phase 3a-3b-2: where the right hand is, in the world (the end of the arm, not the blade root).
+func get_hand_global() -> Vector3:
+	return to_global(_hand_end if _hand != null else _relaxed_aim())
+
+
 ## Place the arm and hand, and build the blade's orientation: local -Z along the blade,
 ## local +X toward the cutting edge.
 func _apply() -> void:
@@ -902,6 +917,7 @@ func _apply() -> void:
 	var arm_basis := Basis.looking_at(arm_dir, arm_up)
 	_arm.basis = Basis(arm_basis.x, arm_basis.y, arm_basis.z * (_arm_len / maxf(arm_reach, 0.001)))
 	var hand_end := _shoulder() + arm_dir * _arm_len
+	_hand_end = hand_end
 	var blade_dir := _blade_dir
 	var edge_dir := _edge_dir
 	var shift := Vector3.ZERO

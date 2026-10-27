@@ -4,9 +4,16 @@ extends MannequinFigure
 ## capsule `Body` and the box `Nose` while shown. It only HOLDS poses of the converted clips: `idle` standing and
 ## `crouch_idle` crouched, blended over the crouch time; no clip plays (that is 3a-3c). It sits under `Visual`, so the hit
 ## wobble, the lean and the kneel of `PlayerBodyReaction` move it with everything else, and `SwordVisual` turns it by the
-## body twist. The code-drawn sword and arms are still used (the figure's blade is hidden; its own arms follow in 3a-3b-2).
+## body twist. The code-drawn sword is still used (the figure's blade is hidden).
+## 3a-3b-2: its arms follow the hands the code-drawn arms compute (`SwordVisual` for the right arm, `HealArm` for the left
+## while healing, `ReachArms` for both while they show), and those box arms are hidden while the figure is shown.
 ## The collision capsule and the hurtbox are never touched. If the clip file is missing, `available` stays false and the
 ## Player keeps the capsule.
+
+## PLACEHOLDER: how far (fraction of the arm's length) the bones may stretch to reach a hand target.
+@export var max_stretch: float = 0.25
+## Which way the right elbow bends (figure space: +X right, -Y down, +Z back); the left arm mirrors X.
+@export var elbow_pole: Vector3 = Vector3(0.5, -1.0, 0.3)
 
 const STAND_CLIP: String = "idle"
 const CROUCH_CLIP: String = "crouch_idle"
@@ -22,9 +29,17 @@ var crouch_blend: float = 0.0:
 var _stand: PlaceholderClips.Pose
 var _crouch: PlaceholderClips.Pose
 var _tween: Tween
+var _sword: SwordVisual
+var _heal: HealArm
+var _reach: ReachArms
+var _right: String = "R"
+var _left: String = "L"
+var _arms_driven: bool = false
 
 
 func _ready() -> void:
+	# After the other visuals have moved their hands this frame.
+	process_priority = 100
 	var clips := PlaceholderClips.shared()
 	if clips == null or not clips.has_clip(STAND_CLIP) or not clips.has_clip(CROUCH_CLIP):
 		visible = false
@@ -33,8 +48,50 @@ func _ready() -> void:
 	setup(clips)
 	_stand = clips.sample(STAND_CLIP, 0.0)
 	_crouch = clips.sample(CROUCH_CLIP, 0.0)
+	# Which side of the figure is the right arm (+X): the file's names should say, but check.
+	var right_x: float = _stand.points[clips.joint_index("R_UpperArm")].x
+	var left_x: float = _stand.points[clips.joint_index("L_UpperArm")].x
+	if right_x < left_x:
+		_right = "L"
+		_left = "R"
 	available = true
 	_refresh()
+
+
+## Called once by the Player: the sources of the hands the arms follow.
+func bind_arms(sword: SwordVisual, heal: HealArm, reach: ReachArms) -> void:
+	_sword = sword
+	_heal = heal
+	_reach = reach
+
+
+func _process(_delta: float) -> void:
+	if not available or not visible:
+		return
+	var has_right: bool = false
+	var has_left: bool = false
+	var right_hand: Vector3 = Vector3.ZERO
+	var left_hand: Vector3 = Vector3.ZERO
+	if _reach != null and _reach.visible:
+		has_right = true
+		has_left = true
+		right_hand = _reach.get_hand_global(1)
+		left_hand = _reach.get_hand_global(0)
+	else:
+		if _sword != null:
+			has_right = true
+			right_hand = _sword.get_hand_global()
+		if _heal != null and _heal.visible:
+			has_left = true
+			left_hand = _heal.get_hand_global()
+	var driven: bool = has_right or has_left
+	if driven or _arms_driven:
+		_refresh()  # back to the held pose, then bend the driven arms
+	_arms_driven = driven
+	if has_right:
+		solve_arm(_right, to_local(right_hand), elbow_pole, max_stretch)
+	if has_left:
+		solve_arm(_left, to_local(left_hand), Vector3(-elbow_pole.x, elbow_pole.y, elbow_pole.z), max_stretch)
 
 
 ## Scale the figure evenly so the top of its head is at `height` and its lowest point is on the feet line.

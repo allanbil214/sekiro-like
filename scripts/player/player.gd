@@ -516,9 +516,10 @@ func _ready() -> void:
 	Fx.blood_enabled = show_blood
 	_nose_drop = stand_height - _nose.position.y
 	figure.fit_to_height(stand_height)
-	set_figure_shown(true)
 	_reach_arms = get_node_or_null("Visual/ReachArms") as ReachArms
 	sword_visual = get_node_or_null("Visual/SwordVisual") as SwordVisual
+	figure.bind_arms(sword_visual, heal_arm, _reach_arms)
+	set_figure_shown(true)
 	if sword_visual != null and weapon != null:
 		sword_visual.setup(weapon)
 	sheathed = start_sheathed and weapon != null
@@ -1282,6 +1283,12 @@ func set_figure_shown(on: bool) -> void:
 	figure.visible = show_it
 	_body_mesh.visible = not show_it
 	_nose.visible = not show_it
+	# The figure has its own arms: the box arms stay hidden while it is shown (3a-3b-2).
+	if sword_visual != null:
+		sword_visual.set_arm_hidden(show_it)
+	heal_arm.set_arm_hidden(show_it)
+	if _reach_arms != null:
+		_reach_arms.set_boxes_hidden(show_it)
 
 
 func is_figure_shown() -> bool:

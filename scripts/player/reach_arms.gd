@@ -23,6 +23,9 @@ extends Node3D
 @export var choke_pulse_speed: float = 26.0
 
 var _pivots: Array[Node3D] = []
+## Phase 3a-3b-2: the boxes, hidden while the player's figure draws its own arms.
+var _boxes: Array[MeshInstance3D] = []
+var _boxes_hidden: bool = false
 var _tween: Tween
 var _angle_deg: float = 140.0
 var _amount: float = 0.0
@@ -43,10 +46,24 @@ func _ready() -> void:
 		box.mesh = mesh
 		box.material_override = material
 		box.position = Vector3(0.0, -arm_length * 0.5, 0.0)
+		box.visible = not _boxes_hidden
+		_boxes.append(box)
 		pivot.add_child(box)
 		add_child(pivot)
 		_pivots.append(pivot)
 	visible = false
+
+
+## Phase 3a-3b-2: hide the box arms while the figure has arms.
+func set_boxes_hidden(hidden_now: bool) -> void:
+	_boxes_hidden = hidden_now
+	for box in _boxes:
+		box.visible = not hidden_now
+
+
+## Phase 3a-3b-2: where arm `index` (0 = left, 1 = right) ends, in the world. Meaningful while this node is visible.
+func get_hand_global(index: int) -> Vector3:
+	return _pivots[index].to_global(Vector3(0.0, -arm_length, 0.0))
 
 
 func play() -> void:
