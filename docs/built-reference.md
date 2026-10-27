@@ -151,3 +151,5 @@ Ally loops, item 24: `Enemy.calm_allies_within(radius)` is the one list of calm 
 
 Phase 3a part 1 (2026-10-27): the feel overlay (`FeelOverlay`, F2, debug builds only, top left via `panel_origin`) draws a timeline of the running action's windows (LOCK, CANCEL, BUFFER, HIT, IFRAMES, MOVE) with the action clock as a white line, for the player and for the locked-on or nearest attacking enemy (`Enemy.get_feel_action()`). It also shows the action's `placeholder_source` and the first validator warning.
 `ActionValidator.check(action)` returns warnings for broken timing; `ActionData` shows them in the Inspector ("Validation", read-only, not stored), and `ActionValidator.scan_once()` prints them for all `data/actions` at debug startup. Warnings only.
+
+Phase 3a-4 (2026-10-27): the debug menu (`DebugMenu`, F1, debug builds only, pauses the game) lists the debug switches from `DebugOptions.build()` (view aids, undetectable, enemy forced perilous attack and log). Add a debug option with one line there. Changes made in the menu are kept for the session and re-applied on the next arena (`DebugOptions` static memory); F2, F3 and F4 still work.

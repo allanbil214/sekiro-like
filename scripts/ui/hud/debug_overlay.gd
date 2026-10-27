@@ -19,6 +19,7 @@ var _label: Label
 var _body: MeshInstance3D
 var _tint_material: StandardMaterial3D
 var _ledge_marker: MeshInstance3D
+var _wall_ring: MeshInstance3D
 
 
 func _ready() -> void:
@@ -37,10 +38,11 @@ func _ready() -> void:
 	_tint_material = StandardMaterial3D.new()
 	_tint_material.albedo_color = tint_color
 	# Debug builds only (the editor counts as one), so a release export never shows the ring.
-	if show_wall_range and OS.is_debug_build():
+	# Both aids are always made (the ring in debug builds only) and shown or hidden by their switches, so the
+	# debug menu can flip them while playing.
+	if OS.is_debug_build():
 		_create_wall_range_ring.call_deferred()
-	if show_ledge_marker:
-		_create_ledge_marker.call_deferred()
+	_create_ledge_marker.call_deferred()
 
 
 ## One line per enemy that has awareness (item 7a): its level, meter and whether it sees the player.
@@ -117,7 +119,7 @@ func _process(_delta: float) -> void:
 	elif not _player.sheathed and _player.auto_sheathe_time > 0.0:
 		text += " (auto-sheathe in %.1f s)" % maxf(_player.auto_sheathe_time - _player.sheathe_idle, 0.0)
 	if _ledge_marker != null:
-		_ledge_marker.visible = ledge_recent
+		_ledge_marker.visible = ledge_recent and show_ledge_marker
 		_ledge_marker.global_position = _player.last_ledge_point
 	var action_state := machine.current as ActionState
 	if action_state != null:
@@ -137,6 +139,8 @@ func _process(_delta: float) -> void:
 		text = "UNDETECTABLE (F4)" + ("\n" + text if not text.is_empty() else "")
 	_label.text = text
 	_label.visible = not text.is_empty()
+	if _wall_ring != null:
+		_wall_ring.visible = show_wall_range
 	if _body != null:
 		if tint_on_iframes and _player.invulnerable:
 			_body.material_override = _tint_material
@@ -161,6 +165,8 @@ func _create_wall_range_ring() -> void:
 	ring.mesh = mesh
 	ring.material_override = material
 	ring.position = Vector3(0.0, _player.stand_height * 0.5, 0.0)
+	ring.visible = show_wall_range
+	_wall_ring = ring
 	_player.add_child(ring)
 
 

@@ -52,9 +52,20 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key != null and key.pressed and not key.echo and key.keycode == KEY_F2 and OS.is_debug_build():
-		visible = not visible
-		set_process(visible)
+		set_shown(not visible)
 		get_viewport().set_input_as_handled()
+
+
+## Show or hide the timeline (the F2 key and the debug menu both use this).
+func set_shown(shown: bool) -> void:
+	visible = shown
+	set_process(shown)
+	if shown:
+		_canvas.queue_redraw()
+
+
+func is_shown() -> bool:
+	return visible
 
 
 func _process(_delta: float) -> void:

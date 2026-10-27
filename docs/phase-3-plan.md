@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator) and 3a-4 (debug menu) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -18,6 +18,7 @@ Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **
 ### 3a. Tools
 - **Feel overlay (agreed):** a debug-only readout of the current action and its time, with a timeline of which windows are open (locked, cancel, buffer, active hit, i-frames), and an i-frame tint on the character. It makes 3b and 3c tunable by eye.
 - **`ActionData` validator (agreed):** editor warnings for broken timing, such as a cancel before the lock ends, a window past the duration, or an attack without an active hit window.
+- **Debug menu, 3a-4 (added and built 2026-10-27):** one debug-only menu (F1) that holds every debug switch, so options are not scattered over keys and Inspector checkboxes. New debug options are one line in `DebugOptions.build()`.
 
 - **Placeholder animation import, 3a-3 (agreed as an item 2026-10-20, not yet checked):** a tool that converts the baked animations of the Bevy sandbox (`player_anims.bin`, joint positions at 30 fps, 38 joints, 1479 clips, plus the orientation axes of the head and the two weapon points) into data Godot can play, and a player that animates the capsule and stick character with them, driven by the action clock. A stand-in until Phase 6; gameplay still follows `ActionData`. Its own full check settles the format, how the stick figure is drawn (the 3d mannequin steps share this), and which clip backs which action. **Updated 2026-10-26:** mannequin step (a), the figure itself, is built here (the clips need a figure to show them); the clip mapping, the clip-length rule and the placeholder marking are in sections 7 and 8.
 
@@ -55,7 +56,7 @@ New `ActionData` fields default to today's behavior, so nothing changes until an
 
 ## 5. Open points (ask once at the full check of the milestone they belong to)
 
-- 3b: how the new per-input cancel fields relate to `cancel_window` and `buffer_window`, and whether old `.tres` files are migrated or keep working unchanged.
+- 3b: settled on 2026-10-27 (section 9): the cancel fields sit beside `cancel_window` and `buffer_window`, and old `.tres` files keep working unchanged.
 - 3c: what, if anything, stays on the global slowdown (a deathblow, for example); the thresholds for walking, and the landing heights.
 - 3d: the mannequin's proportions and colors, whether enemies share one figure, and the sound event data format.
 - 3a-3: the converted format (a Godot `Animation` with position tracks per joint, or a compact resource sampled by the mannequin script), where the converter lives, how the stick figure is drawn, and which clip backs which action.
@@ -130,3 +131,32 @@ Four layers plus a final check, so the user can always see what is a placeholder
 4. **One folder for game-derived data:** `assets/placeholder/` holds the converted clips and anything else taken from Elden Ring. Deleting it removes every Elden Ring placeholder. The export settings leave it out of public builds and it stays out of any public repository.
 
 **Final check before anything goes public:** a placeholder report (a debug tool or a validator mode) lists everything still tagged; nothing from Elden Ring may be on it. This is the replacement gate of section 1.
+
+## 9. Decisions of the 2026-10-27 3b full check (agreed by the user; nothing of 3b is built yet)
+
+Read together with section 2 (3b) and the code of `AttackState`, `DodgeState`, `ActionState`, `ActionRunner`, `InputBuffer` and `Hitbox`.
+
+### 9.1 What the code does today (so the defaults are exact)
+- In `AttackState`, dodge and jump cancel from time 0 of a swing, blocked only while the hit window is open. `cancel_window.x` (or `locked_until`) only sets when the next attack of the combo may start; `buffer_window` only sets when an attack press is accepted for chaining.
+- Turning is a smoothing factor (`Player.turn_speed`, 18), not degrees per second. Attacks steer until `active_hit.x`, then lock.
+- There is no early exit into plain movement: an action runs to `duration`.
+- The input buffer is one timestamp per button (0.15 s); only the attack press is tracked as "queued".
+- **Multi-target already works:** the `Hitbox` sweep hits every hurtbox it overlaps, each once per swing (`_hit_set`). A wide slash hits everyone in range. 3b "multi-hit" is something else: one action hitting the **same** target more than once (a list of hits, each with its own window and numbers).
+
+### 9.2 Design principle (the user, 2026-10-27)
+- **The player stays Sekiro-style by default:** an attack can be cancelled into dodge or jump any time outside its active hit window. The Elden Ring multiplayer rule (no cancel until the swing has happened) is **not** forced on anything; it appears on a move only if a per-input time is set on it (for example `cancel_dodge = 0.9`).
+- Every new field is optional and off by default (-1, an empty list, or no curve), so no old `.tres` changes behavior until it is tuned.
+
+### 9.3 The four parts and their fields (proposed names, final at each sub-step's full check)
+1. **Per-input cancel:** `input_from` (presses before it are discarded, not buffered), `cancel_attack`, `cancel_dodge`, `cancel_jump`, `cancel_guard`, `cancel_move`. A set field overrides the old rule for that one input; `cancel_window` and `buffer_window` stay. One queued input, the newest press wins (needs an accessor on `InputBuffer`). No heavy-attack cancel (one attack button; a hold is the thrust). Read by `AttackState` and `DodgeState`; slide, taunt and throw keep `can_cancel`.
+2. **Turn control:** `turn_rate` (degrees per second), `no_turn` (windows), `turn_overrides` (from, to, degrees per second). No-turn beats an override, which beats the default rate; any turn field set replaces the old "steer until the hit starts" rule for that action. Player ground and air attacks only (a new `Player.face_direction_rate()`); enemies keep `attack_turn_speed`.
+3. **Motion curves:** `motion_forward` and `motion_side` (`Curve`, x in seconds, y in m/s, side positive to the right). A set curve replaces `move_speed` and the fade; computed in `ActionRunner`, used by the player and by the enemy's forward motion.
+4. **Multi-hit:** a new `HitSpec` resource (window, damage, posture damage, knockback, hitstop) and `hits: Array[HitSpec]` on `ActionData`. When the list is not empty, hit detection uses it and the hitbox is closed and reopened between hits. `active_hit` stays as the overall span (the sword visual, enemy telegraphs and the overlay read it); the validator checks that the hits lie inside it. Player attacks through `ActionState`; enemies are not wired for multi-hit yet.
+- The feel overlay gets a TURN row and ticks for the per-input cancel times; the validator gets rules for the new fields.
+
+### 9.4 Order and tuning
+- **Four deliveries, each tested before the next:** 3b-1 cancel times, 3b-2 turn control, 3b-3 motion curves, 3b-4 multi-hit. Each has its own full check and zip.
+- **First tuning pass:** `attack_1.tres` only (edited from the latest snapshot), with the Elden Ring numbers scaled to about 65 percent (a placeholder number), tagged `placeholder_source = ER_NUMBERS`, so there is something to feel. The other actions wait until the user likes it. In 3b-1 only the cancel times are set; everything else on `attack_1` keeps the Sekiro default.
+- **Switch for the original timing (agreed 2026-10-27):** the new 3b fields can be turned off while playing, so the original behavior can be compared at any time (this works because 3b-1 adds only new fields and leaves the existing timings alone). It is an entry in the debug menu (not a separate key), ON by default, and a small "FEEL FIELDS OFF" tag stays on screen in debug builds while it is off. In a release build the fields are always on. Later changes to existing timings (swing lengths) would need a real copy of the original set instead.
+- **Test values (agreed 2026-10-27):** the first values on `attack_1` to `attack_5` (option B) start from the Elden Ring numbers scaled to about 65 percent and are adjusted so the difference between ON and OFF is obvious; they are a test, not tuned values.
+- **Not in 3b:** heavy-attack cancel, enemy turn control, enemy multi-hit, per-fighter hitstop (3c), the animation import (3a-3), tuning the other actions.
