@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times) and 3b-2 (turn control) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control) and 3b-3 (motion curves) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -173,3 +173,10 @@ Read together with section 2 (3b) and the code of `AttackState`, `DodgeState`, `
 - **As planned (9.3):** any turn field replaces the old steer-until-the-hit rule; no-turn beats an override, which beats the default rate; enemies are not wired. **Decided at the full check (2026-10-27):** the default rate is 360 deg/s (a placeholder), the lunge direction follows the input only while turning is allowed, the wait and charge phases keep the old free steering, and the fields follow the F1 ER FEEL toggle.
 - **Test values:** the sandbox's one-handed light chain spans on `attack_1` to `attack_5`, stretched to each attack's own hit start (not a flat 65 percent). Tuned by feel; the user found them good.
 - **Next:** 3b-3 (motion curves), then 3b-4 (multi-hit).
+
+## 9.7 3b-3 built and tested (2026-10-27)
+
+- **Built:** `motion_forward` and `motion_side` (`Curve`) on `ActionData`, read through `ActionRunner.motion_velocity()` by `ActionState._apply_action_movement()` (the player) and by the enemy's lunge (forward only); a speed-curve MOVE row in the feel overlay and validator rules. Details: `docs/built-reference.md` and the build log.
+- **As planned (9.3):** a set curve replaces `move_speed` and the fade; the enemy uses the forward curve. **Decided at the full check (2026-10-27):** the curve gets the usual lunge multipliers, the body decelerates after the end of its domain, the ledge check uses the curve's peak, and the fields follow the F1 ER FEEL toggle.
+- **Changed from the check:** the test curves keep the sandbox's motion shape but are scaled to each attack's current travel instead of keeping the sandbox speeds (time stretched alone would have halved the travel of attacks 2 to 5), so ON versus OFF differs only in shape.
+- **Next:** 3b-4 (multi-hit).
