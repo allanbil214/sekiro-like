@@ -30,3 +30,4 @@ swing_follow = Vector3(9.5, 0.8, -0.3)
 damage = 10.0
 posture_damage = 15.0
 placeholder_source = 1
+placeholder_clip = &"combo_4"

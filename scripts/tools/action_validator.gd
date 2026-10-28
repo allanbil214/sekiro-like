@@ -54,6 +54,7 @@ static func check(a: ActionData) -> PackedStringArray:
 	_check_feel_fields(a, w)
 	_check_turn_fields(a, w)
 	_check_motion_curves(a, w)
+	_check_clip(a, w)
 	_check_hits(a, w)
 	if a.hitstop < 0.0:
 		w.append("hitstop is negative")
@@ -147,6 +148,17 @@ static func _check_motion_curves(a: ActionData, w: PackedStringArray) -> void:
 	if (a.motion_forward != null or a.motion_side != null) and a.move_speed > 0.0 \
 			and a.placeholder_source != ActionData.PlaceholderSource.ER_NUMBERS:
 		w.append("a motion curve is set, so move_speed, move_fade and move_window are ignored (the F1 switch OFF uses them)")
+
+
+## 3a-3c: an action with a placeholder clip must say so in `placeholder_source` and have a length to stretch the clip to.
+## (The clip's name is checked when it first plays: this script runs in the editor, where the clip file is not loaded.)
+static func _check_clip(a: ActionData, w: PackedStringArray) -> void:
+	if a.placeholder_clip == &"":
+		return
+	if a.placeholder_source == ActionData.PlaceholderSource.NONE:
+		w.append("placeholder_clip is set but placeholder_source is NONE (an Elden Ring clip must be tagged)")
+	if a.duration <= 0.0:
+		w.append("placeholder_clip is set but the duration is 0 or less (the clip is stretched to the duration)")
 
 
 ## The 3b-4 hit list: attacks only, each window valid and inside `active_hit`, no overlaps, and some damage to deal.

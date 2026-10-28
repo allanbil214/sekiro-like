@@ -122,6 +122,11 @@ func _draw_panel() -> void:
 	var y := panel_origin.y
 	for block: Array in blocks:
 		y += _draw_block(Vector2(panel_origin.x, y), block[0], block[1], block[2], block[3]) + BLOCK_GAP
+	# 3a-3c: which clip frame the figure shows, and whether the hitbox is live right now.
+	var clip_text: String = _player.figure.clip_status()
+	if not clip_text.is_empty():
+		var live: bool = action_state != null and action_state._hit_is_active()
+		_text(Vector2(panel_origin.x, y), clip_text + ("   HIT LIVE" if live else ""), COLOR_HIT if live else Color.WHITE)
 
 
 func _block_height(action: ActionData) -> float:
@@ -151,8 +156,12 @@ func _draw_block(origin: Vector2, title: String, action: ActionData, time: float
 		var feel_width := _font.get_string_size(feel_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 		_text(origin + Vector2(LABEL_W + BAR_W - feel_width, 0),
 				feel_text, COLOR_PLACEHOLDER if ActionData.er_feel_enabled else COLOR_WARN)
+	var tag := ""
 	if action.placeholder_source != ActionData.PlaceholderSource.NONE:
-		var tag := "  PLACEHOLDER(%s)" % _source_label(action.placeholder_source)
+		tag = "  PLACEHOLDER(%s)" % _source_label(action.placeholder_source)
+	if action.placeholder_clip != &"":
+		tag += "  clip: %s" % action.placeholder_clip
+	if not tag.is_empty():
 		var head_width := _font.get_string_size(head, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 		_text(origin + Vector2(head_width, 0), tag, COLOR_PLACEHOLDER)
 	var top := origin.y + FONT_SIZE + 8.0

@@ -1,12 +1,17 @@
 class_name PlayerFigure
 extends MannequinFigure
 ## PLACEHOLDER(own code, ER skeleton): the mannequin on the player (Phase 3a-3b-1, docs/placeholders.md P5). It replaces the
-## capsule `Body` and the box `Nose` while shown. It only HOLDS poses of the converted clips: `idle` standing and
-## `crouch_idle` crouched, blended over the crouch time; no clip plays (that is 3a-3c). It sits under `Visual`, so the hit
+## capsule `Body` and the box `Nose` while shown. It HOLDS poses of the converted clips: `idle` standing and
+## `crouch_idle` crouched, blended over the crouch time (3a-3b-1), and PLAYS an action's clip (3a-3c, below). It sits under `Visual`, so the hit
 ## wobble, the lean and the kneel of `PlayerBodyReaction` move it with everything else, and `SwordVisual` turns it by the
 ## body twist. The code-drawn sword is still used (the figure's blade is hidden).
 ## 3a-3b-2: its arms follow the hands the code-drawn arms compute (`SwordVisual` for the right arm, `HealArm` for the left
 ## while healing, `ReachArms` for both while they show), and those box arms are hidden while the figure is shown.
+## 3a-3c: while an action with a `placeholder_clip` runs, `drive_clip()` (called by `ActionState` every physics frame)
+## makes the figure play that clip, stretched evenly to the action's duration. The clip drives the whole figure, arms and
+## blade included: the code-drawn blade is hidden and the figure's own blade shown, the arm solving and the body twist
+## pause, and the figure blends in from and back out to the held pose (`blend_in`, `blend_out`). The hitbox, the trail
+## and the clock are untouched. F1 "Clips drive the figure" (`clips_enabled`) turns it off.
 ## The collision capsule and the hurtbox are never touched. If the clip file is missing, `available` stays false and the
 ## Player keeps the capsule.
 
@@ -14,6 +19,13 @@ extends MannequinFigure
 @export var max_stretch: float = 0.25
 ## Which way the right elbow bends (figure space: +X right, -Y down, +Z back); the left arm mirrors X.
 @export var elbow_pole: Vector3 = Vector3(0.5, -1.0, 0.3)
+
+## PLACEHOLDER: seconds to blend from the held pose into a clip, and from the clip back to the held pose.
+@export var blend_in: float = 0.1
+@export var blend_out: float = 0.12
+
+## The F1 switch (3a-3c): false = no clip plays, the figure holds its pose and the code sword is drawn.
+static var clips_enabled: bool = true
 
 const STAND_CLIP: String = "idle"
 const CROUCH_CLIP: String = "crouch_idle"
@@ -35,6 +47,23 @@ var _reach: ReachArms
 var _right: String = "R"
 var _left: String = "L"
 var _arms_driven: bool = false
+# 3a-3c: the clip being played.
+var _clip_action: ActionData
+var _clip_name: String = ""
+var _clip_length: float = 0.0
+var _clip_time: float = 0.0
+var _clip_rate: float = 1.0
+var _since_tick: float = 0.0
+var _playing: bool = false
+var _was_clip: bool = false
+var _blade_swapped: bool = false
+## 0 = the held pose, 1 = the clip (ramps over `blend_in` and `blend_out`).
+var _mix: float = 0.0
+var _clip_pose: PlaceholderClips.Pose
+## When a clip starts while another is showing: the pose it fades away from (1 -> 0 over `blend_in`).
+var _xfade_from: PlaceholderClips.Pose
+var _xfade: float = 0.0
+var _warned: Dictionary = {}
 
 
 func _ready() -> void:
@@ -55,6 +84,7 @@ func _ready() -> void:
 		_right = "L"
 		_left = "R"
 	available = true
+	visibility_changed.connect(_on_visibility_changed)
 	_refresh()
 
 
@@ -65,9 +95,12 @@ func bind_arms(sword: SwordVisual, heal: HealArm, reach: ReachArms) -> void:
 	_reach = reach
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not available or not visible:
 		return
+	var clip_active: bool = _playing or _mix > 0.0
+	if clip_active:
+		_step_clip(delta)
 	var has_right: bool = false
 	var has_left: bool = false
 	var right_hand: Vector3 = Vector3.ZERO
@@ -85,13 +118,155 @@ func _process(_delta: float) -> void:
 			has_left = true
 			left_hand = _heal.get_hand_global()
 	var driven: bool = has_right or has_left
-	if driven or _arms_driven:
-		_refresh()  # back to the held pose, then bend the driven arms
+	if driven or _arms_driven or clip_active or _was_clip:
+		_refresh()  # back to the held pose (or the clip), then bend the driven arms
 	_arms_driven = driven
+	_was_clip = clip_active
+	_update_clip_visuals()
+	if _mix >= 1.0:
+		return  # the clip has its own arms
 	if has_right:
-		solve_arm(_right, to_local(right_hand), elbow_pole, max_stretch)
+		solve_arm(_right, _arm_target(_right, right_hand), elbow_pole, max_stretch)
 	if has_left:
-		solve_arm(_left, to_local(left_hand), Vector3(-elbow_pole.x, elbow_pole.y, elbow_pole.z), max_stretch)
+		solve_arm(_left, _arm_target(_left, left_hand), Vector3(-elbow_pole.x, elbow_pole.y, elbow_pole.z), max_stretch)
+
+
+## The hand target for an arm, in the figure's space: the code-drawn hand, or while a clip blends in or out a mix of
+## the clip's hand and the code-drawn hand.
+func _arm_target(prefix: String, hand_world: Vector3) -> Vector3:
+	var target: Vector3 = to_local(hand_world)
+	if _mix <= 0.0 or _last_pose == null:
+		return target
+	var shown: Vector3 = _last_pose.points[_clips.joint_index(prefix + "_Hand")]
+	return shown.lerp(target, 1.0 - _mix)
+
+
+## 3a-3c: called by `ActionState` every physics frame with the running action, its clock and how fast the clock runs.
+## Starts the action's clip when it changes (or the clock goes back), follows the clock, and stops the clip for an
+## action with none.
+func drive_clip(action: ActionData, time: float, rate: float) -> void:
+	if not available or not visible:
+		return
+	var wanted: String = String(action.placeholder_clip) if clips_enabled else ""
+	if wanted.is_empty():
+		if _playing:
+			stop_clip()
+		return
+	if not _clips.has_clip(wanted):
+		if not _warned.has(wanted):
+			_warned[wanted] = true
+			push_warning("[PlayerFigure] unknown clip '%s' on %s" % [wanted, action.resource_path])
+		if _playing:
+			stop_clip()
+		return
+	if action != _clip_action or not _playing or time < _clip_time - 0.001:
+		_begin_clip(action, wanted)
+	_clip_time = time
+	_clip_rate = rate
+	_since_tick = 0.0
+	# The hitbox follows the clip's blade (sampled at exactly this time), so the hit lands where the blade is drawn.
+	if _sword != null:
+		var progress: float = clampf(time / maxf(action.duration, 0.001), 0.0, 1.0)
+		_sword.hitbox_external = true
+		_sword.place_hitbox_global(_blade_global(_clips.sample(wanted, progress * _clip_length)))
+
+
+## The clip's blade as a world transform: the blade root at the weapon joint, local -Z along the blade (the same
+## convention as `SwordVisual`'s hand, which the hitbox expects), +X the weapon joint's X axis.
+func _blade_global(pose: PlaceholderClips.Pose) -> Transform3D:
+	var root: Vector3 = pose.points[_weapon_joint]
+	var along: Vector3 = pose.axes[_weapon_axes * 3 + 1]
+	var edge: Vector3 = pose.axes[_weapon_axes * 3]
+	var z: Vector3 = -along
+	var x: Vector3 = edge - z * edge.dot(z)
+	if x.length_squared() < 0.0001:
+		x = z.cross(Vector3.UP)
+	x = x.normalized()
+	var blade_basis := Basis(x, z.cross(x), z)
+	var world: Transform3D = global_transform
+	return Transform3D(world.basis.orthonormalized() * blade_basis, world * root)
+
+
+## 3a-3c, for the F2 overlay: the playing clip, its current frame and the action clock, or "" when none plays.
+func clip_status() -> String:
+	if not _playing or _clip_action == null:
+		return ""
+	var clock: float = _clip_time + _since_tick * _clip_rate
+	var span: float = maxf(_clip_action.duration, 0.001)
+	var progress: float = clampf(clock / span, 0.0, 1.0)
+	var frames: int = roundi(_clip_length * PlaceholderClips.FPS) + 1
+	return "clip %s  f%d/%d  t %.2f / %.2f" % [_clip_name, roundi(progress * float(frames - 1)), frames, progress * span, span]
+
+
+## The running clip ends: the figure blends back to the held pose. Does nothing when no clip plays.
+func stop_clip() -> void:
+	_playing = false
+	_clip_action = null
+	if _sword != null:
+		_sword.hitbox_external = false
+
+
+func _begin_clip(action: ActionData, clip_name: String) -> void:
+	_clip_action = action
+	_clip_name = clip_name
+	_clip_length = _clips.length_of(clip_name)
+	_playing = true
+	if _mix > 0.0 and _last_pose != null:
+		_xfade_from = _last_pose  # a clip is showing (a chained attack): fade from it instead of jumping
+		_xfade = 1.0
+	else:
+		_xfade_from = null
+		_xfade = 0.0
+	_clip_time = 0.0
+	_since_tick = 0.0
+	_clip_pose = _clips.sample(clip_name, 0.0)
+
+
+## Advance the clip between physics frames (the clock is given once per physics frame), and the blends.
+func _step_clip(delta: float) -> void:
+	if _playing:
+		_since_tick = minf(_since_tick + delta, 1.0 / maxf(float(Engine.physics_ticks_per_second), 1.0))
+		var clock: float = _clip_time + _since_tick * _clip_rate
+		var progress: float = clampf(clock / maxf(_clip_action.duration, 0.001), 0.0, 1.0)
+		_clip_pose = _clips.sample(_clip_name, progress * _clip_length)
+	var goal: float = 1.0 if _playing else 0.0
+	_mix = move_toward(_mix, goal, delta / maxf(blend_in if _playing else blend_out, 0.001))
+	if _xfade > 0.0:
+		_xfade = move_toward(_xfade, 0.0, delta / maxf(blend_in, 0.001))
+
+
+## The figure's own blade shows (and the code-drawn one hides) once the clip is mostly in; the body twist of the code
+## sword is switched off in step with the clip.
+func _update_clip_visuals() -> void:
+	var swap: bool = _mix > 0.5
+	if swap != _blade_swapped:
+		_blade_swapped = swap
+		set_blade_visible(swap)
+		if _sword != null:
+			_sword.set_blade_hidden(swap)
+	if _sword != null:
+		_sword.figure_twist_scale = 1.0 - _mix
+	if _mix >= 1.0:
+		rotation.y = 0.0
+
+
+func _on_visibility_changed() -> void:
+	if visible:
+		return
+	# The capsule is back: forget the clip and give the code sword its blade.
+	_playing = false
+	_clip_action = null
+	if _sword != null:
+		_sword.hitbox_external = false
+	_mix = 0.0
+	_xfade = 0.0
+	_was_clip = false
+	if _blade_swapped:
+		_blade_swapped = false
+		set_blade_visible(false)
+		if _sword != null:
+			_sword.set_blade_hidden(false)
+			_sword.figure_twist_scale = 1.0
 
 
 ## Scale the figure evenly so the top of its head is at `height` and its lowest point is on the feet line.
@@ -122,12 +297,23 @@ func set_crouched(crouched: bool, time: float) -> void:
 func _refresh() -> void:
 	if not available:
 		return
+	var held: PlaceholderClips.Pose = _held_pose()
+	if _mix <= 0.0 or _clip_pose == null:
+		show_pose(held)
+		return
+	var clip_pose: PlaceholderClips.Pose = _clip_pose
+	if _xfade > 0.0 and _xfade_from != null:
+		clip_pose = _blend(clip_pose, _xfade_from, _xfade)
+	show_pose(clip_pose if _mix >= 1.0 else _blend(held, clip_pose, _mix))
+
+
+## The standing pose, the crouched pose, or the blend between them while the crouch eases.
+func _held_pose() -> PlaceholderClips.Pose:
 	if crouch_blend <= 0.0:
-		show_pose(_stand)
-	elif crouch_blend >= 1.0:
-		show_pose(_crouch)
-	else:
-		show_pose(_blend(_stand, _crouch, crouch_blend))
+		return _stand
+	if crouch_blend >= 1.0:
+		return _crouch
+	return _blend(_stand, _crouch, crouch_blend)
 
 
 static func _blend(a: PlaceholderClips.Pose, b: PlaceholderClips.Pose, weight: float) -> PlaceholderClips.Pose:

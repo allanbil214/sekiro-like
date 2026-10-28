@@ -7,6 +7,9 @@ extends RefCounted
 ## How slow the game runs during a hitstop (0.05 = 5% speed).
 static var slow_scale: float = 0.05
 
+## 3a-3c: the speed the game returns to after a hitstop or a victory slow-mo: 1.0, or the debug menu's slow motion.
+static var base_scale: float = 1.0
+
 static var _token: int = 0
 
 
@@ -15,7 +18,7 @@ static func request(tree: SceneTree, duration: float) -> void:
 		return
 	_token += 1
 	var token := _token
-	Engine.time_scale = slow_scale
+	Engine.time_scale = slow_scale * base_scale
 	await tree.create_timer(duration, true, false, true).timeout
 	if token == _token:
-		Engine.time_scale = 1.0
+		Engine.time_scale = base_scale

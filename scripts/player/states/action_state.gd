@@ -36,6 +36,7 @@ func enter(previous: StringName) -> void:
 func exit(_next: StringName) -> void:
 	player.invulnerable = false
 	_end_hit()
+	player.figure.stop_clip()
 	_on_action_exit()
 
 
@@ -50,10 +51,18 @@ func physics_update(delta: float) -> void:
 	_on_action_update(delta)
 	if machine.current != self:
 		return
+	# 3a-3c: the figure plays this action's clip (if it has one) against the action clock.
+	player.figure.drive_clip(action, action_time, _clip_rate())
 	_update_hit()
 	_apply_action_movement(delta)
 	if action_time >= action.duration:
 		_on_action_finished()
+
+
+## 3a-3c: how fast the action clock runs now, for the figure's clip between two physics frames. A subclass whose
+## clock is frozen returns 0.
+func _clip_rate() -> float:
+	return speed_scale * _active_speed_factor()
 
 
 ## 3b-1: until the action's `input_from` time, attack presses are thrown away instead of waiting in the buffer

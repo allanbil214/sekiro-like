@@ -1,6 +1,6 @@
 # Phase 3: Feel and weight
 
-Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), 3a-3a (clip converter and viewer) built and tested 2026-10-27, 3a-3b split in three on 2026-10-27 (section 10.5), 3a-3b (the figure on the player, its arms and enemies) built and tested 2026-10-27, the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
+Read this when working on Phase 3. Written 2026-10-20 from a discussion chat. **Status: 3a part 1 (feel overlay and validator), 3a-4 (debug menu), 3b-1 (cancel times), 3b-2 (turn control), 3b-3 (motion curves) and 3b-4 (multi-hit) built and tested 2026-10-27 (3b complete), 3a-3a (clip converter and viewer) built and tested 2026-10-27, 3a-3b split in three on 2026-10-27 (section 10.5), 3a-3b (the figure on the player, its arms and enemies) built and tested 2026-10-27, 3a-3c-1 (clips drive the figure: ground combo, dash and crouch attacks) built and tested 2026-10-28 (section 10.6), the rest planned; discussed again on 2026-10-26 (section 7 holds the decisions of that chat, section 8 the placeholder marking).** Everything marked "agreed" was confirmed by the user in that chat; the numbers and details marked "default" are proposals until the item's full check (work agreement, section 7).
 
 ---
 
@@ -186,7 +186,7 @@ Read together with section 2 (3b) and the code of `AttackState`, `DodgeState`, `
 - **Built:** `HitSpec` and `ActionData.hits`, read by `ActionState._update_hit()` through `ActionRunner` (`hit_index`, `make_hit(..., spec)`); the overlay's HIT row shows each hit; validator rules. Details: `docs/built-reference.md` and the build log.
 - **As planned (9.3):** `active_hit` stays the overall span; player attacks only. **Decided at the full check (2026-10-27):** -1 in a `HitSpec` field means the action's value; the gaps between hits still block dodge and jump cancels; the swing sound and visual hook run on the first hit only; each hit is resolved on its own by the guard; the fields follow the F1 ER FEEL toggle.
 - **Test values:** two hits on `attack_5` (made up, summing to the old damage and posture). The other actions have no hit list.
-- **Next:** 3a-3 (the placeholder animation import and the figure), then 3c and 3d. 3b is complete.
+- **Next:** 3a-3c-2 and 3a-3c-3 (the rest of the clips), then 3c and 3d. 3b is complete.
 
 ## 10. 3a-3 plan: what the 2026-10-27 re-read of the data showed (split agreed 2026-10-27; 3a-3a built and tested, 3a-3b and 3a-3c planned)
 
@@ -205,7 +205,7 @@ Read from `ELDEN-RING-Combat-Rewrite-with-data.zip` (the split `.z01` + `.zip` j
 ### 10.3 Proposed split (three deliveries, each with its own full check and test)
 1. **3a-3a, converter and viewer:** an offline Python converter (`tools/placeholder/`, run once on the PC; Claude also delivers the generated file) writes only the mapped clips to one compact binary, `assets/placeholder/player_clips.bin`, with a loader script; an F1 debug entry opens a viewer scene that plays any clip on a figure of simple shapes. No link to gameplay. The user judges the clips; the clip-to-action table of 7.3 is confirmed here.
 2. **3a-3b, the figure in the game:** the mannequin replaces `Body` and `Nose` on the player (an F1 toggle brings the capsule back), keeping crouch, body reactions and the sword visuals; enemies follow with a tint per type. Register row P5.
-3. **3a-3c, clips drive the figure:** a clip player follows the action clock (uniform stretch); first the ground combo, then dodge, the air attacks and the helm splitter, then the enemy thrust and sweep. Register rows P2 and P3. Made-up poses (P4) stay a later step.
+3. **3a-3c, clips drive the figure** (split in three 2026-10-28, section 10.6): a clip player follows the action clock (uniform stretch); first the ground combo (3a-3c-1, built and tested 2026-10-28), then dodge, the air attacks and the helm splitter (3a-3c-2), then the enemy thrust and sweep (3a-3c-3). Register rows P2 and P3. Made-up poses (P4) stay a later step.
 - **Defaults proposed:** a compact binary of joint positions sampled by a script (not Godot `Animation` resources); the converter outside `res://` logic, the output under `assets/placeholder/`, left out of public exports; locomotion clips follow speed (3c).
 - **Not in 3a-3a:** the figure in the game, any gameplay link, made-up poses, enemies, sheathe and guard arms (3d).
 
@@ -231,3 +231,10 @@ Decided at the 3a-3b full check, after the user asked why the figure's own arms 
 - **3a-3b-3, enemies:** the figure on `Enemy` and the dummy, with a tint per type; the enemy's use of `Body` (corpse material, tint, tipped-over pose, bobblehead, the head pitch on the nose) is handled here. Register row P5.
 - **Order:** 3a-3b-1, then 3a-3b-2, then 3a-3b-3, each with its own full check and test, then 3a-3c. 3a-3c is unchanged.
 - **Not in any of them:** clip playback, walk animation, foot placement, made-up poses, new collision, hurtbox or hitbox shapes.
+
+## 10.6 3a-3c-1 built and tested (2026-10-28); 3a-3c-2 and 3a-3c-3 next
+
+- **Built:** `ActionData.placeholder_clip` names the clip an action plays; `PlayerFigure.drive_clip()` plays it, stretched evenly to `duration`, over the whole figure (arms and blade); the code blade is hidden while it plays and the hitbox sits on the clip's blade; blend in 0.1 s, out 0.12 s, chained attacks cross-fade. Mapped: `attack_1` to `attack_5` (`combo_1` to `combo_5`), the dash attack (`run_attack`), both crouch attacks (`crouch_attack`). F1 "Clips drive the figure" (off = held pose and the code sword). Details: `docs/built-reference.md` and the build log.
+- **What the test showed:** the clip and the old `active_hit` did not line up (the hit windows were tuned to the code swing). The fix was to set `active_hit` of the seven actions from the clips' own hit frames (the sandbox hit frames times each action's stretch; the durations already were about half of Elden Ring's), not to warp the clip. The blade is fastest in the last frames of the window. `attack_5`'s two-hit test list from 3b-4 was removed (one hit in the data); multi-hit support stays for later use.
+- **New debug aids:** F1 "Slow motion" (Off, 50, 25, 10 percent), an F2 clip line (clip, frame, clock, HIT LIVE), and a plain debug menu look (default theme, text from the window height).
+- **Next:** 3a-3c-2 (dodge and backstep, the air tap loop, the helm splitter), 3a-3c-3 (the enemy thrust and sweep: whether `heavy1` reads as a thrust and the crouch attack as a low sweep is judged there). Locomotion clips follow speed and stay in 3c. Small follow-up: drop the `clip:` tag from the F2 header (it overlaps the other tags; the clip line shows the name).

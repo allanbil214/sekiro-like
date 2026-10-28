@@ -197,6 +197,12 @@ var _nose: Node3D
 var _figure: Node3D
 ## Phase 3a-3b-2: the hand (end of the arm) in this node's space, and whether the box arm is hidden (the figure has arms).
 var _hand_end: Vector3 = Vector3.ZERO
+## 3a-3c: how much of the body twist turns the player's figure (the figure sets it: 0 while a clip plays, because the
+## clip twists the body itself).
+var figure_twist_scale: float = 1.0
+## 3a-3c: true while a clip plays on the player's figure: the hitbox then follows the clip's blade (placed by the figure
+## with `place_hitbox_global()`), and `_apply()` leaves the hitbox alone.
+var hitbox_external: bool = false
 var _arm_hidden: bool = false
 var _nose_base: Vector3 = Vector3.ZERO
 var _nose_twisted: bool = false
@@ -881,7 +887,7 @@ func _apply_twist() -> void:
 	if _scabbard != null:
 		_scabbard.rotation.y = yaw
 	if _figure != null:
-		_figure.rotation.y = yaw
+		_figure.rotation.y = yaw * figure_twist_scale
 	if _nose == null:
 		return
 	if absf(_twist) < 0.001 and not _nose_twisted:
@@ -898,6 +904,20 @@ func set_arm_hidden(hidden_now: bool) -> void:
 	_arm_hidden = hidden_now
 	if _arm != null:
 		_arm.visible = show_arm and not hidden_now
+
+
+## Phase 3a-3c: put the hitbox at `blade` (a world transform: the blade root, local -Z along the blade), while
+## `hitbox_external` is true.
+func place_hitbox_global(blade: Transform3D) -> void:
+	if hitbox != null:
+		hitbox.global_transform = blade
+
+
+## Phase 3a-3c: hide the code-drawn blade (and its edge strip) while a clip plays on the figure. The hitbox, the trail
+## and the scabbard are not touched.
+func set_blade_hidden(hidden_now: bool) -> void:
+	if _hand != null:
+		_hand.visible = not hidden_now
 
 
 ## Phase 3a-3b-2: where the right hand is, in the world (the end of the arm, not the blade root).
@@ -942,7 +962,7 @@ func _apply() -> void:
 	x = x.normalized()
 	var y := z.cross(x)
 	_hand.basis = Basis(x, y, z)
-	if hitbox != null:
+	if hitbox != null and not hitbox_external:
 		hitbox.transform = _hand.transform
 
 

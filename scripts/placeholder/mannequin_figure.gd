@@ -133,6 +133,12 @@ func solve_arm(prefix: String, hand_target: Vector3, pole: Vector3, max_stretch:
 	_segments[segments.y].transform = _segment_transform(elbow, hand)
 
 
+## Show or hide the figure's own blade (3a-3c: shown while a clip plays, when the code-drawn sword is hidden).
+func set_blade_visible(on: bool) -> void:
+	if _blade != null:
+		_blade.visible = on
+
+
 ## Draw every shape with `material` (the i-frame tint), or with its own colors again when null.
 func set_overlay_material(material: Material) -> void:
 	for i in _meshes.size():

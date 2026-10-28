@@ -3,14 +3,20 @@ extends CanvasLayer
 ## The debug menu (Phase 3a-4). F1 opens and closes it, in debug builds only (the editor counts as one);
 ## Esc or Cancel closes it too. The game pauses while it is open. A child of Player: add it in the editor as
 ## the LAST child, so it sees Esc before the pause menu does. The entries come from `DebugOptions.build()`;
-## the rows are built here in code, because the list is data. The look is `data/ui/ui_theme.tres`.
+## the rows are built here in code, because the list is data. The look is deliberately plain and NOT the game's
+## `ui_theme.tres`: Godot's default theme and font, a solid dark panel, text sized from the window height.
 ## Options changed here are remembered for the session and re-applied when the next arena loads.
 
 const OPEN_KEY: Key = KEY_F1
-const THEME_PATH: String = "res://data/ui/ui_theme.tres"
-const FONT_SIZE: int = 20
-const HEADER_SIZE: int = 22
-const ROW_HEIGHT: float = 34.0
+## Text size as a fraction of the window height, clamped, so the menu stays readable on any screen.
+const TEXT_HEIGHT_FRACTION: float = 0.018
+const TEXT_MIN: int = 14
+const TEXT_MAX: int = 30
+const COLOR_PANEL := Color(0.10, 0.11, 0.13, 0.98)
+const COLOR_BORDER := Color(0.35, 0.38, 0.45)
+const COLOR_TITLE := Color(1.0, 1.0, 1.0)
+const COLOR_GROUP := Color(0.55, 0.8, 1.0)
+const COLOR_HINT := Color(0.65, 0.68, 0.72)
 
 var _player: Player
 var _options: Array[DebugOptions.Option] = []
@@ -18,6 +24,10 @@ var _controls: Dictionary = {}
 var _touched: Dictionary = {}
 var _root: Control
 var _list: VBoxContainer
+var _column: VBoxContainer
+var _panel_style: StyleBoxFlat
+## Each entry is [control, size factor]: re-sized when the window changes.
+var _sized: Array = []
 var _first_focus: Control
 var _is_open: bool = false
 var _mouse_mode_before: Input.MouseMode = Input.MOUSE_MODE_CAPTURED
@@ -113,37 +123,44 @@ func _on_cycled(option: DebugOptions.Option, button: Button) -> void:
 func _build_ui() -> void:
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_root.theme = load(THEME_PATH) as Theme
-	add_child(_root)
+	add_child(_root)  # no theme: Godot's default look, on purpose
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.0, 0.0, 0.0, 0.7)
+	dim.color = Color(0.0, 0.0, 0.0, 0.6)
 	_root.add_child(dim)
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	panel.anchor_left = 0.3
-	panel.anchor_right = 0.7
-	panel.anchor_top = 0.1
-	panel.anchor_bottom = 0.9
+	panel.anchor_left = 0.2
+	panel.anchor_right = 0.8
+	panel.anchor_top = 0.05
+	panel.anchor_bottom = 0.95
+	panel.custom_minimum_size = Vector2(520.0, 0.0)
+	_panel_style = StyleBoxFlat.new()
+	_panel_style.bg_color = COLOR_PANEL
+	_panel_style.border_color = COLOR_BORDER
+	_panel_style.set_border_width_all(2)
+	_panel_style.set_corner_radius_all(6)
+	panel.add_theme_stylebox_override("panel", _panel_style)
 	_root.add_child(panel)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	panel.add_child(column)
-	column.add_child(_make_label("DEBUG MENU", HEADER_SIZE, true))
-	column.add_child(_make_label("F1 or Esc closes. Debug builds only.", 16, false))
+	_column = VBoxContainer.new()
+	panel.add_child(_column)
+	_column.add_child(_make_label("DEBUG MENU", 1.3, COLOR_TITLE))
+	_column.add_child(_make_label("F1 or Esc closes. Debug builds only.", 0.85, COLOR_HINT))
+	_column.add_child(HSeparator.new())
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	column.add_child(scroll)
+	_column.add_child(scroll)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 4)
 	scroll.add_child(_list)
 	var last_group := ""
 	for option: DebugOptions.Option in _options:
 		if option.group != last_group:
+			if not last_group.is_empty():
+				_list.add_child(HSeparator.new())
 			last_group = option.group
-			_list.add_child(_make_label(option.group, FONT_SIZE, true))
+			_list.add_child(_make_label(option.group, 1.1, COLOR_GROUP))
 		var control: Control
 		if option.is_toggle():
 			var check := CheckButton.new()
@@ -155,18 +172,42 @@ func _build_ui() -> void:
 			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			button.pressed.connect(_on_cycled.bind(option, button))
 			control = button
-		control.add_theme_font_size_override("font_size", FONT_SIZE)
-		control.custom_minimum_size = Vector2(0.0, ROW_HEIGHT)
 		_list.add_child(control)
 		_controls[option.id] = control
+		_sized.append([control, 1.0])
 		if _first_focus == null:
 			_first_focus = control
+	get_viewport().size_changed.connect(_apply_sizes)
+	_apply_sizes()
 
 
-func _make_label(text: String, size: int, subtitle: bool) -> Label:
+## Text size from the window height; spacing, margins and row heights follow the text size.
+func _text_size() -> int:
+	var height: float = get_viewport().get_visible_rect().size.y
+	return clampi(roundi(height * TEXT_HEIGHT_FRACTION), TEXT_MIN, TEXT_MAX)
+
+
+func _apply_sizes() -> void:
+	var text_size: int = _text_size()
+	for entry: Array in _sized:
+		var control: Control = entry[0]
+		var factor: float = entry[1]
+		var text_px: int = roundi(float(text_size) * factor)
+		control.add_theme_font_size_override("font_size", text_px)
+		if control is BaseButton:
+			control.custom_minimum_size = Vector2(0.0, roundf(float(text_size) * 1.9))
+	var margin: float = float(text_size) * 0.9
+	_panel_style.content_margin_left = margin
+	_panel_style.content_margin_right = margin
+	_panel_style.content_margin_top = margin * 0.8
+	_panel_style.content_margin_bottom = margin * 0.8
+	_column.add_theme_constant_override("separation", roundi(float(text_size) * 0.35))
+	_list.add_theme_constant_override("separation", roundi(float(text_size) * 0.25))
+
+
+func _make_label(text: String, factor: float, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
-	if subtitle:
-		label.theme_type_variation = &"SubtitleLabel"
-	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
+	_sized.append([label, factor])
 	return label

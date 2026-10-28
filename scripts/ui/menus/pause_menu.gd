@@ -86,7 +86,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _can_open() -> bool:
 	if _player == null or _player.combatant.dead or _player.state_machine.current is DeadState:
 		return false
-	if not is_equal_approx(Engine.time_scale, 1.0):
+	if not is_equal_approx(Engine.time_scale, Hitstop.base_scale):
 		return false
 	var victory := get_tree().get_first_node_in_group(Groups.VICTORY_SCREEN) as VictoryScreen
 	return victory == null or not victory.is_active()

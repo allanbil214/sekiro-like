@@ -259,6 +259,11 @@ func _on_action_enter(_previous: StringName) -> void:
 
 
 ## Crouch attacks end back in Crouch (you stay crouched); everything else ends standing.
+## 3a-3c: the clock stands still while waiting or charging, so the clip does too.
+func _clip_rate() -> float:
+	return 0.0 if _phase != Phase.NORMAL else super()
+
+
 func _on_action_finished() -> void:
 	if _crouch_context:
 		machine.transition_to(StateName.CROUCH)

@@ -69,6 +69,11 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return EnemyAwareness.show_debug_cones,
 			func(on: bool) -> void: EnemyAwareness.show_debug_cones = on))
 
+	list.append(_choice(&"slow_motion", "VIEW", "Slow motion (to watch swings and hitboxes)",
+			PackedStringArray(["Off", "50%", "25%", "10%"]),
+			func() -> int: return _slowmo_index(),
+			func(index: int) -> void: _set_slowmo(index)))
+
 	# --- FEEL (Phase 3b) ---
 	list.append(_toggle(&"er_feel", "FEEL", "Elden Ring-like feel (test values on attack 1 to 5)",
 			func() -> bool: return ActionData.er_feel_enabled,
@@ -82,6 +87,10 @@ static func build(player: Player) -> Array[Option]:
 	list.append(_toggle(&"mannequin_figure", "PLACEHOLDER", "Mannequin figure (player and enemies; off = the capsule)",
 			func() -> bool: return player.is_figure_shown(),
 			func(on: bool) -> void: _set_figure_shown(player, on)))
+
+	list.append(_toggle(&"clips_drive_figure", "PLACEHOLDER", "Clips drive the figure (player attacks; off = held pose and the code sword)",
+			func() -> bool: return PlayerFigure.clips_enabled,
+			func(on: bool) -> void: PlayerFigure.clips_enabled = on))
 
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
@@ -114,6 +123,23 @@ static func _choice(id: StringName, group: String, label: String, choices: Packe
 	var option := _toggle(id, group, label, getter, setter)
 	option.choices = choices
 	return option
+
+
+const SLOWMO_SCALES: Array[float] = [1.0, 0.5, 0.25, 0.1]
+
+
+static func _slowmo_index() -> int:
+	for i: int in SLOWMO_SCALES.size():
+		if is_equal_approx(Hitstop.base_scale, SLOWMO_SCALES[i]):
+			return i
+	return 0
+
+
+## Debug slow motion: the game's base speed (hitstop and the victory slow-mo come back to it, and the pause menu
+## still opens). A scene change or a death resets the engine speed; the menu re-applies the choice in the next arena.
+static func _set_slowmo(index: int) -> void:
+	Hitstop.base_scale = SLOWMO_SCALES[clampi(index, 0, SLOWMO_SCALES.size() - 1)]
+	Engine.time_scale = Hitstop.base_scale
 
 
 const CLIP_VIEWER_SCENE: String = "res://scenes/debug/clip_viewer.tscn"

@@ -147,6 +147,10 @@ static var er_feel_enabled: bool = true
 @export_group("Placeholder")
 ## Phase 3: the source of this action's temporary numbers or animation. NONE = the user's own work.
 @export var placeholder_source: PlaceholderSource = PlaceholderSource.NONE
+## 3a-3c: the name of the converted clip the player's figure plays while this action runs (see `PlaceholderClips`,
+## for example `combo_1`), stretched evenly to `duration`. Empty = no clip (the held pose and the code-drawn sword).
+## PLACEHOLDER(ER clip): the clips are Elden Ring material. Tag the action's `placeholder_source` too.
+@export var placeholder_clip: StringName = &""
 
 
 ## A read-only "Validation" line at the bottom of the Inspector (ActionValidator). Not stored in the .tres.

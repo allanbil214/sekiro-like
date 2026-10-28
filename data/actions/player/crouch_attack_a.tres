@@ -20,3 +20,5 @@ hold_action = ExtResource("2_upward")
 damage = 8.0
 posture_damage = 12.0
 combo_next = ExtResource("3_attackb")
+placeholder_source = 2
+placeholder_clip = &"crouch_attack"

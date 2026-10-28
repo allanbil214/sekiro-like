@@ -130,7 +130,7 @@ func _begin() -> void:
 
 func _restore_time() -> void:
 	if _slow:
-		Engine.time_scale = 1.0
+		Engine.time_scale = Hitstop.base_scale
 		_slow = false
 
 
