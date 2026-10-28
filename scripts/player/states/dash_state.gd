@@ -36,6 +36,6 @@ func physics_update(delta: float) -> void:
 		return
 	player.apply_horizontal_movement(delta, player.dash_speed)
 	if face_move_when_locked:
-		player.face_direction(player.get_move_input(), delta)
+		player.face_direction(player.get_move_input(), delta, player.sprint_turn_speed)
 	else:
 		player.face_input(delta)

@@ -26,6 +26,14 @@ const HEADROOM_RADIUS: float = 0.38
 @export var acceleration: float = 50.0
 @export var deceleration: float = 60.0
 @export var turn_speed: float = 18.0
+## 3c-2b: the same easing as `turn_speed` (per second), for the dash turning toward the way it runs.
+@export var sprint_turn_speed: float = 18.0
+## 3c-2b: the same easing, for turning toward the locked target (walking, guard, crouch, heal, air, and attacks that have
+## no turn rate of their own).
+@export var locked_turn_speed: float = 18.0
+## 3c-2b: slowing rate (m/s^2) of a stop from a run or sprint (the stick released above 1.5 x `walk_speed`): the whole stop
+## uses it. Slower stops use `deceleration`.
+@export var stop_deceleration: float = 60.0
 
 @export_group("Jump")
 ## 10.08 with gravity 2.0 and a 2.5x apex band of 3 m/s = the same ~2.46 m jump as before (9.88 with a 1.5x band
@@ -1171,12 +1179,27 @@ func start_jump() -> void:
 	coyote_timer = 0.0
 
 
+## 3c-2b: a stop from a run or sprint is under way (see `stop_deceleration`), and the physics frame it last went on.
+var _braking_from_run: bool = false
+var _brake_frame: int = 0
+
+
 ## If overspeed_decel > 0 and there is input while faster than speed, slow down at that rate.
 func apply_horizontal_movement(delta: float, speed: float, overspeed_decel: float = -1.0) -> void:
 	var move_dir := get_move_input()
 	var target_vel := move_dir * speed
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	var rate := acceleration if move_dir.length_squared() > 0.0 else deceleration
+	var has_input := move_dir.length_squared() > 0.0
+	var rate := acceleration if has_input else deceleration
+	var frame := Engine.get_physics_frames()
+	if has_input or frame - _brake_frame > 2:
+		_braking_from_run = false  # input again, or another state has run since: the stop is over
+	if not has_input:
+		if not _braking_from_run and horizontal.length() > walk_speed * 1.5:
+			_braking_from_run = true
+		if _braking_from_run:
+			rate = stop_deceleration
+			_brake_frame = frame
 	if overspeed_decel > 0.0 and move_dir.length_squared() > 0.0 and horizontal.length() > speed:
 		rate = overspeed_decel
 	horizontal = horizontal.move_toward(target_vel, rate * delta)
@@ -1212,16 +1235,18 @@ func get_lock_direction() -> Vector3:
 func face_input(delta: float) -> void:
 	var lock_dir := get_lock_direction()
 	if lock_dir != Vector3.ZERO:
-		face_direction(lock_dir, delta)
+		face_direction(lock_dir, delta, locked_turn_speed)
 		return
 	var move_dir := get_move_input()
 	if move_dir.length_squared() > 0.01:
 		face_direction(move_dir, delta)
 
 
-func face_direction(dir: Vector3, delta: float) -> void:
+## Turn toward `dir` with an exponential ease; `rate` (per second) is `turn_speed` when negative (3c-2b: a state can pass its own).
+func face_direction(dir: Vector3, delta: float, rate: float = -1.0) -> void:
 	var target_yaw := atan2(-dir.x, -dir.z)
-	visual.rotation.y = lerp_angle(visual.rotation.y, target_yaw, 1.0 - exp(-turn_speed * delta))
+	var ease_rate := turn_speed if rate < 0.0 else rate
+	visual.rotation.y = lerp_angle(visual.rotation.y, target_yaw, 1.0 - exp(-ease_rate * delta))
 
 
 ## 3b-2: like face_input(), but at a constant turn speed in degrees per second (a rate of 0 or less does not turn).
