@@ -26,6 +26,8 @@ CLIPS = {
     "heavy1_charge": "a029_030500", "heavy1": "a029_030505",
     "run_attack": "a029_030200",
     "crouch_attack": "a028_030310",
+    # 3a-3c-4: the uchigatana's rolling attack, the enemy sweep (hit frames 11 to 14 of 55).
+    "dodge_attack": "a029_030300",
     "air_light": "a029_031030", "air_heavy": "a029_031230",
     "air_light_land": "a029_031070", "air_heavy_land": "a029_031270",
     "backstep": "a000_027000",

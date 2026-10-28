@@ -170,6 +170,41 @@ func drive_clip(action: ActionData, time: float, rate: float, clip: StringName, 
 	drive_clip_progress(action, time / span, rate / span, clip, from, to)
 
 
+## 3a-3c-4 PLACEHOLDER(ER clip): "hit-sync" (`ActionData.placeholder_clip_hit`, seconds into the clip). The clip is warped in
+## three pieces so its hit start meets `active_hit.x`, its hit end meets `active_hit.y` and its end meets `duration`:
+## the wind-up plays stretched across the telegraph, the strike near natural speed, then the recovery. An enemy attack
+## uses it so the tuned telegraph keeps its timing. Without a hit span (or without the clip) it is the even stretch.
+func drive_clip_synced(action: ActionData, time: float, rate: float, clip: StringName) -> void:
+	var hit: Vector2 = action.placeholder_clip_hit
+	var clip_str: String = String(clip)
+	var from_hit: float = action.active_hit.x
+	var to_hit: float = action.active_hit.y
+	if not available or not _clips.has_clip(clip_str) or hit.x < 0.0 or hit.y <= hit.x \
+			or from_hit <= 0.0 or to_hit <= from_hit or action.duration <= to_hit:
+		drive_clip(action, time, rate, clip)
+		return
+	var length: float = maxf(_clips.length_of(clip_str), 0.001)
+	var hit_end: float = minf(hit.y, length - 0.001)
+	var hit_start: float = minf(hit.x, hit_end - 0.001)
+	var clip_time: float
+	var slope: float  # clip seconds per action second
+	if time < from_hit:
+		slope = hit_start / from_hit
+		clip_time = time * slope
+	elif time < to_hit:
+		slope = (hit_end - hit_start) / (to_hit - from_hit)
+		clip_time = hit_start + (time - from_hit) * slope
+	else:
+		slope = (length - hit_end) / (action.duration - to_hit)
+		clip_time = hit_end + (time - to_hit) * slope
+	drive_clip_progress(action, clampf(clip_time / length, 0.0, 1.0), slope * rate / length, clip)
+
+
+## True while a clip plays (false when the clips are switched off, the figure is hidden or no clip was asked for).
+func is_clip_playing() -> bool:
+	return _playing
+
+
 ## 3a-3c-3: the same, but the caller gives the progress through the played part directly (0 to 1) and how fast it
 ## advances per second (a charge phase has no action clock). `from` and `to` are seconds into the clip: the part that
 ## plays (`to` -1 = the clip's end). A thrust's release plays the second half of the charge clip this way.

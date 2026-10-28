@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://scripts/resources/action_data.gd" id="1_actiondata"]
 [ext_resource type="Resource" uid="uid://bhemmwny60asf" path="res://data/actions/player/helm_splitter.tres" id="1_lhwi3"]
+[ext_resource type="Script" uid="uid://dbxsk01td8g27" path="res://scripts/resources/hit_spec.gd" id="1_rsnf2"]
 
 [resource]
 script = ExtResource("1_actiondata")

@@ -151,6 +151,11 @@ static var er_feel_enabled: bool = true
 ## for example `combo_1`), stretched evenly to `duration`. Empty = no clip (the held pose and the code-drawn sword).
 ## PLACEHOLDER(ER clip): the clips are Elden Ring material. Tag the action's `placeholder_source` too.
 @export var placeholder_clip: StringName = &""
+## 3a-3c-4 PLACEHOLDER(ER clip): "hit-sync", for an enemy attack whose telegraph is tuned and must not move. The seconds
+## into the clip where its hit starts and ends (x and y; -1 = not used: the even stretch). The clip is then warped so
+## the clip's hit start meets `active_hit.x`, its hit end meets `active_hit.y` and its end meets `duration`: the wind-up
+## stretches to fill the telegraph and the strike plays near natural speed. Read by `PlayerFigure.drive_clip_synced()`.
+@export var placeholder_clip_hit: Vector2 = Vector2(-1.0, -1.0)
 
 
 ## A read-only "Validation" line at the bottom of the Inspector (ActionValidator). Not stored in the .tres.

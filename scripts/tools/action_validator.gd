@@ -159,6 +159,13 @@ static func _check_clip(a: ActionData, w: PackedStringArray) -> void:
 		w.append("placeholder_clip is set but placeholder_source is NONE (an Elden Ring clip must be tagged)")
 	if a.duration <= 0.0:
 		w.append("placeholder_clip is set but the duration is 0 or less (the clip is stretched to the duration)")
+	if a.placeholder_clip_hit.x >= 0.0:
+		if a.placeholder_clip_hit.y <= a.placeholder_clip_hit.x:
+			w.append("placeholder_clip_hit: the hit end must be after the hit start (seconds into the clip)")
+		if a.active_hit.y <= a.active_hit.x:
+			w.append("placeholder_clip_hit is set but active_hit is empty (the clip's hit is synced to it)")
+		elif a.active_hit.y >= a.duration:
+			w.append("placeholder_clip_hit is set but active_hit ends at or after the duration (nothing left to play after the hit)")
 
 
 ## The 3b-4 hit list: attacks only, each window valid and inside `active_hit`, no overlaps, and some damage to deal.

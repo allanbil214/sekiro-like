@@ -329,6 +329,10 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# 3a-3c-4: a clip only plays during a swing; any other phase (or a dead, held or stunned body) ends it.
+	if figure.is_clip_playing() and (combatant.dead or _held or combatant.deathblow_open \
+			or (phase != Phase.ATTACK and phase != Phase.PERILOUS)):
+		figure.stop_clip()
 	if _body_flying:
 		_fly_body(delta)
 		return
@@ -478,8 +482,9 @@ func _process(delta: float) -> void:
 ## The sweep duck: follows the sweep's action clock up to full at the start of the hit window, holds
 ## until the window closes, then stands back up over sweep_crouch_out_time.
 func _update_crouch(delta: float) -> void:
+	# 3a-3c-4: not while the sweep's clip plays (the clip has its own crouch; the duck is for the capsule).
 	var ducking := phase == Phase.PERILOUS and _peril_kind == Peril.SWEEP and _action != null \
-			and _action_time < _action.active_hit.y \
+			and not figure.is_clip_playing() and _action_time < _action.active_hit.y \
 			and (ai.sweep_crouch_drop > 0.0 or ai.sweep_crouch_lean_degrees > 0.0)
 	if ducking:
 		_crouch = clampf(_action_time / maxf(_action.active_hit.x, 0.001), 0.0, 1.0)
@@ -754,6 +759,7 @@ func _update_attack(delta: float, to_player: Vector3, distance: float) -> void:
 		if to_player.length_squared() > 0.0001:
 			_lunge_dir = to_player.normalized()
 	sword_visual.update_action(_action, _action_time, false)
+	_drive_figure_clip(_attack_speed())
 	_update_hit()
 	_apply_lunge(delta, distance)
 	if _hit_is_active():
@@ -949,6 +955,7 @@ func _update_perilous(delta: float, to_player: Vector3, distance: float, has_tar
 		_face(to_player, delta, ai.attack_turn_speed)
 		var fraction := clampf(_peril_time / maxf(weapon.thrust.charge_time, 0.001), 0.0, 1.0)
 		sword_visual.update_charge(weapon.thrust, false, _peril_time, fraction)
+		_drive_charge_clip(fraction)
 		time_to_hit = (weapon.thrust.charge_time - _peril_time) + weapon.thrust.active_hit.x
 		if fraction >= 1.0:
 			_fire_perilous_thrust(to_player)
@@ -959,6 +966,7 @@ func _update_perilous(delta: float, to_player: Vector3, distance: float, has_tar
 			if to_player.length_squared() > 0.0001:
 				_lunge_dir = to_player.normalized()
 		sword_visual.update_action(_action, _action_time, false)
+		_drive_figure_clip(1.0)
 		_update_hit()
 		_apply_lunge(delta, distance)
 		time_to_hit = _action.active_hit.x - _action_time
@@ -972,6 +980,33 @@ func _update_perilous(delta: float, to_player: Vector3, distance: float, has_tar
 				return
 	if not thrust_charge and _action_time >= _action.duration:
 		_end_perilous()
+
+
+## 3a-3c-4 PLACEHOLDER(ER clip): the figure plays the running swing's clip against the action clock (`rate` = how fast
+## the clock runs now). A swing with no `placeholder_clip` (the grab) plays none. The fired thrust plays the second half
+## of the charge clip, as the player's does; an action with hit-sync data is warped so its telegraph keeps its timing.
+func _drive_figure_clip(rate: float) -> void:
+	if _action == null or _action.placeholder_clip == &"":
+		if figure.is_clip_playing():
+			figure.stop_clip()
+		return
+	if _peril_kind == Peril.THRUST:
+		figure.drive_clip(_action, _action_time, rate, _action.placeholder_clip, AttackState.CHARGE_HOLD_TIME)
+	elif _action.placeholder_clip_hit.x >= 0.0:
+		figure.drive_clip_synced(_action, _action_time, rate, _action.placeholder_clip)
+	else:
+		figure.drive_clip(_action, _action_time, rate, _action.placeholder_clip)
+
+
+## 3a-3c-4 PLACEHOLDER(ER clip): while the thrust charges the figure plays the pull-back of the charge clip over the
+## whole charge (`fraction` 0 to 1), so the telegraph the player reads is the blade drawing back.
+func _drive_charge_clip(fraction: float) -> void:
+	var charge_action: ActionData = weapon.thrust
+	if charge_action.placeholder_clip == &"":
+		return
+	var span: float = maxf(charge_action.charge_time, 0.001)
+	figure.drive_clip_progress(charge_action, fraction, 0.0 if fraction >= 1.0 else 1.0 / span,
+			AttackState.CHARGE_CLIP, 0.0, AttackState.CHARGE_HOLD_TIME)
 
 
 ## Charge full: fire the thrust (the weapon's thrust action, authored right-handed).
