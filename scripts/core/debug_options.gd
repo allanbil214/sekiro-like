@@ -92,6 +92,10 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return PlayerFigure.clips_enabled,
 			func(on: bool) -> void: PlayerFigure.clips_enabled = on))
 
+	list.append(_toggle(&"locomotion_clips", "PLACEHOLDER", "Locomotion clips (walk, run, sprint, crouch on the player and enemies; off = held pose)",
+			func() -> bool: return PlayerFigure.locomotion_enabled,
+			func(on: bool) -> void: PlayerFigure.locomotion_enabled = on))
+
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
 			func() -> bool: return player.debug_undetectable,

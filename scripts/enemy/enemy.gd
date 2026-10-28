@@ -432,6 +432,18 @@ func _physics_process(delta: float) -> void:
 				_think_timer = 0.3
 				_set_phase(Phase.CHASE)
 	Hitstop.slide(self, hit_scale)
+	_drive_figure_locomotion()
+
+
+## 3c-2a PLACEHOLDER(ER clip): tell the figure how the body moves, so it plays the walk, run and idle clips (docs/placeholders.md
+## P2) while it patrols, waits, chases, recovers or circles; every other phase (an attack, a stun, a flinch, a pose, a
+## counter) keeps the held pose or its own clip. Once per physics frame; not at all while dead, held or in a forced move.
+## Circling (yield) and guarding blend the four directions by the angle between the movement and where it faces.
+func _drive_figure_locomotion() -> void:
+	var walking: bool = is_on_floor() and not combatant.deathblow_open and (phase == Phase.IDLE or phase == Phase.CHASE \
+			or phase == Phase.RECOVER or phase == Phase.YIELD)
+	var strafe: bool = phase == Phase.YIELD or _guarding
+	figure.drive_locomotion(walking, velocity, strafe, false, false)
 
 
 func _process(delta: float) -> void:

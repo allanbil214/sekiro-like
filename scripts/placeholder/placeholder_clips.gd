@@ -148,6 +148,15 @@ func sample(clip_name: String, time: float, loop: bool = false) -> Pose:
 	return pose
 
 
+## 3c-2a: `sample()` for a clip whose last frame is its first (the converted idle, walk, run, sprint and crouch loops): the
+## time wraps every `length_of()` seconds, so the repeated frame is not shown twice. Returns null for an unknown clip.
+func sample_loop(clip_name: String, time: float) -> Pose:
+	var clip := _clips.get(clip_name) as Clip
+	if clip == null or clip.frames < 2:
+		return sample(clip_name, 0.0)
+	return sample(clip_name, fposmod(time, float(clip.frames - 1) / FPS))
+
+
 func _vector(clip: Clip, frame: int, offset: int) -> Vector3:
 	var at := frame * _stride + offset
 	return Vector3(clip.data[at], clip.data[at + 1], clip.data[at + 2])

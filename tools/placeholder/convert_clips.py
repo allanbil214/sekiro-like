@@ -36,6 +36,10 @@ CLIPS = {
     "walk_front": "a000_020000", "walk_back": "a000_020001", "walk_left": "a000_020002", "walk_right": "a000_020003",
     "run_front": "a000_020100", "sprint": "a000_020200",
     "crouch_idle": "a000_300000", "crouch_walk_front": "a000_320000",
+    # 3c-2a: the other three run directions and the four crouch-run directions (the locomotion blend by movement angle).
+    "run_back": "a000_020101", "run_left": "a000_020102", "run_right": "a000_020103",
+    "crouch_run_front": "a000_320100", "crouch_run_back": "a000_320101",
+    "crouch_run_left": "a000_320102", "crouch_run_right": "a000_320103",
 }
 
 

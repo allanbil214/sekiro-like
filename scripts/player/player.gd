@@ -601,6 +601,7 @@ func _physics_process(delta: float) -> void:
 			Fx.play(get_tree(), Fx.Kind.LAND_DUST, global_position)
 	velocity.x -= push.x
 	velocity.z -= push.z
+	_drive_figure_locomotion()
 	_forced.update_enemy_head()
 	_update_carried_body(delta)
 	_update_footsteps(delta)
@@ -1296,6 +1297,21 @@ func set_figure_shown(on: bool) -> void:
 
 func is_figure_shown() -> bool:
 	return figure.visible
+
+
+## 3c-2a PLACEHOLDER(ER clip): tell the figure how the body moves, so it plays the idle, walk, run, sprint and crouch clips
+## (docs/placeholders.md P2). Once per physics frame; the figure fades back to its held pose in every state not listed.
+## Locked on, the figure blends the four directions by the angle between the movement and where it faces; a dash faces its
+## way. The right arm follows the clip while the sword is sheathed and at rest.
+func _drive_figure_locomotion() -> void:
+	var current := state_machine.current
+	var walking: bool = is_on_floor() and (current is LocomotionState or current is CrouchState or current is GuardState \
+			or current is DashState or current is HealState or current is AimState or current is TauntState \
+			or current is AttackState)
+	var dashing: bool = current is DashState
+	var strafe: bool = lock_on.has_target() and not dashing
+	var right_free: bool = sheathed and sword_visual != null and not sword_visual.is_busy()
+	figure.drive_locomotion(walking, velocity, strafe, dashing, right_free)
 
 
 ## The radius of the body capsule (used by the LedgeSensor).

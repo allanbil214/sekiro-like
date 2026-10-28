@@ -17,6 +17,12 @@ extends MannequinFigure
 ## held pose (the air attacks use it: idle legs, the swing of a ground attack). The hitbox follows the same shifted blade.
 ## The collision capsule and the hurtbox are never touched. If the clip file is missing, `available` stays false and the
 ## Player keeps the capsule.
+## 3c-2a: the held pose is no longer only a pose. While the owner reports it walking (`drive_locomotion()`, once per physics
+## frame, by the Player and the Enemy) the base layer is a `FigureLocomotion` pose: idle, walk, run, sprint and crouch clips
+## at the real speed. Action clips blend over it as before, from and back to it. While the owner does not report (dead,
+## held, in the air...) or the F1 switch `locomotion_enabled` is off, the base layer fades back to the held stand or crouch
+## pose. The right arm follows the base layer while the sword is sheathed (`right_arm_free`) instead of hanging on the
+## code-drawn hand; the left arm follows it unless healing or reaching.
 
 ## PLACEHOLDER: how far (fraction of the arm's length) the bones may stretch to reach a hand target.
 @export var max_stretch: float = 0.25
@@ -29,11 +35,18 @@ extends MannequinFigure
 
 ## The F1 switch (3a-3c): false = no clip plays, the figure holds its pose and the code sword is drawn.
 static var clips_enabled: bool = true
+## The F1 switch (3c-2a): false = no locomotion clips, the figure holds its idle or crouch pose out of actions.
+static var locomotion_enabled: bool = true
+static var _loco_warned: bool = false
 
 const STAND_CLIP: String = "idle"
 const CROUCH_CLIP: String = "crouch_idle"
 ## The suffix of a clip name that plays the upper body only.
 const UPPER_SUFFIX: String = ":upper"
+## 3c-2a: seconds to fade between the held pose and the locomotion pose, and for the sheathed right arm between the pose's
+## hand and the code-drawn hand.
+const LOCO_BLEND: float = 0.15
+const ARM_BLEND: float = 0.12
 
 ## True once the clips are loaded and the figure can be shown.
 var available: bool = false
@@ -77,6 +90,16 @@ var _clip_pose: PlaceholderClips.Pose
 var _xfade_from: PlaceholderClips.Pose
 var _xfade: float = 0.0
 var _warned: Dictionary = {}
+# 3c-2a: the locomotion layer.
+var _loco: FigureLocomotion
+## The physics frame of the last `drive_locomotion()`; the layer is off when it was more than two frames ago.
+var _loco_frame: int = -100
+var _loco_wanted: bool = false
+var _loco_mix: float = 0.0
+var _base_pose: PlaceholderClips.Pose
+var _was_loco: bool = false
+var _right_free: bool = false
+var _right_follow: float = 0.0
 
 
 func _ready() -> void:
@@ -90,6 +113,12 @@ func _ready() -> void:
 	setup(clips)
 	_stand = clips.sample(STAND_CLIP, 0.0)
 	_crouch = clips.sample(CROUCH_CLIP, 0.0)
+	var missing: String = FigureLocomotion.missing_clip(clips)
+	if missing.is_empty():
+		_loco = FigureLocomotion.new(clips)
+	elif not _loco_warned:
+		_loco_warned = true
+		push_warning("[PlayerFigure] locomotion clip '%s' is missing: no locomotion clips (run tools/placeholder/convert_clips.py)" % missing)
 	_pelvis = clips.joint_index("Pelvis")
 	_lower.resize(clips.joint_names.size())
 	for i in clips.joint_names.size():
@@ -119,6 +148,7 @@ func _process(delta: float) -> void:
 	if not available or not visible:
 		return
 	delta *= Hitstop.fighter_scale(owner)  # 3c-1: the clip's blends and its step between physics frames follow the fighter's freeze
+	_update_locomotion(delta)
 	var clip_active: bool = _playing or _mix > 0.0
 	if clip_active:
 		_step_clip(delta)
@@ -132,34 +162,70 @@ func _process(delta: float) -> void:
 		right_hand = _reach.get_hand_global(1)
 		left_hand = _reach.get_hand_global(0)
 	else:
-		if _sword != null:
+		if _sword != null and _right_follow < 1.0:
 			has_right = true
 			right_hand = _sword.get_hand_global()
 		if _heal != null and _heal.visible:
 			has_left = true
 			left_hand = _heal.get_hand_global()
 	var driven: bool = has_right or has_left
-	if driven or _arms_driven or clip_active or _was_clip:
+	var loco_active: bool = _base_pose != null
+	if driven or _arms_driven or clip_active or _was_clip or loco_active or _was_loco:
 		_refresh()  # back to the held pose (or the clip), then bend the driven arms
 	_arms_driven = driven
 	_was_clip = clip_active
+	_was_loco = loco_active
 	_update_clip_visuals()
 	if _mix >= 1.0:
 		return  # the clip has its own arms
 	if has_right:
-		solve_arm(_right, _arm_target(_right, right_hand), elbow_pole, max_stretch)
+		solve_arm(_right, _arm_target(_right, right_hand, _right_follow), elbow_pole, max_stretch)
 	if has_left:
 		solve_arm(_left, _arm_target(_left, left_hand), Vector3(-elbow_pole.x, elbow_pole.y, elbow_pole.z), max_stretch)
 
 
 ## The hand target for an arm, in the figure's space: the code-drawn hand, or while a clip blends in or out a mix of
-## the clip's hand and the code-drawn hand.
-func _arm_target(prefix: String, hand_world: Vector3) -> Vector3:
+## the clip's hand and the code-drawn hand. `follow` (3c-2a) is how much the shown pose's own hand counts instead of the
+## code-drawn one (the sheathed right arm following the locomotion clip).
+func _arm_target(prefix: String, hand_world: Vector3, follow: float = 0.0) -> Vector3:
 	var target: Vector3 = to_local(hand_world)
-	if _mix <= 0.0 or _last_pose == null:
+	var own: float = maxf(_mix, follow)
+	if own <= 0.0 or _last_pose == null:
 		return target
 	var shown: Vector3 = _last_pose.points[_clips.joint_index(prefix + "_Hand")]
-	return shown.lerp(target, 1.0 - _mix)
+	return shown.lerp(target, 1.0 - own)
+
+
+## 3c-2a: called by the Player and by the Enemy once per physics frame (not at all while they cannot walk: dead, held...).
+## `on` = the body walks, runs, crouches or stands on the ground now, so the locomotion clips play; otherwise the figure
+## fades to its held pose. `world_velocity` is how the body really moves, `strafe` = blend the four directions by the angle
+## between that and where the figure faces (locked on, circling), `sprint` = the dash, `right_arm_free` = the sword is
+## sheathed and at rest, so the right arm follows the pose instead of the code-drawn hand.
+func drive_locomotion(on: bool, world_velocity: Vector3, strafe: bool, sprint: bool, right_arm_free: bool) -> void:
+	if _loco == null or not available or not visible:
+		return
+	_loco_frame = Engine.get_physics_frames()
+	_loco_wanted = on
+	_right_free = right_arm_free
+	var flat := Vector3(world_velocity.x, 0.0, world_velocity.z)
+	var local: Vector3 = global_transform.basis.orthonormalized().inverse() * flat
+	_loco.set_input(flat.length(), Vector2(local.x, local.z), strafe, sprint)
+
+
+## Fade the locomotion layer in and out, step it, and make the base pose of this frame (null = the plain held pose).
+func _update_locomotion(delta: float) -> void:
+	var fresh: bool = Engine.get_physics_frames() - _loco_frame <= 2
+	var enabled: bool = _loco != null and locomotion_enabled
+	var on: bool = enabled and fresh and _loco_wanted
+	_loco_mix = move_toward(_loco_mix, 1.0 if on else 0.0, delta / maxf(LOCO_BLEND, 0.001))
+	var follow_goal: float = 1.0 if enabled and fresh and _right_free else 0.0
+	_right_follow = move_toward(_right_follow, follow_goal, delta / maxf(ARM_BLEND, 0.001))
+	if not enabled or (not on and _loco_mix <= 0.0):
+		_base_pose = null
+		return
+	_loco.step(delta, crouch_blend, scale.x)
+	var loco_pose: PlaceholderClips.Pose = _loco.pose(crouch_blend)
+	_base_pose = loco_pose if _loco_mix >= 1.0 else _blend(_static_pose(), loco_pose, _loco_mix)
 
 
 ## 3a-3c: called by `ActionState` every physics frame with the running action, its clock and how fast the clock runs.
@@ -351,6 +417,10 @@ func _on_visibility_changed() -> void:
 	_mix = 0.0
 	_xfade = 0.0
 	_was_clip = false
+	_loco_mix = 0.0
+	_right_follow = 0.0
+	_base_pose = null
+	_was_loco = false
 	if _blade_swapped:
 		_blade_swapped = false
 		set_blade_visible(false)
@@ -397,8 +467,13 @@ func _refresh() -> void:
 	show_pose(clip_pose if _mix >= 1.0 else _blend(held, clip_pose, _mix))
 
 
-## The standing pose, the crouched pose, or the blend between them while the crouch eases.
+## The base layer under the actions: the locomotion pose of this frame (3c-2a), or the held pose.
 func _held_pose() -> PlaceholderClips.Pose:
+	return _base_pose if _base_pose != null else _static_pose()
+
+
+## The standing pose, the crouched pose, or the blend between them while the crouch eases.
+func _static_pose() -> PlaceholderClips.Pose:
 	if crouch_blend <= 0.0:
 		return _stand
 	if crouch_blend >= 1.0:
