@@ -60,8 +60,12 @@ var _clip_upper: bool = false
 var _lower: PackedByteArray = PackedByteArray()
 var _pelvis: int = -1
 var _clip_length: float = 0.0
-var _clip_time: float = 0.0
-var _clip_rate: float = 1.0
+# 3a-3c-3: the part of the clip that plays (seconds into it): progress 0 is `_clip_from`, progress 1 is `_clip_to`.
+var _clip_from: float = 0.0
+var _clip_to: float = 0.0
+## Progress through the played part (0 to 1) and how fast it advances (per second).
+var _clip_p: float = 0.0
+var _clip_prate: float = 0.0
 var _since_tick: float = 0.0
 var _playing: bool = false
 var _was_clip: bool = false
@@ -161,7 +165,16 @@ func _arm_target(prefix: String, hand_world: Vector3) -> Vector3:
 ## Starts the action's clip when it changes (or the clock goes back), follows the clock, and stops the clip for an
 ## action with none. `clip` is the clip the action wants now (3a-3c-2: the state picks it; a ":upper" suffix plays the
 ## upper body only).
-func drive_clip(action: ActionData, time: float, rate: float, clip: StringName) -> void:
+func drive_clip(action: ActionData, time: float, rate: float, clip: StringName, from: float = 0.0, to: float = -1.0) -> void:
+	var span: float = maxf(action.duration, 0.001)
+	drive_clip_progress(action, time / span, rate / span, clip, from, to)
+
+
+## 3a-3c-3: the same, but the caller gives the progress through the played part directly (0 to 1) and how fast it
+## advances per second (a charge phase has no action clock). `from` and `to` are seconds into the clip: the part that
+## plays (`to` -1 = the clip's end). A thrust's release plays the second half of the charge clip this way.
+func drive_clip_progress(action: ActionData, progress: float, progress_rate: float, clip: StringName,
+		from: float = 0.0, to: float = -1.0) -> void:
 	if not available or not visible:
 		return
 	var full: String = String(clip) if clips_enabled else ""
@@ -178,16 +191,15 @@ func drive_clip(action: ActionData, time: float, rate: float, clip: StringName) 
 		if _playing:
 			stop_clip()
 		return
-	if action != _clip_action or not _playing or time < _clip_time - 0.001 or wanted != _clip_name or upper != _clip_upper:
-		_begin_clip(action, wanted, upper)
-	_clip_time = time
-	_clip_rate = rate
+	if action != _clip_action or not _playing or progress < _clip_p - 0.0005 or wanted != _clip_name or upper != _clip_upper:
+		_begin_clip(action, wanted, upper, from, to)
+	_clip_p = progress
+	_clip_prate = progress_rate
 	_since_tick = 0.0
 	# The hitbox follows the clip's blade (sampled at exactly this time), so the hit lands where the blade is drawn.
 	if _sword != null:
-		var progress: float = clampf(time / maxf(action.duration, 0.001), 0.0, 1.0)
 		_sword.hitbox_external = true
-		_sword.place_hitbox_global(_blade_global(_sample_clip(progress * _clip_length)))
+		_sword.place_hitbox_global(_blade_global(_clip_at(progress)))
 
 
 ## The clip's blade as a world transform: the blade root at the weapon joint, local -Z along the blade (the same
@@ -210,11 +222,11 @@ func _blade_global(pose: PlaceholderClips.Pose) -> Transform3D:
 func clip_status() -> String:
 	if not _playing or _clip_action == null:
 		return ""
-	var clock: float = _clip_time + _since_tick * _clip_rate
+	var progress: float = clampf(_clip_p + _since_tick * _clip_prate, 0.0, 1.0)
 	var span: float = maxf(_clip_action.duration, 0.001)
-	var progress: float = clampf(clock / span, 0.0, 1.0)
 	var frames: int = roundi(_clip_length * PlaceholderClips.FPS) + 1
-	return "clip %s%s  f%d/%d  t %.2f / %.2f" % [_clip_name, UPPER_SUFFIX if _clip_upper else "", roundi(progress * float(frames - 1)), frames, progress * span, span]
+	var frame: int = roundi(lerpf(_clip_from, _clip_to, progress) * PlaceholderClips.FPS)
+	return "clip %s%s  f%d/%d  t %.2f / %.2f" % [_clip_name, UPPER_SUFFIX if _clip_upper else "", frame, frames, progress * span, span]
 
 
 ## The running clip ends: the figure blends back to the held pose. Does nothing when no clip plays.
@@ -225,11 +237,13 @@ func stop_clip() -> void:
 		_sword.hitbox_external = false
 
 
-func _begin_clip(action: ActionData, clip_name: String, upper: bool) -> void:
+func _begin_clip(action: ActionData, clip_name: String, upper: bool, from: float, to: float) -> void:
 	_clip_action = action
 	_clip_name = clip_name
 	_clip_upper = upper
 	_clip_length = _clips.length_of(clip_name)
+	_clip_from = clampf(from, 0.0, _clip_length)
+	_clip_to = _clip_length if to < 0.0 else clampf(to, _clip_from, _clip_length)
 	_playing = true
 	if _mix > 0.0 and _last_pose != null:
 		_xfade_from = _last_pose  # a clip is showing (a chained attack): fade from it instead of jumping
@@ -237,9 +251,14 @@ func _begin_clip(action: ActionData, clip_name: String, upper: bool) -> void:
 	else:
 		_xfade_from = null
 		_xfade = 0.0
-	_clip_time = 0.0
+	_clip_p = 0.0
 	_since_tick = 0.0
-	_clip_pose = _sample_clip(0.0)
+	_clip_pose = _clip_at(0.0)
+
+
+## The played part of the clip at `progress` (0 to 1).
+func _clip_at(progress: float) -> PlaceholderClips.Pose:
+	return _sample_clip(lerpf(_clip_from, _clip_to, clampf(progress, 0.0, 1.0)))
 
 
 ## The playing clip at `time` seconds into it. An upper-body clip keeps the held pose's pelvis and legs, and the rest of
@@ -262,9 +281,8 @@ func _sample_clip(time: float) -> PlaceholderClips.Pose:
 func _step_clip(delta: float) -> void:
 	if _playing:
 		_since_tick = minf(_since_tick + delta, 1.0 / maxf(float(Engine.physics_ticks_per_second), 1.0))
-		var clock: float = _clip_time + _since_tick * _clip_rate
-		var progress: float = clampf(clock / maxf(_clip_action.duration, 0.001), 0.0, 1.0)
-		_clip_pose = _sample_clip(progress * _clip_length)
+		var progress: float = clampf(_clip_p + _since_tick * _clip_prate, 0.0, 1.0)
+		_clip_pose = _clip_at(progress)
 	var goal: float = 1.0 if _playing else 0.0
 	_mix = move_toward(_mix, goal, delta / maxf(blend_in if _playing else blend_out, 0.001))
 	if _xfade > 0.0:

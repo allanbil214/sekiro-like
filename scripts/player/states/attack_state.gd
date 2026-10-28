@@ -37,6 +37,18 @@ enum Phase { NORMAL, WAITING, CHARGING }
 ## many seconds for it to be released (still a normal slash) before charging. 0 = decide at once.
 @export var hold_extra_time: float = 0.0
 
+## 3a-3c-3 PLACEHOLDER(ER clip): the seconds the charging figure takes to pull the blade back (the first part of the
+## charge clip); a shorter charge pulls back only that far.
+@export var charge_pullback_time: float = 0.4
+
+## 3a-3c-3 PLACEHOLDER(ER clip): the right-handed ground thrust plays the charged heavy clip: its pull-back while the
+## button is held (clip start to `CHARGE_HOLD_TIME`), then, on release, the rest of it from there (the stab and the
+## recovery). The left thrust of the zigzag plays the same clip, not mirrored (the user's own left-handed animation can
+## replace it later); the code sword's mirror is only used while no clip plays. Every other hold keeps the code sword.
+const CHARGE_CLIP: StringName = &"heavy1_charge"
+## Where the clip's pull-back is complete (frame 27 of the charge clip at 30 fps).
+const CHARGE_HOLD_TIME: float = 27.0 / 30.0
+
 ## While charging, the action clock is frozen this far (s) before the hit window opens, so
 ## cancels (which are blocked during the hit window) stay allowed.
 const FREEZE_MARGIN: float = 0.001
@@ -262,6 +274,28 @@ func _on_action_enter(_previous: StringName) -> void:
 ## 3a-3c: the clock stands still while waiting or charging, so the clip does too.
 func _clip_rate() -> float:
 	return 0.0 if _phase != Phase.NORMAL else super()
+
+
+## 3a-3c-3: is this the weapon's ground thrust (the hold in progress or the fired action)? Only it plays the clip, on
+## either side; the crouch upward slash, the dash and slide thrusts and the iai keep the code sword.
+func _is_clip_thrust(action_to_check: ActionData) -> bool:
+	return player.weapon != null and not _iai_hold and action_to_check != null \
+			and action_to_check == player.weapon.thrust and action_to_check.placeholder_clip != &""
+
+
+## While charging the clip is the pull-back, driven by the charge time (the action clock is parked).
+func _drive_clip() -> void:
+	if _phase == Phase.CHARGING and _is_clip_thrust(_hold_action):
+		var span: float = maxf(charge_pullback_time, 0.001)
+		var progress: float = clampf(_charge_time / span, 0.0, 1.0)
+		player.figure.drive_clip_progress(action, progress, 0.0 if progress >= 1.0 else 1.0 / span, CHARGE_CLIP, 0.0, CHARGE_HOLD_TIME)
+		return
+	super()
+
+
+## The fired thrust plays the charge clip from where the pull-back ended.
+func _clip_from() -> float:
+	return CHARGE_HOLD_TIME if _is_thrust and _is_clip_thrust(action) else 0.0
 
 
 func _on_action_finished() -> void:

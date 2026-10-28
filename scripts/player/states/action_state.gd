@@ -52,11 +52,22 @@ func physics_update(delta: float) -> void:
 	if machine.current != self:
 		return
 	# 3a-3c: the figure plays this action's clip (if it has one) against the action clock.
-	player.figure.drive_clip(action, action_time, _clip_rate(), _clip_name())
+	_drive_clip()
 	_update_hit()
 	_apply_action_movement(delta)
 	if action_time >= action.duration:
 		_on_action_finished()
+
+
+## 3a-3c-3: shows this frame's clip on the figure. A subclass with a phase that has no action clock (the thrust's
+## charge) drives the figure itself.
+func _drive_clip() -> void:
+	player.figure.drive_clip(action, action_time, _clip_rate(), _clip_name(), _clip_from())
+
+
+## 3a-3c-3: seconds into the clip where this action's clip starts (the thrust plays only the second half of its clip).
+func _clip_from() -> float:
+	return 0.0
 
 
 ## 3a-3c-2: the clip the figure plays for this action. The action's `placeholder_clip` by default; a subclass picks another
