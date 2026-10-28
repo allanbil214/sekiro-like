@@ -28,9 +28,9 @@ const HEADROOM_RADIUS: float = 0.38
 @export var turn_speed: float = 18.0
 
 @export_group("Jump")
-## 9.88 with gravity 2.0, a 1.5x fall and a 1.5x apex band = the same ~2.46 m jump as 8.5 with 1.5 used
-## to give, in about 0.88 s. If you change one of these, change the others to keep the height.
-@export var jump_velocity: float = 9.88
+## 10.08 with gravity 2.0 and a 2.5x apex band of 3 m/s = the same ~2.46 m jump as before (9.88 with a 1.5x band
+## of 2 m/s). If you change one of these (or the apex values below), change the others to keep the height.
+@export var jump_velocity: float = 10.08
 @export var gravity_multiplier: float = 2.0
 ## Gravity multiple while falling (1.5 = a 50% faster descent than the climb).
 @export var fall_gravity_factor: float = 1.5
@@ -40,10 +40,10 @@ const HEADROOM_RADIUS: float = 0.38
 @export var land_dust_speed: float = 5.0
 ## Off: no red mist or flecks on flesh hits (Step 11b; the deathblow keeps its red sparks).
 @export var show_blood: bool = true
-## Near the top of a jump (vertical speed within +/- this many m/s of zero) gravity is multiplied by
-## apex_gravity_factor, so there is no hang at the peak.
-@export var apex_speed_band: float = 2.0
-@export var apex_gravity_factor: float = 1.5
+## Near the top of a jump (rising, vertical speed between zero and this many m/s) gravity is multiplied by
+## apex_gravity_factor, so there is no hang at the peak. It does not touch the fall (that is fall_gravity_factor).
+@export var apex_speed_band: float = 3.0
+@export var apex_gravity_factor: float = 2.5
 @export var coyote_time: float = 0.1
 ## In the air your horizontal speed is kept; the move keys only add a push this strong (m/s^2) that can
 ## steer it or fight it (holding back slows you, left and right curve it) but never takes you above
@@ -1140,7 +1140,7 @@ func apply_gravity(delta: float) -> void:
 ## multiply this, so their factors keep their meaning.
 func get_gravity_now() -> Vector3:
 	var factor := 1.0
-	if velocity.y <= apex_speed_band:
+	if velocity.y >= 0.0 and velocity.y <= apex_speed_band:
 		factor = apex_gravity_factor
 	if velocity.y < 0.0:
 		factor = maxf(factor, fall_gravity_factor)

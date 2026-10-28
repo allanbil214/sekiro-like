@@ -46,6 +46,14 @@ func add_push(delta: float) -> Vector3:
 ## Standing on an enemy's head: after a jump-over the landing is the counter and bounces you up (a
 ## helm splitter from there), otherwise you are pushed off sideways. Uses the same easing push as knockback.
 func update_enemy_head() -> void:
+	# 3a-3c-4 addendum: a falling player over the wide head zone of an enemy whose sweep armed the jump-over lands the
+	# counter even when the capsule's small top is missed.
+	if player.state_machine.current is AirState and player.velocity.y <= 0.0:
+		for node: Node in Enemies.all():
+			var swept := node as Enemy
+			if swept != null and swept.try_head_stomp(player.global_position):
+				player.velocity.y = player.head_bounce_velocity
+				return
 	for i in player.get_slide_collision_count():
 		var collision := player.get_slide_collision(i)
 		var body := collision.get_collider() as Node3D

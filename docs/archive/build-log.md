@@ -1658,3 +1658,18 @@ Done and tested by the user. Two parts: the hug can now start on low walls, and 
 - **Files:** `enemy.gd` (`_drive_figure_clip()`, `_drive_charge_clip()`, a guard at the top of `_physics_process()` that stops the clip outside ATTACK and PERILOUS or when dead, held or stunned), `player_figure.gd` (`drive_clip_synced()`, `is_clip_playing()`), `action_data.gd`, `action_validator.gd` (rules for the hit anchors), `enemy_sweep.tres` (three lines), `convert_clips.py` and the regenerated `assets/placeholder/player_clips.bin` (28 clips).
 - **Not done:** the grab, deflect poses and the dummy stay code-drawn; no hitstop handling for the enemy clip clock; the collision capsule and hurtbox do not follow the sweep's crouch (the user raised it: the head-bounce landing spot is higher than the crouched head).
 - **Tested by the user:** works great.
+
+### Step 3a-3c-4 addendum: a wider head zone for the jump-over (2026-10-28)
+- **Why:** the user asked for the sweep's head to be easier to land on for the jump-over counter (the "mikiri" on the head). The stomp only fired when the player's body touched the capsule's small rounded top (radius 0.4), so a jump-over often slid off. Not a lower capsule: the user clarified it is a wider head collision, and chose the capsule's top as the zone height (not the crouched visual head).
+- **Built:** `Enemy.try_head_stomp(point)` (`enemy.gd`): while a jump-over is armed (`_head_bounce_time`, set only by a sweep with the player airborne), a falling player whose feet are within `EnemyAIData.head_bounce_radius` (new, default 1.0 m, 0 = off) of the head on the flat, and between `HEAD_ZONE_DEPTH` (0.4 m) below and `HEAD_ZONE_RISE` (0.2 m) above the capsule's top (origin + `FIGURE_HEIGHT` 1.8), runs `on_stomped()`: the same counter (sweep cut, posture, stun, the player bounces with `head_bounce_velocity`). `PlayerForcedMovement.update_enemy_head()` asks every enemy first, only for an airborne, falling player. Outside an armed sweep nothing changes; the capsule, the hurtbox and the old stomp and slide-off are untouched.
+- **Files:** `scripts/enemy/enemy.gd`, `scripts/player/player_forced_movement.gd`, `scripts/resources/enemy_ai_data.gd`. No `.tres` or editor change (tune `head_bounce_radius` per AI preset if wanted).
+- **Not done:** the zone does not follow the crouched visual head (it sits at standing head height); no visible marker for the zone.
+
+### Step 3a-3c-4 addendum: the wide head zone, tested (2026-10-28)
+- **Tested by the user:** works. No code or data change since the build entry above. Still not done: the zone does not follow the crouched visual head, and it has no visible marker.
+
+### Tweak: snappier jump apex, same height (2026-10-28)
+- **Why:** the user found the float at the top of the jump too long and wanted the same height (about 2.46 m).
+- **Built:** `Player.get_gravity_now()` applies the apex factor only while rising (0 to `apex_speed_band`). Before, `velocity.y <= apex_speed_band` also covered every moment of a fall, so a higher apex factor would have sped up the whole descent. Defaults changed in `player.gd`: `jump_velocity` 9.88 to 10.08, `apex_speed_band` 2.0 to 3.0, `apex_gravity_factor` 1.5 to 2.5. `player.tscn` has no overrides for these, so the defaults apply. Height unchanged (2.456 m), time to the top 0.47 s to about 0.42 s, fall unchanged.
+- **Files:** `scripts/player/player.gd` only. Wall jumps rise about 2% higher (they use `jump_velocity`).
+- **Tested by the user:** felt nice. Not done: nothing else tuned in locomotion (3c has the rest).

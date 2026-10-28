@@ -538,6 +538,23 @@ func on_stomped() -> bool:
 	return true
 
 
+## 3a-3c-4 addendum: while a jump-over is armed (`_head_bounce_time`), a falling player over a wide zone at the top of the head
+## (`EnemyAIData.head_bounce_radius` around the head, from `HEAD_ZONE_DEPTH` below the capsule's top to `HEAD_ZONE_RISE`
+## above it) counts as landing on the head: the same counter as `on_stomped()`. `point` is the player's feet. Returns true
+## when the counter happened (the player bounces). Never true outside an armed sweep.
+func try_head_stomp(point: Vector3) -> bool:
+	if _head_bounce_time <= 0.0 or combatant.dead or ai == null or ai.head_bounce_radius <= 0.0:
+		return false
+	var flat := point - global_position
+	flat.y = 0.0
+	if flat.length() > ai.head_bounce_radius:
+		return false
+	var top := global_position.y + FIGURE_HEIGHT
+	if point.y < top - HEAD_ZONE_DEPTH or point.y > top + HEAD_ZONE_RISE:
+		return false
+	return on_stomped()
+
+
 # --- Phases -----------------------------------------------------------------------------------
 
 func _update_chase(delta: float, to_player: Vector3, distance: float, has_target: bool) -> void:
@@ -1231,6 +1248,10 @@ func place_body(at: Vector3, yaw: float, fall: bool, body_scale: float = 1.0) ->
 const LYING_MIDDLE: Vector3 = Vector3(0.0, 0.4, 0.9)
 ## PLACEHOLDER: the height (m) the mannequin is scaled to (the same as the enemy's collision capsule).
 const FIGURE_HEIGHT: float = 1.8
+## 3a-3c-4 addendum: the wide head zone reaches this far (m) below and above the capsule's top (the feet of a fast faller
+## may pass the top between two physics frames).
+const HEAD_ZONE_DEPTH: float = 0.4
+const HEAD_ZONE_RISE: float = 0.2
 
 
 func lying_root_for(center: Vector3, body_basis: Basis) -> Vector3:

@@ -210,6 +210,9 @@ extends Resource
 ## After a jump-over (jumping while the sweep's symbol shows), landing on this enemy's head within this
 ## long (s) is the counter: the sweep is cut, posture added, the enemy stunned, and the player bounces.
 @export var head_bounce_window: float = 1.5
+## 3a-3c-4 addendum: while that jump-over is armed, the radius (m) of a wide stomp zone at the top of the head, so a falling
+## player does not have to hit the capsule's small rounded top. 0 = only the capsule's own top.
+@export var head_bounce_radius: float = 1.0
 
 @export_group("Victory screen (Step 11d)")
 ## Shown by the VictoryScreen when this enemy is a boss (Enemy.boss) and its final deathblow lands.
