@@ -12,6 +12,9 @@ extends MannequinFigure
 ## blade included: the code-drawn blade is hidden and the figure's own blade shown, the arm solving and the body twist
 ## pause, and the figure blends in from and back out to the held pose (`blend_in`, `blend_out`). The hitbox, the trail
 ## and the clock are untouched. F1 "Clips drive the figure" (`clips_enabled`) turns it off.
+## 3a-3c-2: a clip name ending in ":upper" (`combo_1:upper`) plays only the clip's upper body: every joint above the pelvis
+## comes from the clip, shifted so the clip's pelvis sits on the held pose's pelvis, and the legs and the pelvis keep the
+## held pose (the air attacks use it: idle legs, the swing of a ground attack). The hitbox follows the same shifted blade.
 ## The collision capsule and the hurtbox are never touched. If the clip file is missing, `available` stays false and the
 ## Player keeps the capsule.
 
@@ -29,6 +32,8 @@ static var clips_enabled: bool = true
 
 const STAND_CLIP: String = "idle"
 const CROUCH_CLIP: String = "crouch_idle"
+## The suffix of a clip name that plays the upper body only.
+const UPPER_SUFFIX: String = ":upper"
 
 ## True once the clips are loaded and the figure can be shown.
 var available: bool = false
@@ -50,6 +55,10 @@ var _arms_driven: bool = false
 # 3a-3c: the clip being played.
 var _clip_action: ActionData
 var _clip_name: String = ""
+# 3a-3c-2: the playing clip is upper-body only; which joints are legs or pelvis (held) and where the pelvis is.
+var _clip_upper: bool = false
+var _lower: PackedByteArray = PackedByteArray()
+var _pelvis: int = -1
 var _clip_length: float = 0.0
 var _clip_time: float = 0.0
 var _clip_rate: float = 1.0
@@ -77,6 +86,13 @@ func _ready() -> void:
 	setup(clips)
 	_stand = clips.sample(STAND_CLIP, 0.0)
 	_crouch = clips.sample(CROUCH_CLIP, 0.0)
+	_pelvis = clips.joint_index("Pelvis")
+	_lower.resize(clips.joint_names.size())
+	for i in clips.joint_names.size():
+		var joint: String = clips.joint_names[i]
+		var is_lower: bool = joint == "Pelvis" or joint.contains("Thigh") or joint.contains("Calf") \
+				or joint.contains("Foot") or joint.contains("Toe")
+		_lower[i] = 1 if is_lower else 0
 	# Which side of the figure is the right arm (+X): the file's names should say, but check.
 	var right_x: float = _stand.points[clips.joint_index("R_UpperArm")].x
 	var left_x: float = _stand.points[clips.joint_index("L_UpperArm")].x
@@ -143,11 +159,14 @@ func _arm_target(prefix: String, hand_world: Vector3) -> Vector3:
 
 ## 3a-3c: called by `ActionState` every physics frame with the running action, its clock and how fast the clock runs.
 ## Starts the action's clip when it changes (or the clock goes back), follows the clock, and stops the clip for an
-## action with none.
-func drive_clip(action: ActionData, time: float, rate: float) -> void:
+## action with none. `clip` is the clip the action wants now (3a-3c-2: the state picks it; a ":upper" suffix plays the
+## upper body only).
+func drive_clip(action: ActionData, time: float, rate: float, clip: StringName) -> void:
 	if not available or not visible:
 		return
-	var wanted: String = String(action.placeholder_clip) if clips_enabled else ""
+	var full: String = String(clip) if clips_enabled else ""
+	var upper: bool = full.ends_with(UPPER_SUFFIX)
+	var wanted: String = full.trim_suffix(UPPER_SUFFIX) if upper else full
 	if wanted.is_empty():
 		if _playing:
 			stop_clip()
@@ -159,8 +178,8 @@ func drive_clip(action: ActionData, time: float, rate: float) -> void:
 		if _playing:
 			stop_clip()
 		return
-	if action != _clip_action or not _playing or time < _clip_time - 0.001:
-		_begin_clip(action, wanted)
+	if action != _clip_action or not _playing or time < _clip_time - 0.001 or wanted != _clip_name or upper != _clip_upper:
+		_begin_clip(action, wanted, upper)
 	_clip_time = time
 	_clip_rate = rate
 	_since_tick = 0.0
@@ -168,7 +187,7 @@ func drive_clip(action: ActionData, time: float, rate: float) -> void:
 	if _sword != null:
 		var progress: float = clampf(time / maxf(action.duration, 0.001), 0.0, 1.0)
 		_sword.hitbox_external = true
-		_sword.place_hitbox_global(_blade_global(_clips.sample(wanted, progress * _clip_length)))
+		_sword.place_hitbox_global(_blade_global(_sample_clip(progress * _clip_length)))
 
 
 ## The clip's blade as a world transform: the blade root at the weapon joint, local -Z along the blade (the same
@@ -195,7 +214,7 @@ func clip_status() -> String:
 	var span: float = maxf(_clip_action.duration, 0.001)
 	var progress: float = clampf(clock / span, 0.0, 1.0)
 	var frames: int = roundi(_clip_length * PlaceholderClips.FPS) + 1
-	return "clip %s  f%d/%d  t %.2f / %.2f" % [_clip_name, roundi(progress * float(frames - 1)), frames, progress * span, span]
+	return "clip %s%s  f%d/%d  t %.2f / %.2f" % [_clip_name, UPPER_SUFFIX if _clip_upper else "", roundi(progress * float(frames - 1)), frames, progress * span, span]
 
 
 ## The running clip ends: the figure blends back to the held pose. Does nothing when no clip plays.
@@ -206,9 +225,10 @@ func stop_clip() -> void:
 		_sword.hitbox_external = false
 
 
-func _begin_clip(action: ActionData, clip_name: String) -> void:
+func _begin_clip(action: ActionData, clip_name: String, upper: bool) -> void:
 	_clip_action = action
 	_clip_name = clip_name
+	_clip_upper = upper
 	_clip_length = _clips.length_of(clip_name)
 	_playing = true
 	if _mix > 0.0 and _last_pose != null:
@@ -219,7 +239,23 @@ func _begin_clip(action: ActionData, clip_name: String) -> void:
 		_xfade = 0.0
 	_clip_time = 0.0
 	_since_tick = 0.0
-	_clip_pose = _clips.sample(clip_name, 0.0)
+	_clip_pose = _sample_clip(0.0)
+
+
+## The playing clip at `time` seconds into it. An upper-body clip keeps the held pose's pelvis and legs, and the rest of
+## the clip is moved by the same offset the pelvis was (so the torso stays on the hips, whatever the clip's step does).
+func _sample_clip(time: float) -> PlaceholderClips.Pose:
+	var pose: PlaceholderClips.Pose = _clips.sample(_clip_name, time)
+	if not _clip_upper or pose == null or _pelvis < 0:
+		return pose
+	var held: PlaceholderClips.Pose = _held_pose()
+	var shift: Vector3 = held.points[_pelvis] - pose.points[_pelvis]
+	for i in pose.points.size():
+		if _lower[i] == 1:
+			pose.points[i] = held.points[i]
+		else:
+			pose.points[i] += shift
+	return pose
 
 
 ## Advance the clip between physics frames (the clock is given once per physics frame), and the blends.
@@ -228,7 +264,7 @@ func _step_clip(delta: float) -> void:
 		_since_tick = minf(_since_tick + delta, 1.0 / maxf(float(Engine.physics_ticks_per_second), 1.0))
 		var clock: float = _clip_time + _since_tick * _clip_rate
 		var progress: float = clampf(clock / maxf(_clip_action.duration, 0.001), 0.0, 1.0)
-		_clip_pose = _clips.sample(_clip_name, progress * _clip_length)
+		_clip_pose = _sample_clip(progress * _clip_length)
 	var goal: float = 1.0 if _playing else 0.0
 	_mix = move_toward(_mix, goal, delta / maxf(blend_in if _playing else blend_out, 0.001))
 	if _xfade > 0.0:

@@ -14,3 +14,5 @@ swing_windup = Vector3(6, 0.3, 1)
 swing_end = Vector3(6, 0.3, 1)
 swing_follow = Vector3(4.5, 0.8, 0.2)
 twist_scale = 0.25
+placeholder_source = 2
+placeholder_clip = &"air_heavy_land"

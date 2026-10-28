@@ -5,9 +5,9 @@
 [resource]
 script = ExtResource("1_actiondata")
 animation = &"helm_splitter"
-duration = 1.0
-locked_until = 0.4
-active_hit = Vector2(0.15, 0.4)
+duration = 0.32
+locked_until = 0.192
+active_hit = Vector2(0.15, 0.192)
 swing_windup = Vector3(12, 1, -0.3)
 swing_end = Vector3(6, 0.3, 1)
 swing_follow = Vector3(6, 0.3, 1)
@@ -15,3 +15,5 @@ twist_scale = 0.25
 damage = 25.0
 posture_damage = 38.0
 hitbox_length_scale = 1.5
+placeholder_source = 2
+placeholder_clip = &"air_heavy"

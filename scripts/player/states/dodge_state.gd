@@ -7,6 +7,10 @@ extends ActionState
 
 @export var backstep_speed_multiplier: float = 0.7
 
+## 3a-3c-2 PLACEHOLDER(ER clip): the clip picked for this dodge (`roll_front`, `roll_back`, `roll_left`, `roll_right` or
+## `backstep`), see `_clip_name()`.
+var _clip: StringName = &"roll_front"
+
 
 func _on_action_enter(_previous: StringName) -> void:
 	Sfx.play(player.get_tree(), Sfx.Id.DODGE)
@@ -15,6 +19,7 @@ func _on_action_enter(_previous: StringName) -> void:
 		_move_dir = input_dir.normalized()
 		_move_speed_multiplier = 1.0
 		player.snap_facing_lock_aware(_move_dir)
+		_clip = _roll_clip()
 	else:
 		var back := -player.get_facing_direction()
 		var lock_dir := player.get_lock_direction()
@@ -24,6 +29,24 @@ func _on_action_enter(_previous: StringName) -> void:
 		back.y = 0.0
 		_move_dir = back.normalized()
 		_move_speed_multiplier = backstep_speed_multiplier
+		_clip = &"backstep"
+
+
+## 3a-3c-2: the roll clip for the dodge direction relative to where the body faces (after the facing snap). Free-moving
+## the body faces the dodge, so it is always `roll_front`; locked on it keeps facing the target, so left, right and back
+## can happen. Within 45 degrees of the facing is front, beyond 135 is back.
+func _roll_clip() -> StringName:
+	var angle: float = rad_to_deg(player.get_facing_direction().signed_angle_to(_move_dir, Vector3.UP))
+	if absf(angle) <= 45.0:
+		return &"roll_front"
+	if absf(angle) >= 135.0:
+		return &"roll_back"
+	# A positive angle (counterclockwise seen from above) is to the figure's left.
+	return &"roll_left" if angle > 0.0 else &"roll_right"
+
+
+func _clip_name() -> StringName:
+	return _clip if action.placeholder_clip != &"" else &""
 
 
 ## Each input has its own time when the dodge's 3b-1 fields are set; an input with none set follows the old

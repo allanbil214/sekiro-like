@@ -85,6 +85,14 @@ func _slows_active_window() -> bool:
 	return false
 
 
+## 3a-3c-2: while the dive holds the stab (the clock is clamped), the clip stands still on its last pose instead of
+## creeping on between physics frames.
+func _clip_rate() -> float:
+	if _phase == Phase.DIVE and action_time >= action.active_hit.y - HOLD_MARGIN * 1.5:
+		return 0.0
+	return super()
+
+
 ## The helm splitter's blade glows past its tip while the hit window is open (Step 11e).
 func _shows_extension() -> bool:
 	return true

@@ -13,3 +13,5 @@ iframes = Vector2(0.05, 0.28)
 move_speed = 11.0
 move_window = Vector2(0, 0.3)
 move_end_factor = 0.3
+placeholder_source = 2
+placeholder_clip = &"roll_front"
