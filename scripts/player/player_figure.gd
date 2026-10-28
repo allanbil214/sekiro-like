@@ -118,6 +118,7 @@ func bind_arms(sword: SwordVisual, heal: HealArm, reach: ReachArms) -> void:
 func _process(delta: float) -> void:
 	if not available or not visible:
 		return
+	delta *= Hitstop.fighter_scale(owner)  # 3c-1: the clip's blends and its step between physics frames follow the fighter's freeze
 	var clip_active: bool = _playing or _mix > 0.0
 	if clip_active:
 		_step_clip(delta)

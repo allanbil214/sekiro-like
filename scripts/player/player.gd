@@ -553,10 +553,13 @@ func _ready() -> void:
 ## The hit wobble: shift and tilt the Visual away from the hit, then ease back. The yaw (facing) is
 ## left alone; only the position and the tilt are set here.
 func _process(delta: float) -> void:
-	_reaction.update(delta)
+	_reaction.update(delta * Hitstop.fighter_scale(self))
 
 
 func _physics_process(delta: float) -> void:
+	# 3c-1: a hit freezes this fighter (its clock runs at a small share) while the rest of the game keeps going.
+	var hit_scale := Hitstop.fighter_scale(self)
+	delta *= hit_scale
 	input_buffer.tick(delta)
 	_noise_spike_left = maxf(_noise_spike_left - delta, 0.0)
 	if _guard_lockout > 0.0:
@@ -589,7 +592,7 @@ func _physics_process(delta: float) -> void:
 	var push := _forced.add_push(delta)
 	var was_airborne := not is_on_floor()
 	var fall_speed := -velocity.y
-	move_and_slide()
+	Hitstop.slide(self, hit_scale)
 	if was_airborne and is_on_floor():
 		if fall_speed >= hard_land_speed:
 			Fx.play(get_tree(), Fx.Kind.HARD_LAND, global_position)
@@ -1498,7 +1501,8 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	if hang == null:
 		apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
 	notify_combat()
-	Hitstop.request(get_tree(), hit.hitstop)
+	Hitstop.freeze(self, hit.hitstop)
+	Hitstop.freeze(hit.attacker, hit.hitstop)
 	var fx_kind := Fx.Kind.HURT
 	if hit.grab:
 		fx_kind = Fx.Kind.GRAB
@@ -1543,7 +1547,8 @@ func _on_deflected(hit: HitData) -> void:
 
 func _guard_reaction(hit: HitData, deflect: bool) -> void:
 	notify_combat()
-	Hitstop.request(get_tree(), hit.hitstop * guard_hitstop_factor)
+	Hitstop.freeze(self, hit.hitstop * guard_hitstop_factor)
+	Hitstop.freeze(hit.attacker, hit.hitstop * guard_hitstop_factor)
 	var fx_kind := Fx.Kind.GUARD
 	if deflect:
 		fx_kind = Fx.Kind.DEFLECT_PERILOUS if hit.perilous else Fx.Kind.DEFLECT
@@ -2029,10 +2034,12 @@ func _try_aim() -> void:
 		state_machine.transition_to(StateName.AIM)
 
 
-## One of the player's attacks connected: restart the auto-sheathe timer and request the hitstop.
+## One of the player's attacks connected: restart the auto-sheathe timer and freeze the player and the fighter it hit
+## (3c-1; the other fighters hit by the same swing are frozen by `ActionState`).
 func on_hit_landed(hit: HitData) -> void:
 	notify_combat()
-	Hitstop.request(get_tree(), hit.hitstop)
+	Hitstop.freeze(self, hit.hitstop)
+	Hitstop.freeze(hit.target, hit.hitstop)
 	var fx_kind := Fx.Kind.HIT_LANDED
 	if hit.outcome == HitData.Outcome.DEFLECT:
 		fx_kind = Fx.Kind.DEFLECT

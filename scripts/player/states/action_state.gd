@@ -202,6 +202,8 @@ func _update_hit() -> void:
 	var landed := hitbox.sweep(template)
 	if not landed.is_empty():
 		player.on_hit_landed(landed[0])
+		for extra: HitData in landed.slice(1):
+			Hitstop.freeze(extra.target, extra.hitstop)
 
 
 func _end_hit() -> void:

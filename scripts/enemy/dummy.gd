@@ -124,6 +124,7 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	delta *= Hitstop.fighter_scale(self)  # 3c-1: a hit freezes the dummy's clock for a moment
 	_update_boss_engaged()
 	if combatant.dead:
 		_end_attack()
@@ -181,6 +182,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	delta *= Hitstop.fighter_scale(self)  # 3c-1
 	if _recoil <= 0.0:
 		return
 	_recoil = maxf(0.0, _recoil - delta / maxf(recoil_time, 0.001))

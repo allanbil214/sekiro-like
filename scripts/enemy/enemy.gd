@@ -329,6 +329,9 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# 3c-1: a hit freezes this fighter (its clock runs at a small share) while the rest of the game keeps going.
+	var hit_scale := Hitstop.fighter_scale(self)
+	delta *= hit_scale
 	# 3a-3c-4: a clip only plays during a swing; any other phase (or a dead, held or stunned body) ends it.
 	if figure.is_clip_playing() and (combatant.dead or _held or combatant.deathblow_open \
 			or (phase != Phase.ATTACK and phase != Phase.PERILOUS)):
@@ -364,12 +367,12 @@ func _physics_process(delta: float) -> void:
 	if combatant.deathblow_open:
 		# Stunned: no swings, no turning, until the window closes.
 		_decelerate(delta)
-		move_and_slide()
+		Hitstop.slide(self, hit_scale)
 		return
 	if _navigation != null and _navigation.is_crossing():
 		# Item 12b-1a: a drop link is being crossed; it overrides the AI until the enemy has landed and recovered.
 		_navigation.tick_crossing(delta)
-		move_and_slide()
+		Hitstop.slide(self, hit_scale)
 		return
 	_find_player()
 	if _awareness != null:
@@ -428,10 +431,11 @@ func _physics_process(delta: float) -> void:
 			if _phase_timer <= 0.0:
 				_think_timer = 0.3
 				_set_phase(Phase.CHASE)
-	move_and_slide()
+	Hitstop.slide(self, hit_scale)
 
 
 func _process(delta: float) -> void:
+	delta *= Hitstop.fighter_scale(self)  # 3c-1
 	if _awareness != null:
 		_awareness.draw_debug_cones()
 	if _is_corpse or _unconscious:

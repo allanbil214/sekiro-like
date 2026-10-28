@@ -11,6 +11,8 @@ var posture_damage: float = 0.0
 ## Seconds of hitstop requested when the hit connects.
 var hitstop: float = 0.0
 var attacker: Node
+## 3c-1: the fighter that was hit (the Hurtbox's parent), set by `Hitbox.sweep()`; empty for a thrown item. Hitstop freezes it.
+var target: Node
 var action: ActionData
 ## Horizontal direction from the attacker to the target (for recoil, later knockback).
 var direction: Vector3 = Vector3.FORWARD
@@ -48,6 +50,7 @@ func copy() -> HitData:
 	other.posture_damage = posture_damage
 	other.hitstop = hitstop
 	other.attacker = attacker
+	other.target = target
 	other.action = action
 	other.guardable = guardable
 	other.deflectable = deflectable

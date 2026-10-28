@@ -176,6 +176,7 @@ func sweep(template: HitData) -> Array[HitData]:
 			_hit_set.append(hurtbox)
 			var hit := template.copy()
 			hit.point = params.transform.origin
+			hit.target = hurtbox.get_parent()
 			var away := hurtbox.global_position
 			if template.attacker is Node3D:
 				away -= (template.attacker as Node3D).global_position

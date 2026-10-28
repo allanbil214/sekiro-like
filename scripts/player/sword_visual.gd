@@ -587,6 +587,7 @@ func end_combo() -> void:
 
 
 func _process(delta: float) -> void:
+	delta *= Hitstop.fighter_scale(owner)  # 3c-1: the sword's own motion freezes with the fighter
 	if _wobble_left > 0.0:
 		_wobble_left = maxf(_wobble_left - delta, 0.0)
 	if _flash > 0.0:
