@@ -49,6 +49,11 @@ func physics_update(delta: float) -> void:
 	player.face_input(delta)
 	if player.is_on_floor() and player.velocity.y <= 0.0:
 		player.reset_air_actions()
+		# 3c-3a: a landing of a real fall gets its own short action (clip and lockout); a bump or a step does not.
+		var land := machine.get_state(StateName.LAND) as LandState
+		if land != null and land.begin(player.last_fall_height, player.last_land_jumped,
+				Vector2(player.velocity.x, player.velocity.z).length()):
+			return
 		machine.transition_to(StateName.LOCOMOTION)
 
 

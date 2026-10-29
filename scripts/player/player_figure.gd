@@ -47,6 +47,8 @@ const UPPER_SUFFIX: String = ":upper"
 ## hand and the code-drawn hand.
 const LOCO_BLEND: float = 0.15
 const ARM_BLEND: float = 0.12
+## 3c-3a: seconds the air pose fades in and out against the ground pose.
+const AIR_BLEND: float = 0.08
 
 ## True once the clips are loaded and the figure can be shown.
 var available: bool = false
@@ -96,7 +98,13 @@ var _loco: FigureLocomotion
 var _loco_frame: int = -100
 var _loco_wanted: bool = false
 var _loco_mix: float = 0.0
+## 3c-3a: the physics frame of the last `drive_air()`, whether the body is airborne, and the air pose's blend weight.
+var _air_frame: int = -100
+var _air_wanted: bool = false
+var _air_mix: float = 0.0
 var _base_pose: PlaceholderClips.Pose
+## The first air clip the library lacks ("" = none), which switches the air layer off.
+var _air_missing: String = ""
 var _was_loco: bool = false
 var _right_free: bool = false
 var _right_follow: float = 0.0
@@ -116,6 +124,10 @@ func _ready() -> void:
 	var missing: String = FigureLocomotion.missing_clip(clips)
 	if missing.is_empty():
 		_loco = FigureLocomotion.new(clips)
+		var missing_air: String = FigureLocomotion.missing_air_clip(clips)
+		if not missing_air.is_empty():
+			_air_missing = missing_air
+			push_warning("[PlayerFigure] air clip '%s' is missing: no jump or fall clips (run tools/placeholder/convert_clips.py)" % missing_air)
 	elif not _loco_warned:
 		_loco_warned = true
 		push_warning("[PlayerFigure] locomotion clip '%s' is missing: no locomotion clips (run tools/placeholder/convert_clips.py)" % missing)
@@ -212,19 +224,38 @@ func drive_locomotion(on: bool, world_velocity: Vector3, strafe: bool, sprint: b
 	_loco.set_input(flat.length(), Vector2(local.x, local.z), strafe, sprint)
 
 
+## 3c-3a: called by the Player and by the Enemy once per physics frame. `on` = the body is airborne (jumping, falling, in an
+## air action); the figure then shows the jump, the fall start and the airborne loop as its base layer.
+func drive_air(on: bool, world_velocity: Vector3) -> void:
+	if _loco == null or not available or not visible or not _air_missing.is_empty():
+		return
+	_air_frame = Engine.get_physics_frames()
+	_air_wanted = on
+	_loco.set_air(on, world_velocity.y, Vector2(world_velocity.x, world_velocity.z).length())
+
+
 ## Fade the locomotion layer in and out, step it, and make the base pose of this frame (null = the plain held pose).
 func _update_locomotion(delta: float) -> void:
 	var fresh: bool = Engine.get_physics_frames() - _loco_frame <= 2
 	var enabled: bool = _loco != null and locomotion_enabled
 	var on: bool = enabled and fresh and _loco_wanted
-	_loco_mix = move_toward(_loco_mix, 1.0 if on else 0.0, delta / maxf(LOCO_BLEND, 0.001))
+	var air_fresh: bool = Engine.get_physics_frames() - _air_frame <= 2
+	if not air_fresh and _loco != null:
+		_loco.reset_air()
+	var air_live: bool = enabled and air_fresh and _air_wanted and _loco.air_live()
+	var air_on: bool = air_live and _loco.air_active()
+	_air_mix = move_toward(_air_mix, 1.0 if air_on else 0.0, delta / maxf(AIR_BLEND, 0.001))
+	_loco_mix = move_toward(_loco_mix, 1.0 if (on or air_on) else 0.0, delta / maxf(LOCO_BLEND, 0.001))
 	var follow_goal: float = 1.0 if enabled and fresh and _right_free else 0.0
 	_right_follow = move_toward(_right_follow, follow_goal, delta / maxf(ARM_BLEND, 0.001))
-	if not enabled or (not on and _loco_mix <= 0.0):
+	if not enabled or (not on and not air_live and _loco_mix <= 0.0 and _air_mix <= 0.0):
 		_base_pose = null
 		return
 	_loco.step(delta, crouch_blend, scale.x)
 	var loco_pose: PlaceholderClips.Pose = _loco.pose(crouch_blend)
+	if _air_mix > 0.0:
+		var air_pose: PlaceholderClips.Pose = _loco.air_pose()
+		loco_pose = air_pose if _air_mix >= 1.0 else _blend(loco_pose, air_pose, _air_mix)
 	_base_pose = loco_pose if _loco_mix >= 1.0 else _blend(_static_pose(), loco_pose, _loco_mix)
 
 

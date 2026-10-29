@@ -41,6 +41,36 @@ const WALK_CLIPS: Array = ["walk_front", "walk_right", "walk_back", "walk_left"]
 const RUN_CLIPS: Array = ["run_front", "run_right", "run_back", "run_left"]
 const CROUCH_RUN_CLIPS: Array = ["crouch_run_front", "crouch_run_right", "crouch_run_back", "crouch_run_left"]
 
+## 3c-3a PLACEHOLDER(ER clip): the air layer. A jump plays the jump clip of its take-off speed, a fall off a ledge plays the fall
+## start, and both end in the airborne loop. The clips are the sandbox's (docs/placeholders.md P2).
+const AIR_LOOP_CLIP: String = "air_loop"
+const FALL_START_CLIP: String = "fall_start"
+const JUMP_CLIPS: Array = ["jump_stand", "jump_walk", "jump_run", "jump_sprint"]
+## Take-off speeds (m/s) from which a jump counts as a walking, running or sprinting one (the player's walk is 2.5, its run
+## 6.5 and its dash 9.0; an enemy's speeds fall in the same bands).
+const JUMP_WALK_FROM: float = 0.5
+const JUMP_RUN_FROM: float = 3.75
+const JUMP_SPRINT_FROM: float = 8.0
+## Rising faster than this (m/s) at the first airborne frame means a jump; anything else is a fall.
+const RISE_FROM: float = 1.0
+## A kick upwards of more than this (m/s in one frame) in mid-air (a wall jump) starts the jump clip again.
+const KICK_FROM: float = 4.0
+## A fall shows its clip only after this long in the air (s), so a bump or a step does not flicker.
+const AIR_MIN: float = 0.1
+## Time (s) the air must have been off before a new take-off counts (a short hop through another state is not one).
+const EDGE_GAP: float = 0.12
+## 3c-3a tuning (the jump clip against our jump, set by feel): the jump clip starts this many seconds after take-off (the
+## first frame is held), and is sped up or slowed down so its first half (up to the apex) takes as long as our rise, which is
+## about `JUMP_RISE_PER_SPEED` seconds per m/s of take-off speed (0.42 s at 10.08 m/s). Set the delay to 0 and the apex
+## share to 0.5 and the rise per speed to 0.0417 for the plain, unfitted clip.
+const JUMP_CLIP_DELAY: float = 0.06
+const JUMP_CLIP_APEX_SHARE: float = 0.5
+const JUMP_RISE_PER_SPEED: float = 0.0417
+const JUMP_RATE_MIN: float = 0.7
+const JUMP_RATE_MAX: float = 1.4
+## Seconds the lead clip (jump or fall start) cross-fades into the loop at its end.
+const AIR_FADE: float = 0.15
+
 var _clips: PlaceholderClips
 ## Blend weight of each gait; the standing gaits (0 to 3) add up to 1 and so do the crouched ones (4 and 5).
 var _weights: Array[float] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
@@ -55,6 +85,17 @@ var _speed: float = 0.0
 var _local: Vector2 = Vector2.ZERO
 var _strafe: bool = false
 var _sprint: bool = false
+
+## The air layer (3c-3a): the last input, the clip that leads (a jump or the fall start), time since take-off, and the
+## time the air was off.
+var _air_input: bool = false
+var _air_jumped: bool = false
+var _air_clip: String = FALL_START_CLIP
+var _air_t: float = 0.0
+var _air_delay: float = 0.0
+var _air_rate: float = 1.0
+var _air_off: float = 1.0
+var _air_vy: float = 0.0
 
 
 func _init(clips: PlaceholderClips) -> void:
@@ -73,6 +114,92 @@ static func missing_clip(clips: PlaceholderClips) -> String:
 	return ""
 
 
+## The name of the first air clip the library lacks, or "" when it has them all (the air layer is off without them).
+static func missing_air_clip(clips: PlaceholderClips) -> String:
+	var wanted: Array = [AIR_LOOP_CLIP, FALL_START_CLIP]
+	wanted.append_array(JUMP_CLIPS)
+	for clip_name: String in wanted:
+		if not clips.has_clip(clip_name):
+			return clip_name
+	return ""
+
+
+## 3c-3a: how the body moves through the air (call once per physics frame). `on` = it is airborne and the air layer
+## should show; `vy` its vertical speed, `flat` its flat speed. A take-off (the air was off for `EDGE_GAP`) picks the
+## lead clip: a jump when rising, else the fall start.
+func set_air(on: bool, vy: float, flat: float) -> void:
+	var tick: float = 1.0 / maxf(float(Engine.physics_ticks_per_second), 1.0)
+	if not on:
+		_air_off += tick
+		_air_input = false
+		_air_vy = 0.0
+		return
+	if not _air_input and _air_off >= EDGE_GAP:
+		_air_t = 0.0
+		_air_jumped = vy > RISE_FROM
+		_air_clip = _jump_clip(flat) if _air_jumped else FALL_START_CLIP
+		_fit_lead(vy)
+	elif _air_input and vy - _air_vy > KICK_FROM:
+		_air_t = 0.0
+		_air_jumped = true
+		_air_clip = _jump_clip(flat)
+		_fit_lead(vy)
+	_air_input = true
+	_air_off = 0.0
+	_air_vy = vy
+
+
+## The air layer was not driven for a while (the body died, was held): forget the air, so the next take-off counts.
+func reset_air() -> void:
+	if _air_input:
+		_air_input = false
+		_air_off = 1.0
+
+
+## True while the air layer has a pose to show: a jump at once, a fall after `AIR_MIN`.
+func air_active() -> bool:
+	return _air_input and (_air_jumped or _air_t >= AIR_MIN)
+
+
+## True while the body is airborne (the layer steps even before it shows).
+func air_live() -> bool:
+	return _air_input
+
+
+## Sets the lead clip's start delay and speed from the take-off speed (a fall start plays as it is).
+func _fit_lead(vy: float) -> void:
+	_air_delay = 0.0
+	_air_rate = 1.0
+	if not _air_jumped:
+		return
+	_air_delay = JUMP_CLIP_DELAY
+	var rise: float = maxf(vy, 0.0) * JUMP_RISE_PER_SPEED
+	if rise > 0.05:
+		var apex_time: float = _clips.length_of(_air_clip) * JUMP_CLIP_APEX_SHARE
+		_air_rate = clampf(apex_time / (rise - _air_delay if rise > _air_delay + 0.05 else rise), JUMP_RATE_MIN, JUMP_RATE_MAX)
+
+
+func _jump_clip(flat: float) -> String:
+	if flat >= JUMP_SPRINT_FROM:
+		return String(JUMP_CLIPS[3])
+	if flat >= JUMP_RUN_FROM:
+		return String(JUMP_CLIPS[2])
+	if flat >= JUMP_WALK_FROM:
+		return String(JUMP_CLIPS[1])
+	return String(JUMP_CLIPS[0])
+
+
+## The air pose now: the lead clip, cross-fading into the loop over its last `AIR_FADE` seconds.
+func air_pose() -> PlaceholderClips.Pose:
+	var loop_pose: PlaceholderClips.Pose = _clips.sample_loop(AIR_LOOP_CLIP, _air_t)
+	var lead_length: float = _clips.length_of(_air_clip) / _air_rate + _air_delay
+	if _air_t >= lead_length:
+		return loop_pose
+	var lead_pose: PlaceholderClips.Pose = _clips.sample(_air_clip, maxf(_air_t - _air_delay, 0.0) * _air_rate)
+	var weight: float = clampf((_air_t - (lead_length - AIR_FADE)) / AIR_FADE, 0.0, 1.0)
+	return lead_pose if weight <= 0.0 else _mix(lead_pose, loop_pose, weight)
+
+
 ## How the body moves now (call once per physics frame): its flat speed, that velocity in the figure's own space
 ## (x right, y = z back), whether to blend the four directions, and whether it is sprinting (the dash).
 func set_input(speed: float, local_xz: Vector2, strafe: bool, sprint: bool) -> void:
@@ -89,6 +216,8 @@ func step(delta: float, crouch: float, body_scale: float) -> void:
 	_fade(delta)
 	_update_angle(delta)
 	_idle_time += delta
+	if _air_input:
+		_air_t += delta
 	var standing: float = _group_cycles(Gait.IDLE, Gait.CROUCH_IDLE, body_scale)
 	var crouched: float = _group_cycles(Gait.CROUCH_IDLE, Gait.CROUCH_RUN + 1, body_scale)
 	# While one group is still (or has no moving clip), the other sets the pace.

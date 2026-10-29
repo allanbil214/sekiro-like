@@ -386,6 +386,13 @@ var _revive_invulnerable_left: float = 0.0
 ## Set by actions during their i-frame window (read by the damage system in Step 4).
 var invulnerable: bool = false
 var coyote_timer: float = 0.0
+## 3c-3a: the highest point (world y) of the current airtime, how far the last airtime fell (m, from that point to where it
+## landed) and whether it began with a jump (rising at any moment) rather than a walk off a ledge. `AirState` reads the
+## last two at the landing to pick the landing tier; they are set in `_physics_process` the frame the feet touch down.
+var air_apex_y: float = 0.0
+var last_fall_height: float = 0.0
+var last_land_jumped: bool = false
+var air_jumped: bool = false
 var input_buffer: InputBuffer
 ## The carried items and their counts (item 11), made in `_ready()` from `starting_items`.
 var item_belt: ItemBelt
@@ -601,6 +608,16 @@ func _physics_process(delta: float) -> void:
 	var was_airborne := not is_on_floor()
 	var fall_speed := -velocity.y
 	Hitstop.slide(self, hit_scale)
+	if is_on_floor():
+		if was_airborne:
+			last_fall_height = air_apex_y - global_position.y
+			last_land_jumped = air_jumped
+			air_jumped = false
+		air_apex_y = global_position.y
+	else:
+		air_apex_y = maxf(air_apex_y, global_position.y)
+		if velocity.y > 1.0:
+			air_jumped = true
 	if was_airborne and is_on_floor():
 		if fall_speed >= hard_land_speed:
 			Fx.play(get_tree(), Fx.Kind.HARD_LAND, global_position)
@@ -628,7 +645,7 @@ func get_noise_radius() -> float:
 		radius = noise_stealth_kill
 	elif current is ThrowState or current is AimState:
 		radius = noise_throw
-	elif current is ActionState:
+	elif current is ActionState and not current is LandState:
 		radius = noise_action
 	elif current is WallHugState:
 		radius = wall_hug_noise if Vector2(velocity.x, velocity.z).length() >= 0.3 else 0.0
@@ -1337,6 +1354,10 @@ func _drive_figure_locomotion() -> void:
 	var strafe: bool = lock_on.has_target() and not dashing
 	var right_free: bool = sheathed and sword_visual != null and not sword_visual.is_busy()
 	figure.drive_locomotion(walking, velocity, strafe, dashing, right_free)
+	# 3c-3a: the jump, fall and airborne clips while off the ground in a state that is part of the airtime.
+	var airborne: bool = not is_on_floor() and (current is AirState or current is WallJumpState or current is GuardState \
+			or current is AirAttackState or current is HelmSplitterState)
+	figure.drive_air(airborne, velocity)
 
 
 ## The radius of the body capsule (used by the LedgeSensor).

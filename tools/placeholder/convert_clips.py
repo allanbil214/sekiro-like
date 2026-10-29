@@ -40,6 +40,11 @@ CLIPS = {
     "run_back": "a000_020101", "run_left": "a000_020102", "run_right": "a000_020103",
     "crouch_run_front": "a000_320100", "crouch_run_back": "a000_320101",
     "crouch_run_left": "a000_320102", "crouch_run_right": "a000_320103",
+    # 3c-3a: the jump by take-off speed, the airborne loop, the fall start (walking off a ledge) and the landings.
+    "jump_stand": "a000_202000", "jump_walk": "a000_202010", "jump_run": "a000_202020", "jump_sprint": "a000_202030",
+    "air_loop": "a000_202040", "fall_start": "a000_004000",
+    "land_light": "a000_202100", "land_run": "a000_202127", "land_sprint": "a000_202125",
+    "land_fall": "a000_202300", "land_heavy": "a000_202310",
 }
 
 

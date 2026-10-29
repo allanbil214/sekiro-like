@@ -444,6 +444,8 @@ func _drive_figure_locomotion() -> void:
 			or phase == Phase.RECOVER or phase == Phase.YIELD)
 	var strafe: bool = phase == Phase.YIELD or _guarding
 	figure.drive_locomotion(walking, velocity, strafe, false, false)
+	# 3c-3a: off the ground (a drop, jump or climb link, a knock into the air) the figure shows its jump or fall clips.
+	figure.drive_air(not is_on_floor() and not combatant.deathblow_open, velocity)
 
 
 func _process(delta: float) -> void:
