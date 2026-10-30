@@ -65,6 +65,66 @@ static func play_at(tree: SceneTree, id: Id, point: Vector3, volume_offset_db: f
 	_start(tree, id, true, point, volume_offset_db, pitch_multiplier)
 
 
+## 3d-1: start a looping sound on `node` (the charge hum on the player, the aura on an enemy). It is a voice that is a child of
+## the node, so it moves with it and ends with it; it plays the slot's wav again each time it ends, until `loop_stop()`. One
+## per node and sound (a second start does nothing). A slot with no wav stays silent.
+static func loop_start(node: Node, id: Id, positional: bool = false, volume_offset_db: float = 0.0) -> void:
+	if node == null or not node.is_inside_tree():
+		return
+	_ensure_loaded()
+	var slot: SfxSlot = _slots.get(id)
+	if slot == null or slot.streams.is_empty():
+		return
+	var key := _loop_key(id)
+	if node.has_node(key):
+		return
+	var stream := slot.streams[randi() % slot.streams.size()]
+	if stream == null:
+		return
+	var volume := slot.volume_db + _data.master_volume_db + volume_offset_db
+	var pitch := maxf(randf_range(slot.pitch_min, slot.pitch_max), 0.05)
+	if positional:
+		var voice3d := AudioStreamPlayer3D.new()
+		voice3d.name = key
+		voice3d.bus = Settings.BUS_SFX
+		voice3d.stream = stream
+		voice3d.volume_db = volume
+		voice3d.pitch_scale = pitch
+		voice3d.unit_size = _data.world_unit_size
+		voice3d.finished.connect(voice3d.play)
+		node.add_child(voice3d)
+		voice3d.play()
+	else:
+		var voice2d := AudioStreamPlayer.new()
+		voice2d.name = key
+		voice2d.bus = Settings.BUS_SFX
+		voice2d.stream = stream
+		voice2d.volume_db = volume
+		voice2d.pitch_scale = pitch
+		voice2d.finished.connect(voice2d.play)
+		node.add_child(voice2d)
+		voice2d.play()
+
+
+## 3d-1: end the loop `loop_start()` made on `node` (does nothing when there is none).
+static func loop_stop(node: Node, id: Id) -> void:
+	if node == null:
+		return
+	var voice := node.get_node_or_null(_loop_key(id))
+	if voice == null:
+		return
+	voice.name = _loop_key(id) + "Ended"  # frees the name now, so a loop may start again in the same frame
+	if voice is AudioStreamPlayer:
+		(voice as AudioStreamPlayer).stop()
+	elif voice is AudioStreamPlayer3D:
+		(voice as AudioStreamPlayer3D).stop()
+	voice.queue_free()
+
+
+static func _loop_key(id: Id) -> String:
+	return "SfxLoop%d" % int(id)
+
+
 ## Which sound an attack makes when its hit window opens: thrusts, the super swing, or the swing pair.
 static func swing_id(action: ActionData) -> Id:
 	if action.blade_aims_at_end:
@@ -136,6 +196,8 @@ static func _start(tree: SceneTree, id: Id, positional: bool, point: Vector3, vo
 		if old != null and is_instance_valid(old):
 			_release(old as Node)
 	var volume := slot.volume_db + _data.master_volume_db + volume_offset
+	if slot.volume_jitter_db > 0.0:
+		volume += randf_range(-slot.volume_jitter_db, slot.volume_jitter_db)  # 3d-1
 	var pitch := maxf(randf_range(slot.pitch_min, slot.pitch_max) * pitch_multiplier, 0.05)
 	var voice := _acquire(scene, positional)
 	voice.process_mode = Node.PROCESS_MODE_ALWAYS if always else Node.PROCESS_MODE_INHERIT

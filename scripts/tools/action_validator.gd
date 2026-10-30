@@ -56,6 +56,7 @@ static func check(a: ActionData) -> PackedStringArray:
 	_check_motion_curves(a, w)
 	_check_clip(a, w)
 	_check_hits(a, w)
+	_check_sound_events(a, w)
 	if a.hitstop < 0.0:
 		w.append("hitstop is negative")
 	if a.knockback < 0.0:
@@ -196,6 +197,18 @@ static func _check_hits(a: ActionData, w: PackedStringArray) -> void:
 			w.append("hits[%d] damage is %.2f (use -1 for the action's damage)" % [i, spec.damage])
 		if a.damage <= 0.0 and spec.damage <= 0.0:
 			w.append("hits[%d] has no damage (the action's damage is 0 and the hit sets none)" % i)
+
+
+## The 3d-1 sound events: each set, with a time inside the action (one at or after the duration never plays).
+static func _check_sound_events(a: ActionData, w: PackedStringArray) -> void:
+	for i in a.sound_events.size():
+		var event := a.sound_events[i]
+		if event == null:
+			w.append("sound_events[%d] is empty" % i)
+		elif event.time < 0.0:
+			w.append("sound_events[%d] time is %.2f (before the action starts)" % [i, event.time])
+		elif a.duration > 0.0 and event.time >= a.duration:
+			w.append("sound_events[%d] time %.2f is at or after the duration (%.2f); it never plays" % [i, event.time, a.duration])
 
 
 ## The text for the Inspector: "OK", or a count and one line per problem.

@@ -49,6 +49,9 @@ extends MannequinFigure
 static var clips_enabled: bool = true
 ## The F1 switch (3c-2a): false = no locomotion clips, the figure holds its idle or crouch pose out of actions.
 static var locomotion_enabled: bool = true
+## The F1 switch (3d-1): true = footsteps come from the locomotion clips' foot plants (the player's and the enemies'); false =
+## the old distance steps of the Player (the enemies are then silent).
+static var frame_footsteps_enabled: bool = true
 static var _loco_warned: bool = false
 
 const STAND_CLIP: String = "idle"
@@ -63,6 +66,8 @@ const ARM_BLEND: float = 0.12
 const AIR_BLEND: float = 0.08
 ## 3c-4c: seconds an upper-body layer (guard, carry) fades in and out.
 const UPPER_BLEND: float = 0.12
+## 3d-1: an enemy's footsteps are this much quieter (dB) than the player's, and play in the world at its feet.
+const ENEMY_STEP_DB: float = -8.0
 
 ## True once the clips are loaded and the figure can be shown.
 var available: bool = false
@@ -111,6 +116,8 @@ var _loco: FigureLocomotion
 ## The physics frame of the last `drive_locomotion()`; the layer is off when it was more than two frames ago.
 var _loco_frame: int = -100
 var _loco_wanted: bool = false
+## 3d-1: the owner is on the ground in a gait this frame (the base layer is walking, not only fading).
+var _loco_on_now: bool = false
 var _loco_mix: float = 0.0
 ## 3c-3a: the physics frame of the last `drive_air()`, whether the body is airborne, and the air pose's blend weight.
 var _air_frame: int = -100
@@ -287,11 +294,38 @@ func drive_upper(kind: int) -> void:
 ## The base pose of this frame: the locomotion layer (3c-2a, 3c-3a) with the upper-body layer on top (3c-4c); null = the plain held pose.
 func _update_locomotion(delta: float) -> void:
 	var base: PlaceholderClips.Pose = _locomotion_base(delta)
+	_play_footsteps()
 	_update_upper(delta)
 	if _upper_mix > 0.0 and _upper_kind != FigureUpperLayer.Kind.NONE:
 		var under: PlaceholderClips.Pose = base if base != null else _static_pose()
 		base = _with_upper(under)
 	_base_pose = base
+
+
+## 3d-1: true while the figure times the footsteps itself (the Player then skips its distance steps).
+func drives_footsteps() -> bool:
+	return frame_footsteps_enabled and available and visible and locomotion_enabled and _loco != null
+
+
+## 3d-1: a footstep sound for every foot plant the locomotion cycle passed this frame: flat for the player, in the world for an
+## enemy. Only on the ground in a gait (the owner reports it walking), and not while an action clip owns the legs.
+func _play_footsteps() -> void:
+	if _loco == null:
+		return
+	var count: int = _loco.take_steps()
+	if count <= 0 or not drives_footsteps() or not _loco_on_now or _mix >= 0.5 or _air_mix >= 0.5:
+		return
+	var id: Sfx.Id = Sfx.Id.FOOTSTEP_WALK
+	match _loco.step_gait():
+		FigureLocomotion.Gait.RUN, FigureLocomotion.Gait.SPRINT:
+			id = Sfx.Id.FOOTSTEP_RUN
+		FigureLocomotion.Gait.CROUCH_RUN:
+			id = Sfx.Id.FOOTSTEP_CROUCH
+	for i in count:
+		if owner is Player:
+			Sfx.play(get_tree(), id)
+		else:
+			Sfx.play_at(get_tree(), id, global_position, ENEMY_STEP_DB)
 
 
 ## Step the layer's weight and clock: it fades out before another kind takes over, and off when it is not asked for.
@@ -330,6 +364,7 @@ func _locomotion_base(delta: float) -> PlaceholderClips.Pose:
 	var fresh: bool = Engine.get_physics_frames() - _loco_frame <= 2
 	var enabled: bool = _loco != null and locomotion_enabled
 	var on: bool = enabled and fresh and _loco_wanted
+	_loco_on_now = on
 	var air_fresh: bool = Engine.get_physics_frames() - _air_frame <= 2
 	if not air_fresh and _loco != null:
 		_loco.reset_air()

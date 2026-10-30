@@ -96,6 +96,10 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return PlayerFigure.locomotion_enabled,
 			func(on: bool) -> void: PlayerFigure.locomotion_enabled = on))
 
+	list.append(_toggle(&"frame_footsteps", "PLACEHOLDER", "Frame-driven footsteps (on the clips' foot plants, player and enemies; off = the old distance steps)",
+			func() -> bool: return PlayerFigure.frame_footsteps_enabled,
+			func(on: bool) -> void: PlayerFigure.frame_footsteps_enabled = on))
+
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
 			func() -> bool: return player.debug_undetectable,

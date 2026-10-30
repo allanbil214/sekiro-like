@@ -11,6 +11,8 @@ extends Resource
 ## Each play picks a random pitch between these two (1.0 = the wav as it is).
 @export var pitch_min: float = 0.97
 @export var pitch_max: float = 1.03
+## 3d-1: each play also changes the level by a random amount up to this many dB either way (0 = always the same level).
+@export_range(0.0, 12.0, 0.1) var volume_jitter_db: float = 0.0
 ## Slots with the same non-empty group share one voice: a new sound of the group cuts the old one
 ## (a new deflect cuts the old ring, as in Sekiro).
 @export var group: StringName = &""

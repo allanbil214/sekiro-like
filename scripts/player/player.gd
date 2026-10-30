@@ -1596,6 +1596,10 @@ func _update_hurtbox() -> void:
 ## Footsteps (Step 11a): one every step_distance_* metres walked on the floor, only in the walking
 ## states (not in actions, the air, or ledges). The gait comes from the speed (crouch, walk, run).
 func _update_footsteps(delta: float) -> void:
+	# 3d-1: the figure plays the footsteps itself, on the clips' foot plants; these distance steps are the fallback.
+	if figure.drives_footsteps():
+		_step_travelled = step_distance_walk * 0.6
+		return
 	var current := state_machine.current
 	var walking := current is LocomotionState or current is CrouchState or current is GuardState \
 			or current is DashState or current is HealState or current is AimState

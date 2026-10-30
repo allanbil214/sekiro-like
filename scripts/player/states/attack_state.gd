@@ -250,6 +250,10 @@ func _slows_active_window() -> bool:
 	return not _is_thrust
 
 
+func _on_action_exit() -> void:
+	Sfx.loop_stop(player, Sfx.Id.CHARGE_LOOP)  # 3d-1: a cancelled charge ends its hum
+
+
 func _on_action_enter(_previous: StringName) -> void:
 	_queued = false
 	_phase = Phase.NORMAL
@@ -396,6 +400,7 @@ func _begin_hold() -> void:
 		return
 	_phase = Phase.CHARGING
 	_charge_time = 0.0
+	Sfx.loop_start(player, Sfx.Id.CHARGE_LOOP)  # 3d-1 (silent until the slot has a wav)
 	if player.sword_visual != null:
 		player.sword_visual.begin_charge()
 
@@ -434,6 +439,7 @@ func _update_hold(delta: float) -> void:
 ## Release (or max charge): swap the slash for the hold action (the thrust), scaled by the
 ## charge so far.
 func _fire_thrust(fraction: float) -> void:
+	Sfx.loop_stop(player, Sfx.Id.CHARGE_LOOP)
 	var thrust := _hold_action
 	damage_multiplier = lerpf(1.0, thrust.charge_damage_max, fraction)
 	posture_multiplier = lerpf(1.0, thrust.charge_posture_max, fraction)

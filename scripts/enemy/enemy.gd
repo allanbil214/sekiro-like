@@ -746,6 +746,7 @@ func _start_pose() -> void:
 	_pose_timer = 0.0
 	combatant.posture_regen = _base_posture_regen * ai.pose_regen_factor
 	aura.visible = true
+	Sfx.loop_start(self, Sfx.Id.AURA_LOOP, true)  # 3d-1 (silent until the slot has a wav)
 	_set_phase(Phase.POSE)
 
 
@@ -762,6 +763,7 @@ func _update_pose(delta: float, to_player: Vector3) -> void:
 func _end_pose() -> void:
 	combatant.posture_regen = _base_posture_regen
 	aura.visible = false
+	Sfx.loop_stop(self, Sfx.Id.AURA_LOOP)
 	if phase == Phase.POSE:
 		_pose_cooldown = ai.pose_cooldown
 		_think_timer = 0.2
@@ -848,7 +850,9 @@ func _begin_attack(index: int) -> void:
 
 
 func _update_attack(delta: float, to_player: Vector3, distance: float) -> void:
+	var time_before := _action_time
 	_action_time += delta * _attack_speed()
+	_runner.fire_sound_events(get_tree(), _action, time_before, _action_time, self)  # 3d-1
 	# Steering: during the wind-up it turns toward the player and aims the lunge; both lock
 	# when the hit window opens (like the player's attacks).
 	if _action_time < _action.active_hit.x:

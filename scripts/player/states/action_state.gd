@@ -44,7 +44,9 @@ func physics_update(delta: float) -> void:
 	_discard_early_presses()
 	if _try_guard_cancel():
 		return
+	var time_before := action_time
 	action_time += delta * speed_scale * _active_speed_factor()
+	runner.fire_sound_events(player.get_tree(), action, time_before, action_time)  # 3d-1
 	player.invulnerable = action.has_iframes(action_time)
 	if not player.is_on_floor():
 		player.apply_gravity(delta)

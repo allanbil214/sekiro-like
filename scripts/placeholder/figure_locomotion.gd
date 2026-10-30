@@ -88,6 +88,9 @@ var _idle_time: float = 0.0
 ## Radians clockwise from the front (0 = front, PI / 2 = right) the body moves, smoothed.
 var _angle: float = 0.0
 var _speed: float = 0.0
+## 3d-1: foot plants passed since the last `take_steps()`, and the gait they happened in.
+var _steps: int = 0
+var _step_gait: int = Gait.WALK
 var _local: Vector2 = Vector2.ZERO
 var _strafe: bool = false
 var _sprint: bool = false
@@ -265,7 +268,48 @@ func step(delta: float, crouch: float, body_scale: float) -> void:
 	var crouched: float = _group_cycles(Gait.CROUCH_IDLE, Gait.CROUCH_RUN + 1, body_scale)
 	# While one group is still (or has no moving clip), the other sets the pace.
 	var cycles: float = lerpf(standing if standing > 0.0 else crouched, crouched if crouched > 0.0 else standing, crouch)
+	var phase_before: float = _phase
 	_phase = fposmod(_phase + cycles * delta, 1.0)
+	_count_steps(phase_before, _phase, crouch)
+
+
+## 3d-1: the steps (foot plants) the cycle passed since the last `take_steps()`, and the gait they belong to.
+func take_steps() -> int:
+	var count: int = _steps
+	_steps = 0
+	return count
+
+
+## The gait of the steps taken (a moving gait: walk, run, sprint or crouch run).
+func step_gait() -> int:
+	return _step_gait
+
+
+## A moving gait with most of the blend weight counts; the plants come from the clip of the direction the body moves in.
+func _count_steps(before: float, after: float, crouch: float) -> void:
+	if after == before:
+		return
+	var gait: int = _crouch_gait if crouch >= 0.5 else _stand_gait
+	if gait == Gait.IDLE or gait == Gait.CROUCH_IDLE or _weights[gait] < 0.5:
+		return
+	var plants: PackedFloat32Array = _clips.foot_plants(_step_clip(gait))
+	for plant: float in plants:
+		var crossed: bool = (plant > before and plant <= after) if before < after else (plant > before or plant <= after)
+		if crossed:
+			_steps += 1
+			_step_gait = gait
+
+
+## The clip whose plants time the steps of `gait`: the one of the nearest of the four directions.
+func _step_clip(gait: int) -> String:
+	if gait == Gait.SPRINT:
+		return SPRINT_CLIP
+	var names: Array = WALK_CLIPS
+	if gait == Gait.RUN:
+		names = RUN_CLIPS
+	elif gait == Gait.CROUCH_RUN:
+		names = CROUCH_RUN_CLIPS
+	return String(names[roundi(fposmod(_angle, TAU) / (TAU * 0.25)) % 4])
 
 
 ## The pose now: the standing and the crouched gaits, blended by `crouch`.

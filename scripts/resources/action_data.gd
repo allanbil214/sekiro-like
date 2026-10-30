@@ -147,6 +147,11 @@ static var er_feel_enabled: bool = true
 ## visual, the cancel rules and the overlay read it) and every hit's window must lie inside it. Player attacks only.
 @export var hits: Array[HitSpec] = []
 
+@export_group("Sound events (3d-1)")
+## Sounds at times in the action (see `SoundEvent`): each plays once when the action clock passes its time. Empty = none
+## (the swing, hit and other sounds keep their own triggers). Player actions and enemy attacks.
+@export var sound_events: Array[SoundEvent] = []
+
 @export_group("Placeholder")
 ## Phase 3: the source of this action's temporary numbers or animation. NONE = the user's own work.
 @export var placeholder_source: PlaceholderSource = PlaceholderSource.NONE

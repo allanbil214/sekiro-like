@@ -83,6 +83,20 @@ func make_hit(action: ActionData, attacker: Node, damage_multiplier: float, post
 	return hit
 
 
+## 3d-1: plays the action's `sound_events` whose time lies in [from, to) (the clock's step of this frame; a parked clock
+## has none). `at` null = flat sounds (the player's own), else positional sounds at that node (an enemy).
+func fire_sound_events(tree: SceneTree, action: ActionData, from: float, to: float, at: Node3D = null) -> void:
+	if action == null or action.sound_events.is_empty() or to <= from:
+		return
+	for event: SoundEvent in action.sound_events:
+		if event == null or event.time < from or event.time >= to:
+			continue
+		if at == null:
+			Sfx.play(tree, event.sound, event.volume_db, event.pitch)
+		else:
+			Sfx.play_at(tree, event.sound, at.global_position + Vector3.UP, event.volume_db, event.pitch)
+
+
 ## True while the clock is inside the action's movement window.
 func in_move_window(action: ActionData) -> bool:
 	return ActionData.in_window(action.move_window, time)

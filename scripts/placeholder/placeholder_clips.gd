@@ -27,8 +27,14 @@ class Clip extends RefCounted:
 	var data: PackedFloat32Array = PackedFloat32Array()
 
 
+## 3d-1: a foot counts as down in the lowest `PLANT_BAND` of its height range; a foot that moves less than `PLANT_MIN_RANGE` (m)
+## never lifts (an idle).
+const PLANT_BAND: float = 0.2
+const PLANT_MIN_RANGE: float = 0.03
+
 static var _shared: PlaceholderClips
 static var _tried: bool = false
+var _plants: Dictionary = {}
 
 var joint_names: PackedStringArray = PackedStringArray()
 var oriented_names: PackedStringArray = PackedStringArray()
@@ -155,6 +161,40 @@ func sample_loop(clip_name: String, time: float) -> Pose:
 	if clip == null or clip.frames < 2:
 		return sample(clip_name, 0.0)
 	return sample(clip_name, fposmod(time, float(clip.frames - 1) / FPS))
+
+
+## 3d-1: where in a looping clip a foot comes down, as fractions (0 to 1, sorted) of one cycle: the frames where a foot's height
+## falls under the lowest fifth of its own range after being above it. A clip whose feet hardly move (an idle) has none; a walk
+## or run has two. Found from the clip's own joint positions and cached, so no data is added to the file.
+func foot_plants(clip_name: String) -> PackedFloat32Array:
+	if _plants.has(clip_name):
+		return _plants[clip_name]
+	var plants := PackedFloat32Array()
+	var clip := _clips.get(clip_name) as Clip
+	if clip != null and clip.frames > 2:
+		var cycle: int = clip.frames - 1  # the last frame repeats the first
+		for foot: String in ["L_Foot", "R_Foot"]:
+			var joint: int = joint_index(foot)
+			if joint < 0:
+				continue
+			var heights := PackedFloat32Array()
+			heights.resize(cycle)
+			var low: float = INF
+			var high: float = -INF
+			for f in cycle:
+				var y: float = clip.data[f * _stride + joint * 3 + 1]
+				heights[f] = y
+				low = minf(low, y)
+				high = maxf(high, y)
+			if high - low < PLANT_MIN_RANGE:
+				continue
+			var limit: float = low + PLANT_BAND * (high - low)
+			for f in cycle:
+				if heights[f] < limit and heights[(f - 1 + cycle) % cycle] >= limit:
+					plants.append(float(f) / float(cycle))
+		plants.sort()
+	_plants[clip_name] = plants
+	return plants
 
 
 func _vector(clip: Clip, frame: int, offset: int) -> Vector3:
