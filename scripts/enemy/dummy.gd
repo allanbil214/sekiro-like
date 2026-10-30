@@ -18,6 +18,8 @@ extends StaticBody3D
 ## deflecting it can be tried. Posture regenerates only while it is not mid-swing.
 
 enum AttackMode { OFF, CYCLE, HIGH, MID, LOW }
+## 3c-3b: which strength its swings hit the player with (HitData.HurtLevel): all four in turn, or one.
+enum HurtMode { CYCLE, SMALL, MIDDLE, LARGE, KNOCKDOWN }
 enum Phase { IDLE, WINDUP, ACTIVE, RECOVER }
 
 ## The arm starts this far (m) from the dummy's center, so it does not begin inside the body.
@@ -42,6 +44,8 @@ const SWING_START: float = 0.3
 
 @export_group("Attack")
 @export var attack_mode: AttackMode = AttackMode.CYCLE
+## 3c-3b: the strength of the hit the swing lands with (the player's reaction). F1 menu: "Dummy swing strength".
+@export var hurt_mode: HurtMode = HurtMode.CYCLE
 ## The player must be this close (m, center to center) for it to start a swing.
 @export var attack_range: float = 2.6
 ## How far the arm reaches from the dummy's center (m).
@@ -81,6 +85,8 @@ var _phase: Phase = Phase.IDLE
 var _timer: float = 0.0
 var _swing_time: float = 0.0
 var _cycle_index: int = 0
+var _level_index: int = 0
+var _swing_level: int = HitData.HurtLevel.SMALL
 var _player: Node3D
 var _stun_material: StandardMaterial3D
 var _boss_engaged: bool = false
@@ -168,6 +174,7 @@ func _physics_process(delta: float) -> void:
 			template.guardable = attack_guardable
 			template.deflectable = attack_deflectable
 			template.knockback = attack_knockback
+			template.hurt_level = _swing_level
 			hitbox.sweep(template)
 			if _swing_time >= active_time:
 				hitbox.end_swing()
@@ -222,8 +229,18 @@ func _face(to_player: Vector3, delta: float) -> void:
 	rotation.y = lerp_angle(rotation.y, yaw, 1.0 - exp(-turn_speed * delta))
 
 
+## 3c-3b: the strength of the next swing: small, middle, large, knockdown in turn (CYCLE), or the one chosen.
+func _pick_level() -> int:
+	if hurt_mode != HurtMode.CYCLE:
+		return int(hurt_mode) - 1
+	var level := _level_index % 4
+	_level_index += 1
+	return level
+
+
 ## High, low, mid in turn (CYCLE), or the one chosen.
 func _next_height() -> float:
+	_swing_level = _pick_level()
 	match attack_mode:
 		AttackMode.HIGH:
 			return high_height

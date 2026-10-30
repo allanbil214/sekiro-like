@@ -6,6 +6,9 @@ extends RefCounted
 ## What the target's guard made of the hit (set by Combatant.take_hit).
 enum Outcome { HIT, GUARD, DEFLECT }
 
+## 3c-3b: how hard a hit knocks the target about. It picks the reaction clip and lockout (the player's `HurtState`).
+enum HurtLevel { SMALL, MIDDLE, LARGE, KNOCKDOWN }
+
 var damage: float = 0.0
 var posture_damage: float = 0.0
 ## Seconds of hitstop requested when the hit connects.
@@ -25,6 +28,8 @@ var deflectable: bool = true
 var deflect_within: float = -1.0
 ## How far (m) the hit pushes the target back, before the target's own multipliers.
 var knockback: float = 0.0
+## 3c-3b: a HurtLevel value; copied from the attacker's action (or its HitSpec).
+var hurt_level: int = HurtLevel.SMALL
 ## How long (s) the push eases out over. -1 = the target's own default (the player's knockback_time).
 var knockback_time: float = -1.0
 ## True for a perilous attack. Landing as a plain hit on a target that is guarding breaks its guard.
@@ -59,6 +64,7 @@ func copy() -> HitData:
 	other.grab = grab
 	other.lethal = lethal
 	other.knockback = knockback
+	other.hurt_level = hurt_level
 	other.knockback_time = knockback_time
 	other.outcome = outcome
 	other.direction = direction

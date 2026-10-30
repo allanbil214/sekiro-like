@@ -13,3 +13,5 @@ extends Resource
 @export var knockback: float = -1.0
 ## Hitstop (s) when this hit connects. -1 = the action's `hitstop`.
 @export var hitstop: float = -1.0
+## 3c-3b: a HitData.HurtLevel value for this hit; -1 = the action's own.
+@export_range(-1, 3) var hurt_level: int = -1

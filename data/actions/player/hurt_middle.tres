@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ActionData" format=3]
+
+[ext_resource type="Script" uid="uid://c617n825cptkd" path="res://scripts/resources/action_data.gd" id="1_actiondata"]
+
+[resource]
+script = ExtResource("1_actiondata")
+kind = 10
+animation = &"hurt_middle"
+duration = 1.14
+locked_until = 0.56
+cancel_attack = 0.56
+cancel_dodge = 0.20
+cancel_jump = 0.56
+cancel_guard = 0.56
+cancel_move = 0.56
+placeholder_source = 2
+placeholder_clip = &"hurt_middle_front"

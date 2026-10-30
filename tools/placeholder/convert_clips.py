@@ -45,6 +45,12 @@ CLIPS = {
     "air_loop": "a000_202040", "fall_start": "a000_004000",
     "land_light": "a000_202100", "land_run": "a000_202127", "land_sprint": "a000_202125",
     "land_fall": "a000_202300", "land_heavy": "a000_202310",
+    # 3c-3b-1: the reactions to a hit by strength and the side it came from, and the guard break.
+    "hurt_small_front": "a000_005110", "hurt_small_back": "a000_005100", "hurt_small_left": "a000_005120", "hurt_small_right": "a000_005130",
+    "hurt_middle_front": "a000_005200", "hurt_middle_back": "a000_005230", "hurt_middle_left": "a000_005220", "hurt_middle_right": "a000_005210",
+    "hurt_large_front": "a000_005300", "hurt_large_back": "a000_005310", "hurt_large_left": "a000_005330", "hurt_large_right": "a000_005320",
+    "hurt_knockdown_front": "a000_005400", "hurt_knockdown_back": "a000_005410", "hurt_knockdown_left": "a000_005420", "hurt_knockdown_right": "a000_005430",
+    "guard_break": "a000_004270",
 }
 
 

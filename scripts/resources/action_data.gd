@@ -131,6 +131,9 @@ static var er_feel_enabled: bool = true
 ## How far (m) a hit from this action pushes the target back (a heavy attack: 1 or more). 0 = none.
 ## The target scales it by outcome (Combatant knockback multipliers: hit, guard, deflect).
 @export var knockback: float = 0.0
+## 3c-3b PLACEHOLDER(ER numbers): how hard the hit knocks its target about (HitData.HurtLevel). Picks the player's reaction
+## clip and lockout; a hit on an enemy will use it in 3c-3b-2.
+@export_enum("Small", "Middle", "Large", "Knockdown") var hurt_level: int = 0
 @export var guardable: bool = true
 @export var deflectable: bool = true
 @export var pauses_posture_regen: bool = true

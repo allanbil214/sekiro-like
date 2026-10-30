@@ -876,6 +876,8 @@ func _update_hit() -> void:
 		template.posture_damage = ai.perilous_posture
 		template.guardable = false
 		template.perilous = true
+		# 3c-3b: a perilous thrust staggers hard, a sweep knocks the player down.
+		template.hurt_level = HitData.HurtLevel.KNOCKDOWN if _peril_kind == Peril.SWEEP else HitData.HurtLevel.LARGE
 		template.deflectable = _peril_kind == Peril.THRUST
 		template.deflect_within = ai.perilous_deflect_window
 		if _peril_kind == Peril.THRUST:

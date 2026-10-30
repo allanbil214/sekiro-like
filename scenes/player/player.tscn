@@ -63,6 +63,12 @@
 [ext_resource type="Resource" path="res://data/actions/player/land_light.tres" id="43_ej2d6"]
 [ext_resource type="Script" uid="uid://d22ur2c45ipfd" path="res://scripts/ui/hud/boss_hud.gd" id="43_niom3"]
 [ext_resource type="Script" uid="uid://dtq44sg5foe03" path="res://scripts/items/aim_preview.gd" id="43_uygh0"]
+[ext_resource type="Script" uid="uid://cdrdnhmd6m8ks" path="res://scripts/player/states/hurt_state.gd" id="44_ymths"]
+[ext_resource type="Resource" path="res://data/actions/player/hurt_small.tres" id="45_3p0jd"]
+[ext_resource type="Resource" path="res://data/actions/player/hurt_middle.tres" id="46_7nf13"]
+[ext_resource type="Resource" path="res://data/actions/player/hurt_large.tres" id="47_0y4ya"]
+[ext_resource type="Resource" path="res://data/actions/player/hurt_knockdown.tres" id="48_s050l"]
+[ext_resource type="Resource" path="res://data/actions/player/guard_break.tres" id="49_4sw5w"]
 [ext_resource type="Script" uid="uid://bs16xhj3rdx0g" path="res://scripts/ui/hud/aim_hud.gd" id="49_t1aof"]
 [ext_resource type="Script" uid="uid://ve6lva1taao4" path="res://scripts/ui/hud/traversal_hint.gd" id="61_5xbmr"]
 [ext_resource type="Script" uid="uid://cslmwjamdevbp" path="res://scripts/ui/hud/low_health_vignette.gd" id="62_hir57"]
@@ -195,6 +201,14 @@ script = ExtResource("41_8lfxt")
 heavy_action = ExtResource("42_lclul")
 action = ExtResource("43_ej2d6")
 metadata/_custom_type_script = "uid://bnwtxqo6rcctf"
+
+[node name="Hurt" type="Node" parent="StateMachine" unique_id=863397515]
+script = ExtResource("44_ymths")
+small_action = ExtResource("45_3p0jd")
+middle_action = ExtResource("46_7nf13")
+large_action = ExtResource("47_0y4ya")
+knockdown_action = ExtResource("48_s050l")
+guard_break_action = ExtResource("49_4sw5w")
 
 [node name="Combatant" type="Node" parent="." unique_id=1176548210]
 script = ExtResource("28_uniwh")

@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="ActionData" format=3 uid="uid://blbfwpnum6x37"]
 
 [ext_resource type="Script" uid="uid://c617n825cptkd" path="res://scripts/resources/action_data.gd" id="1_actiondata"]
+[ext_resource type="Script" uid="uid://dbxsk01td8g27" path="res://scripts/resources/hit_spec.gd" id="1_ei7db"]
 
 [resource]
 script = ExtResource("1_actiondata")
@@ -19,3 +20,4 @@ charge_time = 0.6
 damage = 20.0
 posture_damage = 30.0
 hitbox_length_scale = 1.5
+hurt_level = 2

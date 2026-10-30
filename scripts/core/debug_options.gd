@@ -106,6 +106,10 @@ static func build(player: Player) -> Array[Option]:
 			PackedStringArray(["None", "Thrust", "Sweep", "Grab"]),
 			func() -> int: return _first_enemy_perilous(),
 			func(index: int) -> void: _set_enemy_perilous(index)))
+	list.append(_choice(&"dummy_strength", "ENEMIES", "Dummy swing strength (3c-3b)",
+			PackedStringArray(["Cycle", "Small", "Middle", "Large", "Knockdown"]),
+			func() -> int: return _first_dummy_strength(),
+			func(index: int) -> void: _set_dummy_strength(index)))
 	list.append(_toggle(&"enemy_log", "ENEMIES", "Enemy debug log",
 			func() -> bool: return _first_enemy_log(),
 			func(on: bool) -> void: _set_enemy_log(on)))
@@ -201,6 +205,21 @@ static func _set_hitbox_draw(player: Player, on: bool) -> void:
 	for enemy: Enemy in _enemies():
 		if enemy.sword_visual != null and enemy.sword_visual.hitbox != null:
 			enemy.sword_visual.hitbox.debug_draw = on
+
+
+static func _first_dummy_strength() -> int:
+	for node: Node3D in Enemies.all():
+		var dummy := node as Dummy
+		if dummy != null:
+			return int(dummy.hurt_mode)
+	return 0
+
+
+static func _set_dummy_strength(index: int) -> void:
+	for node: Node3D in Enemies.all():
+		var dummy := node as Dummy
+		if dummy != null:
+			dummy.hurt_mode = index as Dummy.HurtMode
 
 
 static func _first_enemy_perilous() -> int:

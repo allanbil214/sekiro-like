@@ -21,5 +21,6 @@ twist_scale = 0.25
 charge_time = 0.6
 damage = 15.0
 posture_damage = 23.0
+hurt_level = 1
 placeholder_source = 2
 placeholder_clip = &"heavy1_charge"

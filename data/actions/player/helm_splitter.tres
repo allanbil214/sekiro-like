@@ -16,5 +16,6 @@ twist_scale = 0.25
 damage = 25.0
 posture_damage = 38.0
 hitbox_length_scale = 1.5
+hurt_level = 2
 placeholder_source = 2
 placeholder_clip = &"air_heavy"

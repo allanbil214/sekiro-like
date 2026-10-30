@@ -72,6 +72,7 @@ func make_hit(action: ActionData, attacker: Node, damage_multiplier: float, post
 	hit.guardable = action.guardable
 	hit.deflectable = action.deflectable
 	hit.knockback = base_knockback
+	hit.hurt_level = spec.hurt_level if spec != null and spec.hurt_level >= 0 else action.hurt_level
 	hit.action = action
 	# The player's reversed blade (item 10): half the health damage, full posture, and it cannot kill.
 	var player := attacker as Player

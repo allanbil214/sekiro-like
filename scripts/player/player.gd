@@ -393,6 +393,8 @@ var air_apex_y: float = 0.0
 var last_fall_height: float = 0.0
 var last_land_jumped: bool = false
 var air_jumped: bool = false
+## 3c-3b: the hit that will start a reaction (HurtState) at the next `_update_hurt()`.
+var _hurt_hit: HitData = null
 var input_buffer: InputBuffer
 ## The carried items and their counts (item 11), made in `_ready()` from `starting_items`.
 var item_belt: ItemBelt
@@ -588,6 +590,7 @@ func _physics_process(delta: float) -> void:
 	if _update_fall_respawn(delta):
 		return
 	_update_stagger()
+	_update_hurt()
 	_update_repulse()
 	_try_deathblow()
 	_try_heal()
@@ -1571,6 +1574,7 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	elif hit.perilous:
 		fx_kind = Fx.Kind.PERILOUS_HIT
 	Fx.play(get_tree(), fx_kind, hit.point, hit.direction)
+	_queue_hurt(hit)
 	if hang != null and hang.take_hit(hit):
 		apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_hit, hit.knockback_time)
 	var hug := state_machine.current as WallHugState
@@ -1594,6 +1598,10 @@ func _on_guard_broken(hit: HitData) -> void:
 	if state_machine.current is GuardState:
 		state_machine.transition_to(StateName.LOCOMOTION if is_on_floor() else StateName.AIR)
 	_guard_lockout = guard_break_lockout
+	var hurt := state_machine.get_state(StateName.HURT) as HurtState
+	if hurt != null and not hit.grab and hurt.can_react_guard_break():
+		_hurt_hit = null
+		hurt.begin_guard_break(hit)
 	if hit.grab and is_on_floor() and grab_kneel_time > 0.0:
 		_reaction.start_grab_kneel()
 	if sword_visual != null:
@@ -1657,6 +1665,31 @@ func _update_repulse() -> void:
 func _on_posture_broken() -> void:
 	_stagger_pending = true
 	Fx.play(get_tree(), Fx.Kind.POSTURE_BREAK, global_position + Vector3.UP * 1.2)
+
+
+## 3c-3b: a hit that landed may start a reaction (a clip and a lockout by its strength). It waits in `_hurt_hit` and
+## `_update_hurt()` starts it, so the state does not change in the middle of the attacker's frame.
+func _queue_hurt(hit: HitData) -> void:
+	var hurt := state_machine.get_state(StateName.HURT) as HurtState
+	if hurt == null or hit.grab or combatant.dead:
+		return
+	if state_machine.current is GuardState and hit.perilous:
+		return  # the guard break takes this one (`_on_guard_broken`)
+	if not hurt.can_react(hit.hurt_level):
+		return
+	if _hurt_hit == null or hit.hurt_level >= _hurt_hit.hurt_level:
+		_hurt_hit = hit
+
+
+func _update_hurt() -> void:
+	var hit := _hurt_hit
+	if hit == null:
+		return
+	_hurt_hit = null
+	var hurt := state_machine.get_state(StateName.HURT) as HurtState
+	if hurt == null or _stagger_pending or combatant.dead or not hurt.can_react(hit.hurt_level):
+		return
+	hurt.begin(hit)
 
 
 func _update_stagger() -> void:
