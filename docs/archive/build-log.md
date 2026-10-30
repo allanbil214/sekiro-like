@@ -1733,3 +1733,10 @@ Done and tested by the user. Two parts: the hug can now start on low walls, and 
 - **Files:** changed `scripts/enemy/enemy.gd`, `scripts/resources/enemy_ai_data.gd`, `docs/placeholders.md`. No new files, no editor step, no new clips (the 17 reaction clips came with 3c-3b-1).
 - **Not done:** a stun clip for the posture break, the death clip, a reaction for the sparring dummy (it stays a capsule), the guard hit clip (3c-4), a knockback or invulnerability for an enemy knockdown, per-enemy-type scales (the export exists, the data files use the defaults).
 - **Tested by the user:** works.
+
+### Step 3c-4a: light-tilt walk (2026-10-30)
+- **What exists:** on the ground a stick tilt below `Player.walk_tilt_threshold` (0.6) walks at `walk_speed` and a harder one runs at `run_speed`, easing across `walk_tilt_blend` (0.1) either side. The new `walk` action (held, Left Alt, rebindable on the keyboard page, no pad binding) walks at any tilt. The walk and run clips follow the real speed as before (3c-2a), so no clip work.
+- **Decisions (full check 2026-10-30):** only normal ground Locomotion (`LocomotionState`); dash, crouch, guard, aim, heal, carry (the carry multiplier still applies) and the air are unchanged; `walk_only` still wins; follows the F1 "Elden Ring-like feel" switch (OFF = the old behavior and Alt does nothing; a release build is always on). Alt is a held modifier, not a toggle; the controller has no walk button.
+- **Code:** `Player.uses_tilt_walk()`, `get_ground_move_speed()`, the optional `full_tilt` argument of `apply_horizontal_movement()` (the input direction at length 1, so the tilt picks walk or run), `Actions.WALK`, the row in `ControlsBindings.KEYBOARD_ACTIONS`. Editor step: the Input Map action `walk`.
+- **Found:** the check wrongly said the controller always ran at full speed; the old speed already scaled with the stick tilt (analog). Now a light tilt is a full walk and a hard tilt a full run, with no in-between speeds.
+- **Not done:** enemy tilt walk, a walk toggle, a controller walk button, 3c-4b (four-direction locked-on jumps and landings, the guard hit clip), 3c-4c (upper-body layers). No numbers were tuned.

@@ -11,6 +11,8 @@ const DODGE: StringName = &"dodge"
 const GUARD: StringName = &"guard"
 const HEAL: StringName = &"heal"
 const CROUCH: StringName = &"crouch"
+## 3c-4a: held on the keyboard to walk instead of run (a light stick tilt walks on its own).
+const WALK: StringName = &"walk"
 const INTERACT: StringName = &"interact"
 const SHEATHE: StringName = &"sheathe"
 const REVERSE_BLADE: StringName = &"reverse_blade"

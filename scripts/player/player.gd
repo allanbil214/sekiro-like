@@ -34,6 +34,11 @@ const HEADROOM_RADIUS: float = 0.38
 ## 3c-2b: slowing rate (m/s^2) of a stop from a run or sprint (the stick released above 1.5 x `walk_speed`): the whole stop
 ## uses it. Slower stops use `deceleration`.
 @export var stop_deceleration: float = 60.0
+## 3c-4a (PLACEHOLDER(ER feel), follows the F1 "Elden Ring-like feel" switch): on the ground a stick tilt below this walks
+## (`walk_speed`) and a harder one runs (`run_speed`); the speed eases across `walk_tilt_blend` either side of it. The
+## `walk` action (hold, Left Alt) walks at any tilt.
+@export_range(0.1, 0.95, 0.01) var walk_tilt_threshold: float = 0.6
+@export_range(0.0, 0.4, 0.01) var walk_tilt_blend: float = 0.1
 
 @export_group("Jump")
 ## 10.08 with gravity 2.0 and a 2.5x apex band of 3 m/s = the same ~2.46 m jump as before (9.88 with a 1.5x band
@@ -686,6 +691,25 @@ func get_move_speed() -> float:
 	return speed * carry_speed_multiplier if carried_body != null else speed
 
 
+## 3c-4a: the light-tilt walk is on (the F1 "Elden Ring-like feel" switch; always on in a release build).
+func uses_tilt_walk() -> bool:
+	return ActionData.er_feel_enabled or not OS.is_debug_build()
+
+
+## 3c-4a: the ground speed for the current stick tilt or the held `walk` action. Pass it to
+## `apply_horizontal_movement()` with `full_tilt` set, so the tilt picks walk or run, not a fraction of the speed.
+func get_ground_move_speed() -> float:
+	var run := get_move_speed()
+	if walk_only or not uses_tilt_walk():
+		return run
+	var walk := walk_speed * carry_speed_multiplier if carried_body != null else walk_speed
+	if Input.is_action_pressed(Actions.WALK):
+		return minf(walk, run)
+	var tilt := Input.get_vector(Actions.MOVE_LEFT, Actions.MOVE_RIGHT, Actions.MOVE_FORWARD, Actions.MOVE_BACK).length()
+	var t := smoothstep(walk_tilt_threshold - walk_tilt_blend, walk_tilt_threshold + walk_tilt_blend, tilt)
+	return lerpf(minf(walk, run), run, t)
+
+
 func get_crouch_speed() -> float:
 	return crouch_speed * carry_speed_multiplier if carried_body != null else crouch_speed
 
@@ -1205,8 +1229,11 @@ var _brake_frame: int = 0
 
 
 ## If overspeed_decel > 0 and there is input while faster than speed, slow down at that rate.
-func apply_horizontal_movement(delta: float, speed: float, overspeed_decel: float = -1.0) -> void:
+## 3c-4a: `full_tilt` uses the input's direction only (length 1), so `speed` is the whole target speed.
+func apply_horizontal_movement(delta: float, speed: float, overspeed_decel: float = -1.0, full_tilt: bool = false) -> void:
 	var move_dir := get_move_input()
+	if full_tilt:
+		move_dir = move_dir.normalized()
 	var target_vel := move_dir * speed
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var has_input := move_dir.length_squared() > 0.0
