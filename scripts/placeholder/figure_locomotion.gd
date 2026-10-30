@@ -46,6 +46,10 @@ const CROUCH_RUN_CLIPS: Array = ["crouch_run_front", "crouch_run_right", "crouch
 const AIR_LOOP_CLIP: String = "air_loop"
 const FALL_START_CLIP: String = "fall_start"
 const JUMP_CLIPS: Array = ["jump_stand", "jump_walk", "jump_run", "jump_sprint"]
+## 3c-4b PLACEHOLDER(ER clip): the walking and running jumps in the four directions (front, right, back, left, the order of
+## `direction_index()`), used while locked on. A missing one falls back to the front clip.
+const JUMP_WALK_CLIPS: Array = ["jump_walk", "jump_walk_right", "jump_walk_back", "jump_walk_left"]
+const JUMP_RUN_CLIPS: Array = ["jump_run", "jump_run_right", "jump_run_back", "jump_run_left"]
 ## Take-off speeds (m/s) from which a jump counts as a walking, running or sprinting one (the player's walk is 2.5, its run
 ## 6.5 and its dash 9.0; an enemy's speeds fall in the same bands).
 const JUMP_WALK_FROM: float = 0.5
@@ -127,7 +131,7 @@ static func missing_air_clip(clips: PlaceholderClips) -> String:
 ## 3c-3a: how the body moves through the air (call once per physics frame). `on` = it is airborne and the air layer
 ## should show; `vy` its vertical speed, `flat` its flat speed. A take-off (the air was off for `EDGE_GAP`) picks the
 ## lead clip: a jump when rising, else the fall start.
-func set_air(on: bool, vy: float, flat: float) -> void:
+func set_air(on: bool, vy: float, flat: float, strafe: bool = false, local_xz: Vector2 = Vector2.ZERO) -> void:
 	var tick: float = 1.0 / maxf(float(Engine.physics_ticks_per_second), 1.0)
 	if not on:
 		_air_off += tick
@@ -137,12 +141,12 @@ func set_air(on: bool, vy: float, flat: float) -> void:
 	if not _air_input and _air_off >= EDGE_GAP:
 		_air_t = 0.0
 		_air_jumped = vy > RISE_FROM
-		_air_clip = _jump_clip(flat) if _air_jumped else FALL_START_CLIP
+		_air_clip = _jump_clip(flat, strafe, local_xz) if _air_jumped else FALL_START_CLIP
 		_fit_lead(vy)
 	elif _air_input and vy - _air_vy > KICK_FROM:
 		_air_t = 0.0
 		_air_jumped = true
-		_air_clip = _jump_clip(flat)
+		_air_clip = _jump_clip(flat, strafe, local_xz)
 		_fit_lead(vy)
 	_air_input = true
 	_air_off = 0.0
@@ -179,14 +183,24 @@ func _fit_lead(vy: float) -> void:
 		_air_rate = clampf(apex_time / (rise - _air_delay if rise > _air_delay + 0.05 else rise), JUMP_RATE_MIN, JUMP_RATE_MAX)
 
 
-func _jump_clip(flat: float) -> String:
+## 3c-4b: while `strafe` (locked on) a walking or running take-off plays the clip of the direction the body moves in
+## (`local_xz` is the velocity in the figure's own space: x right, y back); the stand and sprint jumps have one clip.
+func _jump_clip(flat: float, strafe: bool = false, local_xz: Vector2 = Vector2.ZERO) -> String:
 	if flat >= JUMP_SPRINT_FROM:
 		return String(JUMP_CLIPS[3])
-	if flat >= JUMP_RUN_FROM:
-		return String(JUMP_CLIPS[2])
 	if flat >= JUMP_WALK_FROM:
-		return String(JUMP_CLIPS[1])
+		var names: Array = JUMP_RUN_CLIPS if flat >= JUMP_RUN_FROM else JUMP_WALK_CLIPS
+		var chosen: String = String(names[direction_index(local_xz) if strafe else 0])
+		return chosen if _clips.has_clip(chosen) else String(names[0])
 	return String(JUMP_CLIPS[0])
+
+
+## 3c-4b: which of four directions (0 front, 1 right, 2 back, 3 left) a velocity in the figure's own space (x right, y back)
+## points to, in sectors of 90 degrees. No movement counts as the front.
+static func direction_index(local_xz: Vector2) -> int:
+	if local_xz.length_squared() < 0.0001:
+		return 0
+	return roundi(fposmod(atan2(local_xz.x, -local_xz.y), TAU) / (TAU * 0.25)) % 4
 
 
 ## The air pose now: the lead clip, cross-fading into the loop over its last `AIR_FADE` seconds.

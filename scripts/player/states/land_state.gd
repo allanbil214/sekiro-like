@@ -24,6 +24,11 @@ extends ActionState
 @export var sprint_land_from: float = 8.0
 ## A light landing coasts: the body slows by this share of the usual deceleration.
 @export var light_coast: float = 0.35
+## 3c-4b PLACEHOLDER(ER clip): while locked on, a landing after a jump at a walking or running speed plays the clip of the
+## direction the body moves in (front, right, back, left, the order of `FigureLocomotion.direction_index()`). The sprint
+## landing, the standing landing, the landing after walking off a ledge and the heavy landing stay as they are.
+const STRAFE_WALK_CLIPS: Array = ["land_strafe_walk_front", "land_strafe_walk_right", "land_strafe_walk_back", "land_strafe_walk_left"]
+const STRAFE_RUN_CLIPS: Array = ["land_strafe_run_front", "land_strafe_run_right", "land_strafe_run_back", "land_strafe_run_left"]
 
 var _light_action: ActionData
 var _heavy: bool = false
@@ -32,6 +37,10 @@ var _flat_speed: float = 0.0
 var _pending_height: float = 0.0
 var _pending_jumped: bool = true
 var _pending_speed: float = 0.0
+var _pending_strafe: bool = false
+var _pending_local: Vector2 = Vector2.ZERO
+var _strafe: bool = false
+var _local: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -51,6 +60,8 @@ func begin(height: float, jumped: bool, flat_speed: float) -> bool:
 	_pending_height = height
 	_pending_jumped = jumped
 	_pending_speed = flat_speed
+	_pending_strafe = player.lock_on.has_target()
+	_pending_local = player.figure.local_flat_velocity(player.velocity)
 	machine.transition_to(StateName.LAND)
 	return true
 
@@ -59,6 +70,8 @@ func _on_action_enter(_previous: StringName) -> void:
 	_heavy = _pending_height >= heavy_fall_height and heavy_action != null
 	_jumped = _pending_jumped
 	_flat_speed = _pending_speed
+	_strafe = _pending_strafe
+	_local = _pending_local
 	action = heavy_action if _heavy else _light_action
 	speed_scale = action.speed_scale
 
@@ -68,6 +81,12 @@ func _clip_name() -> StringName:
 		return &"land_fall"
 	if not _jumped:
 		return &"land_light"
+	if _strafe and _flat_speed >= FigureLocomotion.JUMP_WALK_FROM and _flat_speed < sprint_land_from:
+		var names: Array = STRAFE_RUN_CLIPS if _flat_speed >= run_land_from else STRAFE_WALK_CLIPS
+		var chosen: StringName = StringName(String(names[FigureLocomotion.direction_index(_local)]))
+		var clips := PlaceholderClips.shared()
+		if clips != null and clips.has_clip(String(chosen)):
+			return chosen
 	if _flat_speed >= sprint_land_from:
 		return &"land_sprint"
 	if _flat_speed >= run_land_from:

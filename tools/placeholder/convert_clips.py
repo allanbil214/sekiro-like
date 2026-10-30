@@ -51,6 +51,15 @@ CLIPS = {
     "hurt_large_front": "a000_005300", "hurt_large_back": "a000_005310", "hurt_large_left": "a000_005330", "hurt_large_right": "a000_005320",
     "hurt_knockdown_front": "a000_005400", "hurt_knockdown_back": "a000_005410", "hurt_knockdown_left": "a000_005420", "hurt_knockdown_right": "a000_005430",
     "guard_break": "a000_004270",
+    # 3c-4b: the walk and run jumps in the other three directions (locked on), the strafe landings (walk and run, four
+    # directions each) and the blocked hit.
+    "jump_walk_back": "a000_202011", "jump_walk_left": "a000_202012", "jump_walk_right": "a000_202013",
+    "jump_run_back": "a000_202021", "jump_run_left": "a000_202022", "jump_run_right": "a000_202023",
+    "land_strafe_walk_front": "a000_202110", "land_strafe_walk_back": "a000_202111",
+    "land_strafe_walk_left": "a000_202112", "land_strafe_walk_right": "a000_202113",
+    "land_strafe_run_front": "a000_202115", "land_strafe_run_back": "a000_202116",
+    "land_strafe_run_left": "a000_202117", "land_strafe_run_right": "a000_202118",
+    "guard_hit": "a000_004200",
 }
 
 

@@ -1387,7 +1387,7 @@ func _drive_figure_locomotion() -> void:
 	# 3c-3a: the jump, fall and airborne clips while off the ground in a state that is part of the airtime.
 	var airborne: bool = not is_on_floor() and (current is AirState or current is WallJumpState or current is GuardState \
 			or current is AirAttackState or current is HelmSplitterState)
-	figure.drive_air(airborne, velocity)
+	figure.drive_air(airborne, velocity, strafe)
 
 
 ## The radius of the body capsule (used by the LedgeSensor).
@@ -1613,6 +1613,9 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 ## blade flash, a shorter hitstop, and the knockback. (The posture damage is added by the Combatant.)
 func _on_guarded(hit: HitData, _chip: float) -> void:
 	_guard_reaction(hit, false)
+	var guard := state_machine.current as GuardState
+	if guard != null:
+		guard.play_guard_hit()  # 3c-4b: the figure's blocked-hit clip over the guard
 	apply_knockback(hit.direction, hit.knockback * combatant.knockback_multiplier_guard, hit.knockback_time)
 
 

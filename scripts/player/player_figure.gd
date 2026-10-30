@@ -226,12 +226,20 @@ func drive_locomotion(on: bool, world_velocity: Vector3, strafe: bool, sprint: b
 
 ## 3c-3a: called by the Player and by the Enemy once per physics frame. `on` = the body is airborne (jumping, falling, in an
 ## air action); the figure then shows the jump, the fall start and the airborne loop as its base layer.
-func drive_air(on: bool, world_velocity: Vector3) -> void:
+## 3c-4b: `strafe` = locked on, so a walking or running jump plays the clip of the direction the body moves in.
+func drive_air(on: bool, world_velocity: Vector3, strafe: bool = false) -> void:
 	if _loco == null or not available or not visible or not _air_missing.is_empty():
 		return
 	_air_frame = Engine.get_physics_frames()
 	_air_wanted = on
-	_loco.set_air(on, world_velocity.y, Vector2(world_velocity.x, world_velocity.z).length())
+	_loco.set_air(on, world_velocity.y, Vector2(world_velocity.x, world_velocity.z).length(), strafe,
+			local_flat_velocity(world_velocity))
+
+
+## 3c-4b: the flat part of a world velocity in the figure's own space (x right, y back), for picking a direction clip.
+func local_flat_velocity(world_velocity: Vector3) -> Vector2:
+	var local: Vector3 = global_transform.basis.orthonormalized().inverse() * Vector3(world_velocity.x, 0.0, world_velocity.z)
+	return Vector2(local.x, local.z)
 
 
 ## Fade the locomotion layer in and out, step it, and make the base pose of this frame (null = the plain held pose).

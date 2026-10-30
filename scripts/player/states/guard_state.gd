@@ -13,7 +13,13 @@ extends State
 ## Cancels: jump, dodge, and attack (and the wall jump or air attack in the air). Guard itself
 ## cancels any action outside its hit window (see ActionState._try_guard_cancel).
 
+## 3c-4b PLACEHOLDER(ER clip): the blocked-hit clip (`guard_hit`, the sandbox's guard hit, data/actions/player/guard_hit.tres) the
+## figure plays over the held guard when a plain guard blocks a hit on the ground. Only the figure changes: the guard cone, the
+## deflect window and walking are untouched. Follows the F1 "Clips drive the figure" switch.
+@export var hit_action: ActionData = preload("res://data/actions/player/guard_hit.tres")
+
 var _airborne: bool = false
+var _hit_time: float = -1.0
 
 
 func enter(_previous: StringName) -> void:
@@ -25,6 +31,7 @@ func enter(_previous: StringName) -> void:
 	player.input_buffer.consume(Actions.GUARD)
 	player.combatant.press_guard()
 	_airborne = not player.is_on_floor()
+	_hit_time = -1.0
 	Sfx.play(player.get_tree(), Sfx.Id.GUARD_RAISE)
 	if was_sheathed:
 		Sfx.play(player.get_tree(), Sfx.Id.DRAW)
@@ -33,6 +40,7 @@ func enter(_previous: StringName) -> void:
 
 
 func exit(_next: StringName) -> void:
+	_end_hit_clip()
 	player.walk_only = false
 	player.combatant.guarding = false
 	player.notify_combat()
@@ -48,6 +56,7 @@ func physics_update(delta: float) -> void:
 		if player.sword_visual != null:
 			player.sword_visual.play_guard_press()
 	var on_floor := player.is_on_floor()
+	_update_hit_clip(delta, on_floor)
 	if on_floor:
 		if _airborne:
 			_airborne = false
@@ -78,3 +87,27 @@ func physics_update(delta: float) -> void:
 	player.face_input(delta)
 	if not Input.is_action_pressed(Actions.GUARD) and combatant.deflect_left <= 0.0:
 		machine.transition_to(StateName.LOCOMOTION if on_floor else StateName.AIR)
+
+
+## 3c-4b: a plain guard blocked a hit (called by the Player): the figure's blocked-hit clip starts, or starts again. Not in the air.
+func play_guard_hit() -> void:
+	if hit_action == null or not player.is_on_floor():
+		return
+	_hit_time = 0.0
+
+
+func _update_hit_clip(delta: float, on_floor: bool) -> void:
+	if _hit_time < 0.0:
+		return
+	_hit_time += delta * Hitstop.fighter_scale(player)
+	if _hit_time >= hit_action.duration or not on_floor:
+		_end_hit_clip()
+		return
+	player.figure.drive_clip(hit_action, _hit_time, 1.0, hit_action.placeholder_clip)
+
+
+func _end_hit_clip() -> void:
+	if _hit_time < 0.0:
+		return
+	_hit_time = -1.0
+	player.figure.stop_clip()
