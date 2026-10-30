@@ -79,6 +79,11 @@ func play() -> void:
 	_tween.tween_callback(func() -> void: visible = false)
 
 
+## 3c-5: raise the arms to the reach pose (raised_angle_deg) and keep them there until release() (`interact` held in the air).
+func hold_reach() -> void:
+	_hold(raised_angle_deg, shoulder_height)
+
+
 ## Swing the arms forward (slide_angle_deg) and keep them there until release().
 func hold_forward(shoulder_y: float) -> void:
 	_hold(slide_angle_deg, shoulder_y)

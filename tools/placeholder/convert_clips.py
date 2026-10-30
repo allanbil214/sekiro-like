@@ -60,6 +60,8 @@ CLIPS = {
     "land_strafe_run_front": "a000_202115", "land_strafe_run_back": "a000_202116",
     "land_strafe_run_left": "a000_202117", "land_strafe_run_right": "a000_202118",
     "guard_hit": "a000_004200",
+    # 3c-4c: the one-handed guard stance (the upper-body layer while a guard is up).
+    "guard_stance": "a000_000100",
 }
 
 

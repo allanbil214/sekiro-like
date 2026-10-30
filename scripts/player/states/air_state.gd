@@ -16,9 +16,14 @@ func enter(_previous: StringName) -> void:
 	_hint_hang = false
 
 
+func exit(_next: StringName) -> void:
+	player.stop_air_reach()  # 3c-5: the arms raised by `interact` come down (a ledge hang raises its own)
+
+
 func physics_update(delta: float) -> void:
 	player.coyote_timer = maxf(player.coyote_timer - delta, 0.0)
 	player.apply_gravity(delta)
+	player.update_air_reach(delta)  # 3c-5: `interact` held in the air raises the arms
 	if player.ledge_sensor.try_ledge_grab():
 		machine.transition_to(player.ledge_sensor.ledge_grab_state())
 		return

@@ -810,6 +810,11 @@ func _on_distracted() -> void:
 		_set_tend(Tend.RESPECT_GO, "distracted, resume at the respect")
 
 
+## 3c-4c: true while this guard has a body on its shoulder (the figure shows its carrying upper body).
+func is_carrying_body() -> bool:
+	return _carrying
+
+
 ## A carried body is put down where the guard stands (it died, or something made it drop everything).
 func drop_carried() -> void:
 	if _carrying:

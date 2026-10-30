@@ -461,9 +461,19 @@ func _drive_figure_locomotion() -> void:
 	var walking: bool = is_on_floor() and not combatant.deathblow_open and (phase == Phase.IDLE or phase == Phase.CHASE \
 			or phase == Phase.RECOVER or phase == Phase.YIELD)
 	var strafe: bool = phase == Phase.YIELD or _guarding
-	figure.drive_locomotion(walking, velocity, strafe, false, false)
+	# 3c-4c: a guard carrying a body lets its right arm follow the carry pose instead of the code-drawn sword hand.
+	var carrying: bool = _awareness != null and _awareness.is_carrying_body()
+	figure.drive_locomotion(walking, velocity, strafe, false, carrying)
 	# 3c-3a: off the ground (a drop, jump or climb link, a knock into the air) the figure shows its jump or fall clips.
 	figure.drive_air(not is_on_floor() and not combatant.deathblow_open, velocity)
+	# 3c-4c: the upper body shows the guard stance, or the carry, over the legs while on the ground.
+	var upper: int = FigureUpperLayer.Kind.NONE
+	if is_on_floor() and not combatant.deathblow_open:
+		if _guarding:
+			upper = FigureUpperLayer.Kind.GUARD
+		elif _awareness != null and _awareness.is_carrying_body():
+			upper = FigureUpperLayer.Kind.CARRY
+	figure.drive_upper(upper)
 
 
 func _process(delta: float) -> void:

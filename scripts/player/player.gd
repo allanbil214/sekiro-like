@@ -445,8 +445,13 @@ var _interact_picker: InteractPicker
 var is_crouched: bool = false
 var _noise_spike: float = 0.0
 var _noise_spike_left: float = 0.0
-## Mid-air reach is once per airtime; a wall jump restores it. Landing resets both.
+## The mid-air jump press (the double jump: the jump animation again, no extra height) is once per airtime; a wall jump
+## restores it. Landing resets both. (Before 3c-5 this played the arm reach, which now follows `interact` in the air.)
 var reach_ready: bool = true
+## 3c-5: the arms raised by `interact` in the air, and how long (s) they have been up.
+const AIR_REACH_MIN_TIME: float = 0.25
+var _air_reach_up: bool = false
+var _air_reach_time: float = 0.0
 var wall_jumps_used: int = 0
 ## The next attack of the air tap loop (empty = start from the first). Landing resets it.
 var air_loop_next: ActionData
@@ -1388,6 +1393,14 @@ func _drive_figure_locomotion() -> void:
 	var airborne: bool = not is_on_floor() and (current is AirState or current is WallJumpState or current is GuardState \
 			or current is AirAttackState or current is HelmSplitterState)
 	figure.drive_air(airborne, velocity, strafe)
+	# 3c-4c: the upper body shows the guard stance, or the carry, over the legs while on the ground (the air has its own layer).
+	var upper: int = FigureUpperLayer.Kind.NONE
+	if is_on_floor():
+		if current is GuardState:
+			upper = FigureUpperLayer.Kind.GUARD
+		elif carried_body != null:
+			upper = FigureUpperLayer.Kind.CARRY
+	figure.drive_upper(upper)
 
 
 ## The radius of the body capsule (used by the LedgeSensor).
@@ -1440,9 +1453,30 @@ func reset_air_actions() -> void:
 	helm_used = false
 
 
-func play_reach_arms() -> void:
+## 3c-5: `interact` in the air raises the arms (the reach for a ledge, as in Sekiro) and keeps them up while it is held, for at
+## least `AIR_REACH_MIN_TIME` so a tap reads. Called every physics frame by the air states that allow it (`AirState`, and
+## `WallJumpState` once it can cancel); `stop_air_reach()` lowers them when such a state ends. The ledge grab is unchanged.
+func update_air_reach(delta: float) -> void:
+	if _reach_arms == null or carried_body != null:
+		return
+	var held: bool = Input.is_action_pressed(Actions.INTERACT)
+	if _air_reach_up:
+		_air_reach_time += delta
+		if not held and _air_reach_time >= AIR_REACH_MIN_TIME:
+			stop_air_reach()
+	elif held:
+		_air_reach_up = true
+		_air_reach_time = 0.0
+		_reach_arms.hold_reach()
+		Sfx.play(get_tree(), Sfx.Id.REACH)
+
+
+func stop_air_reach() -> void:
+	if not _air_reach_up:
+		return
+	_air_reach_up = false
 	if _reach_arms != null:
-		_reach_arms.play()
+		_reach_arms.release()
 
 
 ## Slide pose: arms held straight forward at crouched shoulder height until stop_slide_arms().
@@ -2232,10 +2266,12 @@ func try_air_jump() -> bool:
 		if not wall.is_empty():
 			wall_normal = wall["normal"]
 			return true
+	# 3c-5: the mid-air jump press (once per airtime) plays the jump animation again; there is no extra height. The arms
+	# belong to `interact` now (`update_air_reach()`).
 	if reach_ready:
 		reach_ready = false
-		play_reach_arms()
-		Sfx.play(get_tree(), Sfx.Id.REACH)
+		figure.replay_jump(velocity, lock_on.has_target(), jump_velocity)
+		Sfx.play(get_tree(), Sfx.Id.JUMP)
 	return false
 
 

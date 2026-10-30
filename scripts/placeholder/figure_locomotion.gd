@@ -74,6 +74,8 @@ const JUMP_RATE_MIN: float = 0.7
 const JUMP_RATE_MAX: float = 1.4
 ## Seconds the lead clip (jump or fall start) cross-fades into the loop at its end.
 const AIR_FADE: float = 0.15
+## 3c-5 PLACEHOLDER(ER clip): seconds the pose of a replayed jump (the mid-air jump press) fades in from the pose it interrupts.
+const REPLAY_FADE: float = 0.08
 
 var _clips: PlaceholderClips
 ## Blend weight of each gait; the standing gaits (0 to 3) add up to 1 and so do the crouched ones (4 and 5).
@@ -100,6 +102,9 @@ var _air_delay: float = 0.0
 var _air_rate: float = 1.0
 var _air_off: float = 1.0
 var _air_vy: float = 0.0
+## 3c-5: the pose a replayed jump fades in from, and how much of it is still mixed in (1 -> 0 over `REPLAY_FADE`).
+var _replay_from: PlaceholderClips.Pose
+var _replay_fade: float = 0.0
 
 
 func _init(clips: PlaceholderClips) -> void:
@@ -139,6 +144,7 @@ func set_air(on: bool, vy: float, flat: float, strafe: bool = false, local_xz: V
 		_air_vy = 0.0
 		return
 	if not _air_input and _air_off >= EDGE_GAP:
+		_replay_fade = 0.0
 		_air_t = 0.0
 		_air_jumped = vy > RISE_FROM
 		_air_clip = _jump_clip(flat, strafe, local_xz) if _air_jumped else FALL_START_CLIP
@@ -158,6 +164,20 @@ func reset_air() -> void:
 	if _air_input:
 		_air_input = false
 		_air_off = 1.0
+
+
+## 3c-5: the jump clip plays again from its start while airborne (the mid-air jump press: no height, only the animation). It picks
+## the clip like a take-off by the flat speed (four directions when `strafe`), fits its speed to `take_off_speed` (the real vertical
+## speed is useless mid-air) and fades in from the pose it interrupts. Does nothing when the air layer is not live.
+func restart_jump(flat: float, strafe: bool, local_xz: Vector2, take_off_speed: float) -> void:
+	if not _air_input:
+		return
+	_replay_from = air_pose()
+	_replay_fade = 1.0
+	_air_t = 0.0
+	_air_jumped = true
+	_air_clip = _jump_clip(flat, strafe, local_xz)
+	_fit_lead(take_off_speed)
 
 
 ## True while the air layer has a pose to show: a jump at once, a fall after `AIR_MIN`.
@@ -203,8 +223,16 @@ static func direction_index(local_xz: Vector2) -> int:
 	return roundi(fposmod(atan2(local_xz.x, -local_xz.y), TAU) / (TAU * 0.25)) % 4
 
 
-## The air pose now: the lead clip, cross-fading into the loop over its last `AIR_FADE` seconds.
+## The air pose now: the lead clip, cross-fading into the loop over its last `AIR_FADE` seconds (3c-5: fading in from the pose
+## a replayed jump interrupted).
 func air_pose() -> PlaceholderClips.Pose:
+	var result: PlaceholderClips.Pose = _lead_pose()
+	if _replay_fade > 0.0 and _replay_from != null:
+		result = _mix(result, _replay_from, _replay_fade)
+	return result
+
+
+func _lead_pose() -> PlaceholderClips.Pose:
 	var loop_pose: PlaceholderClips.Pose = _clips.sample_loop(AIR_LOOP_CLIP, _air_t)
 	var lead_length: float = _clips.length_of(_air_clip) / _air_rate + _air_delay
 	if _air_t >= lead_length:
@@ -232,6 +260,7 @@ func step(delta: float, crouch: float, body_scale: float) -> void:
 	_idle_time += delta
 	if _air_input:
 		_air_t += delta
+	_replay_fade = move_toward(_replay_fade, 0.0, delta / maxf(REPLAY_FADE, 0.001))
 	var standing: float = _group_cycles(Gait.IDLE, Gait.CROUCH_IDLE, body_scale)
 	var crouched: float = _group_cycles(Gait.CROUCH_IDLE, Gait.CROUCH_RUN + 1, body_scale)
 	# While one group is still (or has no moving clip), the other sets the pace.

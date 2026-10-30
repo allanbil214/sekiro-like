@@ -39,11 +39,14 @@ func _on_action_enter(_previous: StringName) -> void:
 	player.coyote_timer = 0.0
 	if not forced_away:
 		player.wall_jumps_used += 1
-	player.reach_ready = true
-	player.play_reach_arms()
+	player.reach_ready = true  # 3c-5: restores the double jump; the arms are `interact`'s now
 
 
-func _on_action_update(_delta: float) -> void:
+func _on_action_exit() -> void:
+	player.stop_air_reach()
+
+
+func _on_action_update(delta: float) -> void:
 	if player.is_on_floor() and player.velocity.y <= 0.0:
 		player.reset_air_actions()
 		machine.transition_to(StateName.LOCOMOTION)
@@ -51,8 +54,10 @@ func _on_action_update(_delta: float) -> void:
 	if player.ledge_sensor.try_ledge_grab():
 		machine.transition_to(player.ledge_sensor.ledge_grab_state())
 		return
-	if action.can_cancel(action_time) and player.try_air_jump():
-		machine.transition_to(StateName.WALL_JUMP)
+	if action.can_cancel(action_time):
+		player.update_air_reach(delta)
+		if player.try_air_jump():
+			machine.transition_to(StateName.WALL_JUMP)
 
 
 func _on_action_finished() -> void:

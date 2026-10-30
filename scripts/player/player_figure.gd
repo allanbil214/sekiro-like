@@ -23,6 +23,10 @@ extends MannequinFigure
 ## held, in the air...) or the F1 switch `locomotion_enabled` is off, the base layer fades back to the held stand or crouch
 ## pose. The right arm follows the base layer while the sword is sheathed (`right_arm_free`) instead of hanging on the
 ## code-drawn hand; the left arm follows it unless healing or reaching.
+## 3c-4c: an upper-body layer (`FigureUpperLayer`) sits on that base pose: while the owner reports a guard (`drive_upper(GUARD)`)
+## the joints above the pelvis take the sandbox's guard stance, and while it reports a carry they take a made-up carrying pose;
+## the legs keep the locomotion clip. The layer fades in and out over `UPPER_BLEND`, on its own. The right arm still follows
+## the code-drawn hand unless the sword is sheathed at rest (`right_arm_free`), so the sword's guard and deflect poses are kept.
 
 ## PLACEHOLDER: how far (fraction of the arm's length) the bones may stretch to reach a hand target.
 @export var max_stretch: float = 0.25
@@ -32,6 +36,14 @@ extends MannequinFigure
 ## PLACEHOLDER: seconds to blend from the held pose into a clip, and from the clip back to the held pose.
 @export var blend_in: float = 0.1
 @export var blend_out: float = 0.12
+
+## 3c-4c PLACEHOLDER(made-up pose): the carrying pose, in figure space (+X right, +Y up, -Z forward, the clips' metres). The hands
+## are relative to the chest; the lean is degrees away from the shoulder the body rests on. Tuned by eye.
+@export var carry_right_hand: Vector3 = Vector3(0.2, 0.05, -0.17)
+@export var carry_left_hand: Vector3 = Vector3(0.1, -0.12, -0.22)
+@export var carry_lean_degrees: float = 6.0
+## Which way the elbows bend while carrying (the right one; the left mirrors X).
+@export var carry_elbow_pole: Vector3 = Vector3(0.7, -0.8, 0.3)
 
 ## The F1 switch (3a-3c): false = no clip plays, the figure holds its pose and the code sword is drawn.
 static var clips_enabled: bool = true
@@ -49,6 +61,8 @@ const LOCO_BLEND: float = 0.15
 const ARM_BLEND: float = 0.12
 ## 3c-3a: seconds the air pose fades in and out against the ground pose.
 const AIR_BLEND: float = 0.08
+## 3c-4c: seconds an upper-body layer (guard, carry) fades in and out.
+const UPPER_BLEND: float = 0.12
 
 ## True once the clips are loaded and the figure can be shown.
 var available: bool = false
@@ -108,6 +122,15 @@ var _air_missing: String = ""
 var _was_loco: bool = false
 var _right_free: bool = false
 var _right_follow: float = 0.0
+# 3c-4c: the upper-body layer. `_upper_wanted` is what the owner asked for in the physics frame `_upper_frame`; `_upper_kind` is
+# the layer being shown or faded (it changes only at weight 0), `_upper_mix` its weight, `_upper_time` the guard loop's clock.
+var _upper: FigureUpperLayer
+var _upper_wanted: int = FigureUpperLayer.Kind.NONE
+var _upper_frame: int = -100
+var _upper_kind: int = FigureUpperLayer.Kind.NONE
+var _upper_mix: float = 0.0
+var _upper_time: float = 0.0
+var _upper_warned: bool = false
 
 
 func _ready() -> void:
@@ -131,6 +154,7 @@ func _ready() -> void:
 	elif not _loco_warned:
 		_loco_warned = true
 		push_warning("[PlayerFigure] locomotion clip '%s' is missing: no locomotion clips (run tools/placeholder/convert_clips.py)" % missing)
+	_upper = FigureUpperLayer.new(clips)
 	_pelvis = clips.joint_index("Pelvis")
 	_lower.resize(clips.joint_names.size())
 	for i in clips.joint_names.size():
@@ -236,14 +260,73 @@ func drive_air(on: bool, world_velocity: Vector3, strafe: bool = false) -> void:
 			local_flat_velocity(world_velocity))
 
 
+## 3c-5: the mid-air jump press: the figure plays the jump clip again from its start (no height change; the clip is picked by
+## the flat speed, in four directions while `strafe`, and fitted to `take_off_speed`). Only while the air layer is live.
+func replay_jump(world_velocity: Vector3, strafe: bool, take_off_speed: float) -> void:
+	if _loco == null or not available or not visible or not _air_missing.is_empty():
+		return
+	_loco.restart_jump(Vector2(world_velocity.x, world_velocity.z).length(), strafe, local_flat_velocity(world_velocity), take_off_speed)
+
+
 ## 3c-4b: the flat part of a world velocity in the figure's own space (x right, y back), for picking a direction clip.
 func local_flat_velocity(world_velocity: Vector3) -> Vector2:
 	var local: Vector3 = global_transform.basis.orthonormalized().inverse() * Vector3(world_velocity.x, 0.0, world_velocity.z)
 	return Vector2(local.x, local.z)
 
 
-## Fade the locomotion layer in and out, step it, and make the base pose of this frame (null = the plain held pose).
+## 3c-4c: called by the Player and by the Enemy once per physics frame with the upper-body layer it wants (`FigureUpperLayer.Kind.GUARD` while a
+## guard is up on the ground, `FigureUpperLayer.Kind.CARRY` while a body is on its shoulder, otherwise `FigureUpperLayer.Kind.NONE`). Not called, or not for two
+## physics frames, counts as NONE. The legs keep their locomotion clip.
+func drive_upper(kind: int) -> void:
+	if _upper == null or not available or not visible:
+		return
+	_upper_frame = Engine.get_physics_frames()
+	_upper_wanted = kind
+
+
+## The base pose of this frame: the locomotion layer (3c-2a, 3c-3a) with the upper-body layer on top (3c-4c); null = the plain held pose.
 func _update_locomotion(delta: float) -> void:
+	var base: PlaceholderClips.Pose = _locomotion_base(delta)
+	_update_upper(delta)
+	if _upper_mix > 0.0 and _upper_kind != FigureUpperLayer.Kind.NONE:
+		var under: PlaceholderClips.Pose = base if base != null else _static_pose()
+		base = _with_upper(under)
+	_base_pose = base
+
+
+## Step the layer's weight and clock: it fades out before another kind takes over, and off when it is not asked for.
+func _update_upper(delta: float) -> void:
+	var fresh: bool = Engine.get_physics_frames() - _upper_frame <= 2
+	var want: int = _upper_wanted if (_upper != null and locomotion_enabled and fresh) else FigureUpperLayer.Kind.NONE
+	if want == FigureUpperLayer.Kind.GUARD and not _upper.has_guard():
+		want = FigureUpperLayer.Kind.NONE
+		if not _upper_warned:
+			_upper_warned = true
+			push_warning("[PlayerFigure] clip '%s' is missing: no guard layer (run tools/placeholder/convert_clips.py)" % FigureUpperLayer.GUARD_CLIP)
+	if _upper_kind != want and _upper_mix <= 0.0:
+		_upper_kind = want
+		_upper_time = 0.0
+	var goal: float = 1.0 if (want != FigureUpperLayer.Kind.NONE and want == _upper_kind) else 0.0
+	_upper_mix = move_toward(_upper_mix, goal, delta / maxf(UPPER_BLEND, 0.001))
+	_upper_time += delta
+	if _upper != null:
+		_upper.carry_right_hand = carry_right_hand
+		_upper.carry_left_hand = carry_left_hand
+		_upper.carry_lean_degrees = carry_lean_degrees
+		_upper.carry_right_pole = carry_elbow_pole
+		_upper.carry_left_pole = Vector3(-carry_elbow_pole.x, carry_elbow_pole.y, carry_elbow_pole.z)
+
+
+## `under` with the upper-body layer on it. A guard stands up out of a crouch: its weight falls as the figure crouches.
+func _with_upper(under: PlaceholderClips.Pose) -> PlaceholderClips.Pose:
+	if _upper_kind == FigureUpperLayer.Kind.GUARD:
+		var weight: float = _upper_mix * (1.0 - crouch_blend)
+		return under if weight <= 0.0 else _upper.blend(under, _upper.guard_pose(under, _upper_time), weight)
+	return _upper.blend(under, _upper.carry_pose(under), _upper_mix)
+
+
+## Fade the locomotion layer in and out, step it, and make the base pose of this frame (null = the plain held pose).
+func _locomotion_base(delta: float) -> PlaceholderClips.Pose:
 	var fresh: bool = Engine.get_physics_frames() - _loco_frame <= 2
 	var enabled: bool = _loco != null and locomotion_enabled
 	var on: bool = enabled and fresh and _loco_wanted
@@ -257,14 +340,13 @@ func _update_locomotion(delta: float) -> void:
 	var follow_goal: float = 1.0 if enabled and fresh and _right_free else 0.0
 	_right_follow = move_toward(_right_follow, follow_goal, delta / maxf(ARM_BLEND, 0.001))
 	if not enabled or (not on and not air_live and _loco_mix <= 0.0 and _air_mix <= 0.0):
-		_base_pose = null
-		return
+		return null
 	_loco.step(delta, crouch_blend, scale.x)
 	var loco_pose: PlaceholderClips.Pose = _loco.pose(crouch_blend)
 	if _air_mix > 0.0:
 		var air_pose: PlaceholderClips.Pose = _loco.air_pose()
 		loco_pose = air_pose if _air_mix >= 1.0 else _blend(loco_pose, air_pose, _air_mix)
-	_base_pose = loco_pose if _loco_mix >= 1.0 else _blend(_static_pose(), loco_pose, _loco_mix)
+	return loco_pose if _loco_mix >= 1.0 else _blend(_static_pose(), loco_pose, _loco_mix)
 
 
 ## 3a-3c: called by `ActionState` every physics frame with the running action, its clock and how fast the clock runs.
@@ -457,6 +539,8 @@ func _on_visibility_changed() -> void:
 	_xfade = 0.0
 	_was_clip = false
 	_loco_mix = 0.0
+	_upper_mix = 0.0
+	_upper_kind = FigureUpperLayer.Kind.NONE
 	_right_follow = 0.0
 	_base_pose = null
 	_was_loco = false
