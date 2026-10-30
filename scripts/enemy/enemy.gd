@@ -43,6 +43,17 @@ extends CharacterBody3D
 enum Phase { IDLE, CHASE, ATTACK, RECOVER, YIELD, STUNNED, FLINCH, POSE, PERILOUS, COUNTERED }
 enum Peril { NONE, THRUST, SWEEP, GRAB }
 
+## 3c-3b-2 PLACEHOLDER(ER clip): the flinch plays the player's reaction clip of the hit's strength and side (the same rig and
+## clips). The actions only name the clip's owner for the figure; the second list is how far into each clip the flinch plays
+## (the sandbox's cancel frame: 15, 28, 37 and 93 of 30 per second), stretched over the stun.
+const FLINCH_ACTIONS: Array = [
+	preload("res://data/actions/player/hurt_small.tres"),
+	preload("res://data/actions/player/hurt_middle.tres"),
+	preload("res://data/actions/player/hurt_large.tres"),
+	preload("res://data/actions/player/hurt_knockdown.tres"),
+]
+const FLINCH_CLIP_END: Array = [0.5, 0.9333, 1.2333, 3.1]
+
 @export var ai: EnemyAIData
 @export var weapon: WeaponData
 @export var respawn_delay: float = 2.0
@@ -216,6 +227,10 @@ var _spawn_yaw: float = 0.0
 ## The defense decisions (Phase 1.5, item 5b): the plan, the streaks, the riposte timer.
 var _defense: EnemyDefense
 var _flinch_immunity: float = 0.0
+## 3c-3b-2: the strength of the current flinch (kept until its immunity ends, -1 = none), its clip ("" = none), and how long it lasts.
+var _flinch_level: int = -1
+var _flinch_clip: StringName = &""
+var _flinch_total: float = 0.35
 var _burst_armored: bool = false
 var _pose_timer: float = 0.0
 var _pose_cooldown: float = 0.0
@@ -334,7 +349,7 @@ func _physics_process(delta: float) -> void:
 	delta *= hit_scale
 	# 3a-3c-4: a clip only plays during a swing; any other phase (or a dead, held or stunned body) ends it.
 	if figure.is_clip_playing() and (combatant.dead or _held or combatant.deathblow_open \
-			or (phase != Phase.ATTACK and phase != Phase.PERILOUS)):
+			or (phase != Phase.ATTACK and phase != Phase.PERILOUS and phase != Phase.FLINCH)):
 		figure.stop_clip()
 	if _body_flying:
 		_fly_body(delta)
@@ -354,6 +369,8 @@ func _physics_process(delta: float) -> void:
 		_return_to_spawn()
 	_defense.tick(delta)
 	_flinch_immunity = maxf(_flinch_immunity - delta, 0.0)
+	if _flinch_immunity <= 0.0 and phase != Phase.FLINCH:
+		_flinch_level = -1
 	_pose_cooldown = maxf(_pose_cooldown - delta, 0.0)
 	_peril_cooldown = maxf(_peril_cooldown - delta, 0.0)
 	_head_bounce_time = maxf(_head_bounce_time - delta, 0.0)
@@ -417,6 +434,7 @@ func _physics_process(delta: float) -> void:
 		Phase.FLINCH:
 			_decelerate(delta)
 			_phase_timer -= delta
+			_drive_flinch_clip()
 			if _phase_timer <= 0.0:
 				_flinch_immunity = ai.flinch_immunity_time
 				_think_timer = 0.3
@@ -632,12 +650,40 @@ func _start_recover() -> void:
 	_set_phase(Phase.RECOVER)
 
 
-func _start_flinch() -> void:
+func _start_flinch(hit: HitData = null) -> void:
 	Sfx.play_at(get_tree(), Sfx.Id.ENEMY_FLINCH, global_position + Vector3.UP * 1.2)
 	_abort_attack()
 	_defense.riposte_pending = false
-	_phase_timer = ai.hit_stun_time
+	# 3c-3b-2: the strength of the hit sets the stun and the clip (OFF with the F1 switch: today's flinch, no clip).
+	var stun: float = ai.hit_stun_time
+	_flinch_level = HitData.HurtLevel.SMALL
+	_flinch_clip = &""
+	if hit != null and HurtState.reactions_enabled():
+		_flinch_level = clampi(hit.hurt_level, HitData.HurtLevel.SMALL, HitData.HurtLevel.KNOCKDOWN)
+		if _flinch_level < ai.tier_stun_scale.size():
+			stun *= ai.tier_stun_scale[_flinch_level]
+		_flinch_clip = StringName("hurt_%s_%s" % [HurtState.LEVEL_NAMES[_flinch_level], _hit_side(hit)])
+	_flinch_total = maxf(stun, 0.001)
+	_phase_timer = stun
 	_set_phase(Phase.FLINCH)
+
+
+## 3c-3b-2: the side the hit came from, relative to where this enemy faces (front, back, left, right).
+func _hit_side(hit: HitData) -> StringName:
+	var local := global_transform.basis.inverse() * (-hit.direction)
+	if absf(local.z) >= absf(local.x):
+		return &"front" if local.z < 0.0 else &"back"
+	return &"right" if local.x > 0.0 else &"left"
+
+
+## 3c-3b-2: the figure plays the flinch's clip (up to its cancel frame) over the whole stun.
+func _drive_flinch_clip() -> void:
+	if _flinch_clip == &"" or _flinch_level < 0:
+		return
+	var span: float = maxf(_flinch_total, 0.001)
+	var progress: float = clampf(1.0 - _phase_timer / span, 0.0, 1.0)
+	figure.drive_clip_progress(FLINCH_ACTIONS[_flinch_level] as ActionData, progress, 1.0 / span, _flinch_clip, 0.0,
+			float(FLINCH_CLIP_END[_flinch_level]))
 
 
 ## Riposte armor: from the deflect that earned the riposte until its burst ends.
@@ -646,12 +692,18 @@ func _is_armored() -> bool:
 
 
 ## Would a landed (unguarded) hit flinch it right now? Never during its own hit window.
-func _should_flinch() -> bool:
-	if ai.hit_stun_time <= 0.0 or _flinch_immunity > 0.0 or combatant.deathblow_open or combatant.dead:
+func _should_flinch(hit: HitData = null) -> bool:
+	if ai.hit_stun_time <= 0.0 or combatant.deathblow_open or combatant.dead:
 		return false
 	if _is_armored():
 		return false
+	# 3c-3b-2: a hit stronger than the last reaction gets through the immunity and restarts a flinch (no stunlock otherwise).
+	var stronger: bool = hit != null and HurtState.reactions_enabled() and _flinch_level >= 0 and hit.hurt_level > _flinch_level
+	if _flinch_immunity > 0.0 and not stronger:
+		return false
 	match phase:
+		Phase.FLINCH:
+			return stronger
 		Phase.ATTACK:
 			if _hit_is_active():
 				return false
@@ -1763,11 +1815,11 @@ func _on_damaged(hit: HitData, _amount: float) -> void:
 	_recoil = 1.0
 	_recoil_scale = 1.0
 	_recoil_direction = hit.direction
-	var flinch := _should_flinch()
+	var flinch := _should_flinch(hit)
 	if phase == Phase.POSE:
 		_end_pose()
 	if flinch:
-		_start_flinch()
+		_start_flinch(hit)
 
 
 func _on_guarded(hit: HitData, _chip: float) -> void:

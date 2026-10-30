@@ -88,6 +88,10 @@ extends Resource
 @export_group("Flinch (only unguarded hits that land)")
 ## How long (s) a flinch lasts: it cannot act or guard.
 @export var hit_stun_time: float = 0.35
+## 3c-3b-2 PLACEHOLDER(ER numbers): the flinch lasts `hit_stun_time` times the scale of the hit's strength (index = HitData.HurtLevel:
+## small, middle, large, knockdown). The strength comes from the attack's `hurt_level`. Only while the F1 "Elden Ring-like feel"
+## switch is on (OFF = every hit flinches for `hit_stun_time`).
+@export var tier_stun_scale: PackedFloat32Array = PackedFloat32Array([1.0, 1.6, 2.2, 5.0])
 ## After a flinch ends, a landed hit cannot flinch it again for this long (s): it still takes the
 ## damage, but it gets time to act (retry a guard, attack). 0 = no immunity (stunlock possible).
 @export var flinch_immunity_time: float = 0.6
