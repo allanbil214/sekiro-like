@@ -108,7 +108,7 @@ static func make_exclude(thrower: Node3D) -> Array[RID]:
 static func trace(thrower: Node3D, from: Vector3, to: Vector3, exclude: Array[RID], hurt_mask: int = Layers.ENEMY_HURTBOX) -> Dictionary:
 	var space := thrower.get_world_3d().direct_space_state
 	for _pass in MAX_PASSES:
-		var query := PhysicsRayQueryParameters3D.create(from, to, Layers.WORLD | hurt_mask)
+		var query := PhysicsRayQueryParameters3D.create(from, to, Layers.WORLD | Layers.SMOOTH_RAMP | hurt_mask)
 		query.collide_with_areas = true
 		query.exclude = exclude
 		var result := space.intersect_ray(query)

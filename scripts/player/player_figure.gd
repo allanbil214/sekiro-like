@@ -27,6 +27,10 @@ extends MannequinFigure
 ## the joints above the pelvis take the sandbox's guard stance, and while it reports a carry they take a made-up carrying pose;
 ## the legs keep the locomotion clip. The layer fades in and out over `UPPER_BLEND`, on its own. The right arm still follows
 ## the code-drawn hand unless the sword is sheathed at rest (`right_arm_free`), so the sword's guard and deflect poses are kept.
+## 3d-2: foot placement (`FigureFeet`): while the owner stands on the ground, a ray under each foot finds the surface (the world and the
+## `Layers.FOOT_SURFACE` layer, never the smooth ramp a body walks on), the whole figure moves to the lower foot and each leg reaches its
+## foot with a two-bone solve, over every pose that is shown (clips, locomotion, held). The figure's shapes cast real shadows, and an
+## optional blob shadow lies on the ground under it. F1: "Foot placement", "Figure shadow", "Blob shadow".
 
 ## PLACEHOLDER: how far (fraction of the arm's length) the bones may stretch to reach a hand target.
 @export var max_stretch: float = 0.25
@@ -52,6 +56,12 @@ static var locomotion_enabled: bool = true
 ## The F1 switch (3d-1): true = footsteps come from the locomotion clips' foot plants (the player's and the enemies'); false =
 ## the old distance steps of the Player (the enemies are then silent).
 static var frame_footsteps_enabled: bool = true
+## The F1 switch (3d-2): false = the legs keep the clips' own height (no fitting to stairs and slopes).
+static var foot_placement_enabled: bool = true
+## The F1 switch (3d-2): the figure's shapes cast real shadows.
+static var shadow_enabled: bool = true
+## The F1 switch (3d-2): a soft dark disc on the ground under the figure (off by default; the real shadow is the main one).
+static var blob_enabled: bool = false
 static var _loco_warned: bool = false
 
 const STAND_CLIP: String = "idle"
@@ -68,6 +78,13 @@ const AIR_BLEND: float = 0.08
 const UPPER_BLEND: float = 0.12
 ## 3d-1: an enemy's footsteps are this much quieter (dB) than the player's, and play in the world at its feet.
 const ENEMY_STEP_DB: float = -8.0
+## 3d-2: the figure is fitted to the ground only while its head is above this fraction of the standing head height (a body lying
+## flat, in a knockdown or a roll's low point, keeps the clip's legs). PLACEHOLDER: a guess; the heavy landing crouch is about 0.5.
+const FEET_HEAD_MIN: float = 0.4
+## 3d-2: the blob shadow's size (m) on the ground, its darkest alpha, and how far above the ground it fades out.
+const BLOB_SIZE: float = 1.0
+const BLOB_ALPHA: float = 0.5
+const BLOB_FADE_HEIGHT: float = 8.0
 
 ## True once the clips are loaded and the figure can be shown.
 var available: bool = false
@@ -138,6 +155,13 @@ var _upper_kind: int = FigureUpperLayer.Kind.NONE
 var _upper_mix: float = 0.0
 var _upper_time: float = 0.0
 var _upper_warned: bool = false
+# 3d-2: foot placement. `_base_y` is the figure's resting height (`fit_to_height()`), the pelvis offset rides on top of it.
+var _feet: FigureFeet
+var _base_y: float = 0.0
+var _stand_head_y: float = 1.0
+var _shadow_applied: bool = false
+var _blob: MeshInstance3D
+var _blob_material: StandardMaterial3D
 
 
 func _ready() -> void:
@@ -162,6 +186,10 @@ func _ready() -> void:
 		_loco_warned = true
 		push_warning("[PlayerFigure] locomotion clip '%s' is missing: no locomotion clips (run tools/placeholder/convert_clips.py)" % missing)
 	_upper = FigureUpperLayer.new(clips)
+	_feet = FigureFeet.new(clips)
+	if not _feet.ready_to_use:
+		_feet = null
+	_stand_head_y = maxf(_stand.points[_head_joint].y, 0.1)
 	_pelvis = clips.joint_index("Pelvis")
 	_lower.resize(clips.joint_names.size())
 	for i in clips.joint_names.size():
@@ -191,7 +219,11 @@ func _process(delta: float) -> void:
 	if not available or not visible:
 		return
 	delta *= Hitstop.fighter_scale(owner)  # 3c-1: the clip's blends and its step between physics frames follow the fighter's freeze
+	if shadow_enabled != _shadow_applied:
+		_shadow_applied = shadow_enabled
+		set_shadow_casting(shadow_enabled)
 	_update_locomotion(delta)
+	var feet_changed: bool = _update_feet(delta)
 	var clip_active: bool = _playing or _mix > 0.0
 	if clip_active:
 		_step_clip(delta)
@@ -213,7 +245,7 @@ func _process(delta: float) -> void:
 			left_hand = _heal.get_hand_global()
 	var driven: bool = has_right or has_left
 	var loco_active: bool = _base_pose != null
-	if driven or _arms_driven or clip_active or _was_clip or loco_active or _was_loco:
+	if driven or _arms_driven or clip_active or _was_clip or loco_active or _was_loco or feet_changed:
 		_refresh()  # back to the held pose (or the clip), then bend the driven arms
 	_arms_driven = driven
 	_was_clip = clip_active
@@ -597,7 +629,8 @@ func fit_to_height(height: float) -> void:
 		lowest = minf(lowest, point.y)
 	var factor: float = height / maxf(top - lowest, 0.1)
 	scale = Vector3.ONE * factor
-	position.y = -lowest * factor
+	_base_y = -lowest * factor
+	position.y = _base_y
 
 
 ## Ease between the standing and the crouched pose over `time` seconds (instantly when 0).
@@ -617,12 +650,124 @@ func _refresh() -> void:
 		return
 	var held: PlaceholderClips.Pose = _held_pose()
 	if _mix <= 0.0 or _clip_pose == null:
-		show_pose(held)
+		show_pose(_with_feet(held))
 		return
 	var clip_pose: PlaceholderClips.Pose = _clip_pose
 	if _xfade > 0.0 and _xfade_from != null:
 		clip_pose = _blend(clip_pose, _xfade_from, _xfade)
-	show_pose(clip_pose if _mix >= 1.0 else _blend(held, clip_pose, _mix))
+	show_pose(_with_feet(clip_pose if _mix >= 1.0 else _blend(held, clip_pose, _mix)))
+
+
+## 3d-2: `pose` with the legs fitted to the ground (the pose itself when foot placement is off or has nothing to do).
+func _with_feet(pose: PlaceholderClips.Pose) -> PlaceholderClips.Pose:
+	return pose if _feet == null else _feet.apply(pose, scale.y)
+
+
+## 3d-2: true while the figure may be fitted to the ground: the switch is on, the owner is alive and free (its owner drives the
+## locomotion layer every physics frame), stands on the floor, and the figure is not lying flat (the head height of the pose shown).
+func _feet_active() -> bool:
+	if _feet == null or not foot_placement_enabled or not available or not visible:
+		return false
+	if Engine.get_physics_frames() - _loco_frame > 2:
+		return false
+	var body := owner as CharacterBody3D
+	if body == null or not body.is_on_floor():
+		return false
+	if _last_pose == null:
+		return true
+	return _last_pose.points[_head_joint].y / _stand_head_y > FEET_HEAD_MIN
+
+
+## 3d-2: once per rendered frame: ease the offsets, move the figure to the lower foot, and say whether the pose must be redrawn.
+func _update_feet(delta: float) -> bool:
+	if _feet == null:
+		return false
+	var changed: bool = _feet.step(delta, _feet_active())
+	position.y = _base_y + _feet.pelvis_offset()
+	return changed
+
+
+## 3d-2: once per physics frame: probe the ground under each foot and place the blob shadow. The physics space is only
+## read here.
+func _physics_process(_delta: float) -> void:
+	if not available or not visible:
+		if _blob != null:
+			_blob.visible = false
+		return
+	var body := owner as Node3D
+	if body == null:
+		return
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var exclude: Array[RID] = []
+	var collider := owner as CollisionObject3D
+	if collider != null:
+		exclude.append(collider.get_rid())
+	if _feet != null and _last_pose != null and foot_placement_enabled:
+		var floor_y: float = body.global_position.y
+		for side in 2:
+			var joints: Vector2i = _feet.foot_joints(side)
+			var middle: Vector3 = (_last_pose.points[joints.x] + _last_pose.points[joints.y]) * 0.5
+			var at: Vector3 = global_transform * middle
+			var hit_y: float = _ground_y(space, at.x, floor_y + FigureFeet.STEP_UP, floor_y - FigureFeet.STEP_DOWN, at.z, exclude)
+			_feet.set_ground(side, NAN if is_nan(hit_y) else hit_y - floor_y)
+	_update_blob(space, body, exclude)
+
+
+## The height of the ground at (x, z) between `top` and `bottom`, or NAN. Sees the world and the foot surfaces, never the smooth ramp.
+func _ground_y(space: PhysicsDirectSpaceState3D, x: float, top: float, bottom: float, z: float, exclude: Array[RID]) -> float:
+	var query := PhysicsRayQueryParameters3D.create(Vector3(x, top, z), Vector3(x, bottom, z), Layers.WORLD | Layers.FOOT_SURFACE, exclude)
+	var hit: Dictionary = space.intersect_ray(query)
+	if hit.is_empty():
+		return NAN
+	return (hit["position"] as Vector3).y
+
+
+## 3d-2: the blob shadow: a soft dark disc flat on the ground under the owner, smaller and fainter the higher it is. Made when first
+## switched on; a world-space node (top level), so the figure's scale and tilt do not touch it.
+func _update_blob(space: PhysicsDirectSpaceState3D, body: Node3D, exclude: Array[RID]) -> void:
+	if not blob_enabled:
+		if _blob != null:
+			_blob.visible = false
+		return
+	if _blob == null:
+		_make_blob()
+	var origin: Vector3 = body.global_position
+	var ground: float = _ground_y(space, origin.x, origin.y + 0.3, origin.y - 40.0, origin.z, exclude)
+	if is_nan(ground):
+		_blob.visible = false
+		return
+	var height: float = maxf(origin.y - ground, 0.0)
+	var fade: float = clampf(1.0 - height / BLOB_FADE_HEIGHT, 0.0, 1.0)
+	_blob.visible = fade > 0.01
+	_blob.global_position = Vector3(origin.x, ground + 0.02, origin.z)
+	_blob.scale = Vector3.ONE * (BLOB_SIZE * (1.0 + height * 0.1))
+	_blob_material.albedo_color = Color(1.0, 1.0, 1.0, BLOB_ALPHA * fade)
+
+
+func _make_blob() -> void:
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	gradient.colors = PackedColorArray([Color(0, 0, 0, 1), Color(0, 0, 0, 0.55), Color(0, 0, 0, 0)])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	texture.width = 64
+	texture.height = 64
+	_blob_material = StandardMaterial3D.new()
+	_blob_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_blob_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_blob_material.albedo_texture = texture
+	_blob_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var plane := PlaneMesh.new()
+	plane.size = Vector2.ONE
+	_blob = MeshInstance3D.new()
+	_blob.mesh = plane
+	_blob.material_override = _blob_material
+	_blob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_blob.top_level = true
+	add_child(_blob)
 
 
 ## The base layer under the actions: the locomotion pose of this frame (3c-2a), or the held pose.

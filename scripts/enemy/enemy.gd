@@ -1442,7 +1442,7 @@ func _fall_body(delta: float) -> void:
 	_body_fall_speed += float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) * delta
 	var step := _body_fall_speed * delta
 	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 0.1,
-			global_position + Vector3.DOWN * (step + 0.05), Layers.WORLD, [get_rid()])
+			global_position + Vector3.DOWN * (step + 0.05), Layers.WORLD | Layers.SMOOTH_RAMP, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		global_position.y = (hit["position"] as Vector3).y

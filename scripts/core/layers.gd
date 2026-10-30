@@ -16,6 +16,12 @@ const ENEMY_HITBOX: int = 16
 ## camera's spring arm and the ledge and wall sensing do not see it. Tick layer 6 in the mask of the
 ## Player and Enemy root nodes.
 const INVISIBLE_WALL: int = 32
+## Smooth ramps (layer 7, Phase 3d-2): the invisible ramp a body walks on over visible stairs. A solid for the Player and
+## Enemy bodies only (tick layer 7 in their masks); the camera, the sensors and the foot rays do not see it.
+const SMOOTH_RAMP: int = 64
+## Foot surfaces (layer 8, Phase 3d-2): the detailed visible surface (the real steps) that only the figure's foot rays read.
+## No body collides with it (a CSG or static body on layer 8 with mask 0).
+const FOOT_SURFACE: int = 128
 
 
 static func hurtbox_layer(team: Team) -> int:

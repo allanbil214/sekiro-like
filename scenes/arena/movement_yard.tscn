@@ -306,72 +306,96 @@ text = "STAIRS (smooth ramp)\n12 steps, 0.15 m risers, 0.4 m treads"
 [node name="StairsUp1" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, -171.7226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.15, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp2" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -172.1226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.3, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp3" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, -172.5226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.45, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp4" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -172.9226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.6, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp5" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, -173.3226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.75, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp6" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, -173.7226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.9, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp7" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.525, -174.1226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.05, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp8" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -174.5226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.2, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp9" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, -174.9226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.35, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp10" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -175.3226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.5, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp11" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.825, -175.7226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.65, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsUp12" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, -176.1226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.8, 0.4)
 material = SubResource("Mat_stairs")
 
@@ -384,83 +408,111 @@ material = SubResource("Mat_stairs")
 [node name="StairsDown12" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, -178.5226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.8, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown11" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.825, -178.9226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.65, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown10" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -179.3226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.5, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown9" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, -179.7226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.35, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown8" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -180.1226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.2, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown7" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.525, -180.5226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 1.05, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown6" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, -180.9226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.9, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown5" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, -181.3226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.75, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown4" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -181.7226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.6, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown3" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, -182.1226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.45, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown2" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -182.5226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.3, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsDown1" type="CSGBox3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, -182.9226)
 use_collision = true
+collision_layer = 128
+collision_mask = 0
 size = Vector3(8, 0.15, 0.4)
 material = SubResource("Mat_stairs")
 
 [node name="StairsRampUp" type="StaticBody3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 0.9363, -0.3511, 0, 0.3511, 0.9363, 0, 0.8264, -173.5577)
+collision_layer = 64
+collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Yard/Stairs/StairsRampUp"]
 shape = SubResource("BoxShape3D_ramp_Stairs")
 
 [node name="StairsRampDown" type="StaticBody3D" parent="Yard/Stairs"]
 transform = Transform3D(1, 0, 0, 0, 0.9363, 0.3511, 0, -0.3511, 0.9363, 0, 0.8264, -181.0875)
+collision_layer = 64
+collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Yard/Stairs/StairsRampDown"]
 shape = SubResource("BoxShape3D_ramp_Stairs")

@@ -164,6 +164,8 @@ walk={
 3d_render/layer_3="Enemy Hurtbox"
 3d_render/layer_4="Player Hitbox"
 3d_render/layer_5="Enemy Hitbox"
+3d_physics/layer_7="smooth ramp"
+3d_physics/layer_8="foot surfaces"
 
 [physics]
 

@@ -139,6 +139,15 @@ func set_blade_visible(on: bool) -> void:
 		_blade.visible = on
 
 
+## 3d-2: every shape of the figure casts a real shadow (on), or none (off, how the viewer's figure is). The arenas' lights decide
+## whether shadows show at all.
+func set_shadow_casting(on: bool) -> void:
+	var mode: GeometryInstance3D.ShadowCastingSetting = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on \
+			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for mesh: MeshInstance3D in _meshes:
+		mesh.cast_shadow = mode
+
+
 ## Draw every shape with `material` (the i-frame tint), or with its own colors again when null.
 func set_overlay_material(material: Material) -> void:
 	for i in _meshes.size():

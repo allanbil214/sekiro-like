@@ -100,6 +100,18 @@ static func build(player: Player) -> Array[Option]:
 			func() -> bool: return PlayerFigure.frame_footsteps_enabled,
 			func(on: bool) -> void: PlayerFigure.frame_footsteps_enabled = on))
 
+	list.append(_toggle(&"foot_placement", "PLACEHOLDER", "Foot placement (legs fitted to stairs and slopes, player and enemies; off = the clips' own legs)",
+			func() -> bool: return PlayerFigure.foot_placement_enabled,
+			func(on: bool) -> void: PlayerFigure.foot_placement_enabled = on))
+
+	list.append(_toggle(&"figure_shadow", "PLACEHOLDER", "Figure shadow (the mannequin's shapes cast a real shadow)",
+			func() -> bool: return PlayerFigure.shadow_enabled,
+			func(on: bool) -> void: PlayerFigure.shadow_enabled = on))
+
+	list.append(_toggle(&"blob_shadow", "PLACEHOLDER", "Blob shadow (a soft dark disc on the ground under the figure)",
+			func() -> bool: return PlayerFigure.blob_enabled,
+			func(on: bool) -> void: PlayerFigure.blob_enabled = on))
+
 	# --- PLAYER ---
 	list.append(_toggle(&"undetectable", "PLAYER", "Undetectable (F4)",
 			func() -> bool: return player.debug_undetectable,

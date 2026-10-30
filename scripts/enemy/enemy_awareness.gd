@@ -397,7 +397,7 @@ func edge_safe(direction: Vector3) -> bool:
 		return true
 	var ahead := _enemy.global_position + direction.normalized() * _ai.edge_probe_distance
 	var query := PhysicsRayQueryParameters3D.create(
-			ahead + Vector3.UP * 0.5, ahead + Vector3.DOWN * _ai.edge_probe_depth, Layers.WORLD)
+			ahead + Vector3.UP * 0.5, ahead + Vector3.DOWN * _ai.edge_probe_depth, Layers.WORLD | Layers.SMOOTH_RAMP)
 	query.exclude = [_enemy.get_rid()]
 	return not _enemy.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
@@ -1075,7 +1075,7 @@ func _clamp_to_wall(center: Vector3, point: Vector3) -> Vector3:
 
 func _has_floor_near(point: Vector3, y: float) -> bool:
 	var query := PhysicsRayQueryParameters3D.create(
-			point + Vector3.UP * 1.0, point + Vector3.DOWN * 2.0, Layers.WORLD)
+			point + Vector3.UP * 1.0, point + Vector3.DOWN * 2.0, Layers.WORLD | Layers.SMOOTH_RAMP)
 	query.exclude = _enemy_rids()
 	var hit := _enemy.get_world_3d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
